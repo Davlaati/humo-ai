@@ -1,187 +1,147 @@
+
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { convertHumoToStars, purchaseStars } from '../services/storageService';
+import { convertHumoToStars } from '../services/storageService';
 import { playTapSound } from '../services/audioService';
 
 interface WalletProps {
   user: UserProfile;
 }
 
-const STAR_VARIANTS = [50, 75, 100, 150, 250, 350, 500, 750, 1000, 1500, 2500];
-const CONVERSION_RATE = 10;
+const STAR_VARIANTS = [
+  { stars: 50, cost: 500 },
+  { stars: 100, cost: 1000 },
+  { stars: 250, cost: 2500 },
+  { stars: 500, cost: 5000 },
+  { stars: 1000, cost: 10000 },
+  { stars: 2500, cost: 25000 },
+];
 
 const Wallet: React.FC<WalletProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<'humo' | 'stars'>('humo');
-  const [confirmModal, setConfirmModal] = useState<number | null>(null);
+  const [confirmModal, setConfirmModal] = useState<typeof STAR_VARIANTS[0] | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleConvert = (amount: number) => {
+  const handleConvertClick = (variant: typeof STAR_VARIANTS[0]) => {
     playTapSound();
-    setConfirmModal(amount);
+    setConfirmModal(variant);
   };
 
   const executeConversion = () => {
-    if (confirmModal === null) return;
+    if (!confirmModal) return;
     setIsProcessing(true);
     
-    // Simulate API Delay
     setTimeout(() => {
-      const updatedUser = convertHumoToStars(confirmModal);
+      const updatedUser = convertHumoToStars(confirmModal.stars);
       if (updatedUser) {
-        window.location.reload(); // Force refresh to sync state
+        window.location.reload(); 
       } else {
-        alert("Humo Coin yetarli emas!");
+        alert("HC yetarli emas!");
       }
       setIsProcessing(false);
       setConfirmModal(null);
-    }, 1000);
+    }, 1200);
   };
-
-  const simulateStarsPurchase = (amount: number) => {
-    playTapSound();
-    // Simulate Telegram openInvoice
-    setIsProcessing(true);
-    setTimeout(() => {
-      purchaseStars(amount);
-      window.location.reload();
-    }, 1500);
-  };
-
-  const starsHistory = user.starsHistory || [];
 
   return (
-    <div className="p-4 pb-24 space-y-6 animate-fade-in h-full overflow-y-auto no-scrollbar">
+    <div className="p-4 pb-24 space-y-6 animate-fade-in h-full overflow-y-auto no-scrollbar relative">
       {/* Balances Display */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="glass-card p-5 rounded-3xl bg-gradient-to-br from-yellow-600/20 to-orange-600/10 border border-yellow-500/20 shadow-xl">
-           <p className="text-[10px] text-yellow-400 font-black uppercase tracking-widest mb-1">Humo Coins</p>
-           <h1 className="text-3xl font-black text-white">{user.coins} <span className="text-sm opacity-50">HC</span></h1>
-           <i className="fa-solid fa-coins text-2xl text-yellow-500 mt-2 opacity-30"></i>
+        <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-yellow-500/20 to-transparent border border-yellow-500/30 shadow-[0_10px_30px_rgba(234,179,8,0.1)]">
+           <div className="flex items-center space-x-2 mb-1">
+              <i className="fa-solid fa-coins text-yellow-400 text-xs"></i>
+              <p className="text-[10px] text-yellow-400 font-black uppercase tracking-[0.2em]">Humo Coins</p>
+           </div>
+           <h1 className="text-3xl font-black text-white">{user.coins.toLocaleString()}</h1>
+           <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">O'yin ichidagi valyuta</p>
         </div>
-        <div className="glass-card p-5 rounded-3xl bg-gradient-to-br from-blue-600/20 to-purple-600/10 border border-blue-500/20 shadow-xl">
-           <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">Telegram Stars</p>
-           <h1 className="text-3xl font-black text-white">{user.telegramStars || 0} <span className="text-sm opacity-50">XTR</span></h1>
-           <i className="fa-solid fa-star text-2xl text-blue-500 mt-2 opacity-30"></i>
+        <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 shadow-[0_10px_30px_rgba(59,130,246,0.1)]">
+           <div className="flex items-center space-x-2 mb-1">
+              <i className="fa-solid fa-star text-blue-400 text-xs"></i>
+              <p className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">TG Stars</p>
+           </div>
+           <h1 className="text-3xl font-black text-white">{user.telegramStars.toLocaleString()}</h1>
+           <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Real platform valyutasi</p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5">
-         <button 
-           onClick={() => setActiveTab('humo')}
-           className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'humo' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}
-         >
-           Humo Exchange
-         </button>
-         <button 
-           onClick={() => setActiveTab('stars')}
-           className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'stars' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}
-         >
-           Stars Shop
-         </button>
-      </div>
-
-      {activeTab === 'humo' ? (
-        <div className="space-y-4 animate-slide-up">
-          <div className="glass-panel p-4 rounded-2xl border border-white/10">
-            <h3 className="font-bold text-sm mb-1">Konvertatsiya</h3>
-            <p className="text-xs text-gray-400">1 Star = {CONVERSION_RATE} Humo Coin</p>
+      {/* Main Container */}
+      <div className="glass-panel p-6 rounded-[40px] border border-white/5 bg-slate-800/20 backdrop-blur-2xl">
+          <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-black italic tracking-tighter uppercase text-white">Humo Birjasi</h2>
+              <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">Kurs: 10 HC = 1 XTR</div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-             {STAR_VARIANTS.map(stars => (
+          <div className="grid grid-cols-2 gap-4">
+             {STAR_VARIANTS.map(v => (
                <button 
-                 key={stars}
-                 onClick={() => handleConvert(stars)}
-                 className="glass-card p-4 rounded-2xl flex flex-col items-center justify-center space-y-1 active:scale-95 transition-all border border-white/5 hover:border-yellow-500/30"
+                 key={v.stars}
+                 onClick={() => handleConvertClick(v)}
+                 className="glass-card p-5 rounded-3xl flex flex-col items-center justify-center space-y-2 active:scale-95 transition-all border border-white/5 hover:border-yellow-500/30 group bg-slate-900/40"
                >
-                 <span className="text-lg font-black text-white">{stars}</span>
-                 <span className="text-[9px] text-yellow-500 font-bold uppercase">-{stars * CONVERSION_RATE} HC</span>
+                 <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                    <i className="fa-solid fa-star text-yellow-500 text-xl drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]"></i>
+                 </div>
+                 <span className="text-xl font-black text-white">{v.stars} XTR</span>
+                 <div className="flex items-center space-x-1.5 opacity-60">
+                    <i className="fa-solid fa-coins text-[10px] text-yellow-500"></i>
+                    <span className="text-[11px] font-black text-slate-300">-{v.cost} HC</span>
+                 </div>
                </button>
              ))}
           </div>
-        </div>
-      ) : (
-        <div className="space-y-4 animate-slide-up">
-           <div className="glass-panel p-6 rounded-3xl border border-blue-500/30 bg-blue-500/5 relative overflow-hidden">
-              <div className="absolute -right-4 -top-4 opacity-10">
-                 <i className="fa-solid fa-star text-8xl"></i>
-              </div>
-              <h3 className="text-lg font-bold mb-2">Buy Telegram Stars</h3>
-              <p className="text-xs text-gray-400 leading-relaxed">Sotib olingan Stars orqali Humo AI ning barcha premium funksiyalaridan foydalana olasiz.</p>
-           </div>
+      </div>
 
-           <div className="grid grid-cols-2 gap-3">
-              {[50, 100, 250, 500].map(amount => (
-                <button 
-                  key={amount}
-                  onClick={() => simulateStarsPurchase(amount)}
-                  className="glass-card p-5 rounded-2xl flex flex-col items-center border border-white/10 active:scale-95 transition-all hover:bg-blue-500/10 group"
-                >
-                   <i className="fa-solid fa-star text-blue-400 mb-2 text-xl group-hover:rotate-12 transition-transform"></i>
-                   <span className="text-xl font-black text-white">{amount} XTR</span>
-                   <span className="text-[10px] text-gray-500 font-bold mt-1">Sotib olish</span>
-                </button>
-              ))}
-           </div>
-        </div>
-      )}
-
-      {/* Transaction History */}
-      <div className="pt-4 border-t border-white/5">
-        <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Tranzaksiyalar tarixi</h3>
+      {/* History */}
+      <div className="space-y-4">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 px-2">Amaliyotlar tarixi</h3>
         <div className="space-y-3">
-          {starsHistory.length > 0 ? (
-            starsHistory.map(tx => (
-              <div key={tx.id} className="glass-panel p-4 rounded-2xl flex justify-between items-center border border-white/5">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'conversion' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-500'}`}>
-                    <i className={`fa-solid ${tx.type === 'conversion' ? 'fa-shuffle' : 'fa-star'}`}></i>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-tighter">{tx.type.replace('_', ' ')}</p>
-                    <p className="text-[10px] text-gray-500">{new Date(tx.timestamp).toLocaleDateString()}</p>
-                  </div>
+          {(user.starsHistory || []).map(tx => (
+            <div key={tx.id} className="glass-card p-4 rounded-3xl flex items-center justify-between border border-white/5 bg-slate-900/20">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                  <i className="fa-solid fa-arrow-right-arrow-left text-blue-400 text-sm"></i>
                 </div>
-                <div className="text-right">
-                  <p className="font-black text-white">+{tx.amount} XTR</p>
-                  {tx.costInHumo && <p className="text-[9px] text-red-400">-{tx.costInHumo} HC</p>}
+                <div>
+                  <p className="text-xs font-black text-white uppercase tracking-tighter">Humo -> Stars</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(tx.timestamp).toLocaleDateString('uz-UZ')}</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 text-xs py-10">Tarix hali mavjud emas.</p>
-          )}
+              <div className="text-right">
+                <p className="text-sm font-black text-green-400">+{tx.amount} XTR</p>
+                <p className="text-[9px] text-slate-500 font-bold">-{tx.costInHumo} HC</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Overlay */}
       {confirmModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fade-in">
-           <div className="glass-card w-full max-w-sm rounded-3xl p-8 border border-white/20 shadow-2xl animate-slide-up text-center">
-              <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                 <i className="fa-solid fa-shuffle text-3xl text-yellow-500"></i>
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 bg-[#0c1222]/90 backdrop-blur-xl animate-fade-in">
+           <div className="glass-card w-full max-w-sm rounded-[45px] p-8 border border-white/20 shadow-2xl animate-slide-up text-center bg-slate-900">
+              <div className="w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/20">
+                 <i className="fa-solid fa-shuffle text-4xl text-yellow-500 animate-pulse"></i>
               </div>
-              <h2 className="text-2xl font-black mb-2">Ishonchingiz komilmi?</h2>
-              <p className="text-gray-400 text-sm mb-8">
-                <span className="text-white font-bold">{confirmModal * CONVERSION_RATE} Humo Coin</span> evaziga 
-                <span className="text-yellow-400 font-bold"> {confirmModal} Telegram Stars</span> olasiz.
+              <h2 className="text-2xl font-black mb-3 italic tracking-tighter">ALMASHTIRISHNI TASDIQLANG</h2>
+              <p className="text-slate-400 text-sm mb-10 leading-relaxed px-4">
+                Sizning balansingizdan <span className="text-white font-black underline">{confirmModal.cost} HC</span> yechiladi va evaziga <span className="text-blue-400 font-black">{confirmModal.stars} Telegram Stars</span> olasiz.
               </p>
 
               <div className="flex space-x-3">
                 <button 
                   onClick={() => setConfirmModal(null)}
                   disabled={isProcessing}
-                  className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-400 font-bold text-sm active:scale-95 transition"
+                  className="flex-1 py-5 rounded-[25px] bg-white/5 text-slate-500 font-black text-xs uppercase tracking-widest active:scale-95 transition"
                 >
-                  Yo'q
+                  Bekor qilish
                 </button>
                 <button 
                   onClick={executeConversion}
                   disabled={isProcessing}
-                  className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black text-sm active:scale-95 transition shadow-lg shadow-blue-500/30 flex items-center justify-center"
+                  className="flex-1 py-5 rounded-[25px] liquid-button text-white font-black text-xs uppercase tracking-widest active:scale-95 transition shadow-xl shadow-blue-500/30 flex items-center justify-center"
                 >
-                  {isProcessing ? <i className="fa-solid fa-circle-notch animate-spin mr-2"></i> : 'Ha, Almashtirish'}
+                  {isProcessing ? <i className="fa-solid fa-circle-notch animate-spin text-lg"></i> : 'TASDIQLASH'}
                 </button>
               </div>
            </div>

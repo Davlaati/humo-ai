@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserProfile, SpeakingStatus, PartnerType } from '../types';
-import { generateConversationResponse, playTextToSpeech } from '../services/geminiService';
+import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { saveUser } from '../services/storageService';
 
 interface SpeakingClubProps {
@@ -9,295 +10,351 @@ interface SpeakingClubProps {
   onUpdateUser: (user: UserProfile) => void;
 }
 
+interface AnalysisReport {
+  grammarErrors: { original: string; corrected: string; explanation: string }[];
+  vocabularySuggestions: string[];
+  overallLevel: string;
+}
+
+// Audio Helpers
+function encode(bytes: Uint8Array) {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+  return bytes;
+}
+
+async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+  }
+  return buffer;
+}
+
 const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateUser }) => {
   const [status, setStatus] = useState<SpeakingStatus>('idle');
-  const [partnerType, setPartnerType] = useState<PartnerType>('ai');
+  const [partnerInfo, setPartnerInfo] = useState<{name: string, type: PartnerType, level: string}>({ name: 'Humobek AI', type: 'ai', level: 'Native' });
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [micPermission, setMicPermission] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Audio simulation refs
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const searchTimeoutRef = useRef<any>(null);
-
-  // Conversation Mock
   const [transcript, setTranscript] = useState<{sender: 'me' | 'partner', text: string}[]>([]);
+  const [analysis, setAnalysis] = useState<AnalysisReport | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Audio Contexts & Refs
+  const inputAudioCtxRef = useRef<AudioContext | null>(null);
+  const outputAudioCtxRef = useRef<AudioContext | null>(null);
+  const sessionRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const nextStartTimeRef = useRef(0);
+  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
   useEffect(() => {
     return () => {
-      stopMedia();
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        stopAll();
     };
   }, []);
 
-  const stopMedia = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
+  const stopAll = () => {
+    if (sessionRef.current) sessionRef.current.close();
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    sourcesRef.current.forEach(s => s.stop());
+    sourcesRef.current.clear();
   };
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-      streamRef.current = stream;
-      setMicPermission(true);
-      setError(null);
-      startMatching();
-    } catch (e) {
-      console.error(e);
-      setError("Camera/Microphone access denied. Using Avatar mode.");
-      setMicPermission(false);
-      // Proceed without media if blocked, simulated via avatar
-      startMatching();
-    }
-  };
-
-  const startMatching = () => {
+  const startSession = async () => {
     setStatus('searching');
-    setElapsedTime(0);
     
-    // AI Fallback Logic:
-    // Try to "match" for 5-8 seconds. If no real user (simulated), connect to AI.
-    const searchTime = 5000 + Math.random() * 3000;
-    
-    searchTimeoutRef.current = setTimeout(() => {
-        setPartnerType('ai');
-        setStatus('connected');
-        playTextToSpeech("Hello! I am Humobek AI. Let's practice English together!");
-        setTranscript([{ sender: 'partner', text: "Hello! I am Humobek AI. Let's practice English!" }]);
-    }, searchTime);
+    // Simulyatsiya qilingan matching (80% AI, 20% Real User)
+    const isRealUser = Math.random() > 0.8;
+    const searchDelay = 3000 + Math.random() * 3000;
+
+    setTimeout(async () => {
+        if (isRealUser) {
+            setPartnerInfo({ name: "James (London)", type: 'user', level: 'Advanced' });
+        } else {
+            setPartnerInfo({ name: "Humobek AI", type: 'ai', level: 'Native' });
+        }
+        await connectToLiveAPI(isRealUser ? 'Act as a friendly English student named James from London.' : undefined);
+    }, searchDelay);
+  };
+
+  const connectToLiveAPI = async (customInstruction?: string) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+
+      const sessionPromise = ai.live.connect({
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
+          systemInstruction: customInstruction || `You are Humobek AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}.`,
+          inputAudioTranscription: {},
+          outputAudioTranscription: {}
+        },
+        callbacks: {
+          onopen: () => {
+            const source = inputAudioCtxRef.current!.createMediaStreamSource(stream);
+            const scriptProcessor = inputAudioCtxRef.current!.createScriptProcessor(4096, 1, 1);
+            scriptProcessor.onaudioprocess = (e) => {
+              const inputData = e.inputBuffer.getChannelData(0);
+              const int16 = new Int16Array(inputData.length);
+              for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
+              const pcmBlob = { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
+              sessionPromise.then(s => s.sendRealtimeInput({ media: pcmBlob }));
+            };
+            source.connect(scriptProcessor);
+            scriptProcessor.connect(inputAudioCtxRef.current!.destination);
+            setStatus('connected');
+          },
+          onmessage: async (msg: LiveServerMessage) => {
+            // Audio Output
+            const base64Audio = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+            if (base64Audio) {
+              const outCtx = outputAudioCtxRef.current!;
+              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outCtx.currentTime);
+              const buffer = await decodeAudioData(decode(base64Audio), outCtx, 24000, 1);
+              const source = outCtx.createBufferSource();
+              source.buffer = buffer;
+              source.connect(outCtx.destination);
+              source.start(nextStartTimeRef.current);
+              nextStartTimeRef.current += buffer.duration;
+              sourcesRef.current.add(source);
+            }
+
+            // Transcriptions
+            if (msg.serverContent?.inputTranscription) {
+                setTranscript(prev => [...prev, { sender: 'me', text: msg.serverContent!.inputTranscription!.text }]);
+            }
+            if (msg.serverContent?.outputTranscription) {
+                setTranscript(prev => [...prev, { sender: 'partner', text: msg.serverContent!.outputTranscription!.text }]);
+            }
+
+            if (msg.serverContent?.interrupted) {
+                sourcesRef.current.forEach(s => s.stop());
+                sourcesRef.current.clear();
+                nextStartTimeRef.current = 0;
+            }
+          }
+        }
+      });
+
+      sessionRef.current = await sessionPromise;
+    } catch (err) {
+      console.error("Live API Connection Failed:", err);
+      setStatus('idle');
+      alert("Mikrofonni ishlatishda xatolik yuz berdi. Iltimos, ruxsat bering.");
+    }
   };
 
   useEffect(() => {
     let interval: any;
     if (status === 'connected') {
-      interval = setInterval(() => {
-        setElapsedTime(prev => prev + 1);
-      }, 1000);
+      interval = setInterval(() => setElapsedTime(p => p + 1), 1000);
     }
     return () => clearInterval(interval);
   }, [status]);
 
-  const endSession = () => {
+  const endSession = async () => {
     setStatus('ended');
-    stopMedia();
+    stopAll();
     
-    // XP Calculation: 10 XP per minute
-    const xpEarned = Math.max(10, Math.floor(elapsedTime / 60) * 10);
-    const updatedUser = { 
-        ...user, 
-        xp: user.xp + xpEarned,
-        coins: user.coins + 5 // Small coin reward
-    };
-    onUpdateUser(updatedUser);
-  };
+    // Xatolarni analiz qilish
+    setIsAnalyzing(true);
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const conversationText = transcript.map(t => `${t.sender}: ${t.text}`).join('\n');
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Analyze this English conversation transcript for errors. Return JSON. 
+            Transcript:
+            ${conversationText}
+            
+            JSON schema: { 
+                "grammarErrors": [{"original": "...", "corrected": "...", "explanation": "..."}], 
+                "vocabularySuggestions": ["...", "..."], 
+                "overallLevel": "..." 
+            }`,
+            config: { responseMimeType: 'application/json' }
+        });
+        setAnalysis(JSON.parse(response.text || '{}'));
+    } catch (e) {
+        console.error("Analysis failed:", e);
+    } finally {
+        setIsAnalyzing(false);
+    }
 
-  const handleSimulatedSpeaking = async () => {
-      // Simulate user speaking (since we don't have STT in this demo without key)
-      const userPhrases = [
-          "My name is " + user.name + " and I want to improve my speaking.",
-          "I am interested in " + user.interests[0] + ".",
-          "How are you today?",
-          "Can you help me with grammar?"
-      ];
-      const randomPhrase = userPhrases[Math.floor(Math.random() * userPhrases.length)];
-      
-      setTranscript(prev => [...prev, { sender: 'me', text: randomPhrase }]);
-      
-      // AI Response
-      if (partnerType === 'ai') {
-          setTimeout(async () => {
-              const reply = await generateConversationResponse(randomPhrase, user.level);
-              if (reply) {
-                  setTranscript(prev => [...prev, { sender: 'partner', text: reply }]);
-                  playTextToSpeech(reply);
-              }
-          }, 1500);
-      }
+    const xpEarned = Math.max(15, Math.floor(elapsedTime / 60) * 15);
+    onUpdateUser({ ...user, xp: user.xp + xpEarned, coins: user.coins + 10 });
   };
-
-  // --- RENDER PHASES ---
 
   if (status === 'idle') {
-      return (
-          <div className="flex flex-col h-full p-6 animate-fade-in relative overflow-hidden">
-             {/* Background Effects */}
-             <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600 rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
-             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600 rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
+    return (
+      <div className="flex flex-col h-full bg-[#0c1222] p-6 animate-fade-in">
+        <div className="flex items-center mb-10">
+          <button onClick={() => onNavigate('home')} className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center mr-4 border border-white/10 active:scale-90 transition">
+            <i className="fa-solid fa-arrow-left text-lg"></i>
+          </button>
+          <h1 className="text-2xl font-black italic uppercase tracking-tighter">Speaking Club</h1>
+        </div>
 
-             <div className="flex items-center mb-6">
-                <button onClick={() => onNavigate('home')} className="w-10 h-10 rounded-full glass-panel flex items-center justify-center mr-4">
-                    <i className="fa-solid fa-arrow-left"></i>
-                </button>
-                <h1 className="text-2xl font-bold">Speaking Club</h1>
-             </div>
-
-             <div className="flex-1 flex flex-col items-center justify-center text-center">
-                 <div className="relative w-40 h-40 mb-8">
-                     <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-                     <div className="relative w-full h-full glass-card rounded-full flex items-center justify-center border-4 border-blue-500/30">
-                         <i className="fa-solid fa-headset text-6xl text-blue-400"></i>
-                     </div>
-                     <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-green-500 rounded-full border-4 border-slate-900 flex items-center justify-center font-bold text-xs">
-                         AI
-                     </div>
-                 </div>
-
-                 <h2 className="text-3xl font-bold mb-3">Global Speaking</h2>
-                 <p className="text-gray-400 mb-8 max-w-xs">
-                     Connect with random students or our AI tutor to practice speaking in real-time.
-                 </p>
-
-                 <div className="grid grid-cols-2 gap-4 w-full mb-8">
-                     <div className="glass-panel p-4 rounded-xl flex flex-col items-center">
-                         <i className="fa-solid fa-bolt text-yellow-400 text-2xl mb-2"></i>
-                         <span className="text-xs text-gray-400">Match Speed</span>
-                         <span className="font-bold text-sm">~10 sec</span>
-                     </div>
-                     <div className="glass-panel p-4 rounded-xl flex flex-col items-center">
-                         <i className="fa-solid fa-shield-halved text-green-400 text-2xl mb-2"></i>
-                         <span className="text-xs text-gray-400">Safety</span>
-                         <span className="font-bold text-sm">Monitored</span>
-                     </div>
-                 </div>
-
-                 <button 
-                    onClick={startCamera}
-                    className="w-full liquid-button py-4 rounded-2xl font-bold text-lg shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-95 transition"
-                 >
-                     Start Matching
-                 </button>
-                 {error && <p className="text-red-400 text-xs mt-4">{error}</p>}
-             </div>
+        <div className="flex-1 flex flex-col items-center justify-center text-center pb-20">
+          <div className="relative w-44 h-44 mb-10">
+            <div className="absolute inset-0 bg-blue-500 rounded-full blur-[60px] opacity-20 animate-pulse"></div>
+            <div className="relative w-full h-full glass-card rounded-full flex items-center justify-center border-4 border-blue-500/30 shadow-2xl">
+              <i className="fa-solid fa-microphone-lines text-7xl text-blue-400"></i>
+            </div>
           </div>
-      );
+          <h2 className="text-3xl font-black mb-3 italic uppercase tracking-tighter">Jonli Muloqot</h2>
+          <p className="text-slate-400 mb-10 max-w-xs text-sm font-medium">
+            Online foydalanuvchilar yoki sun'iy intellekt bilan haqiqiy ovozli suhbat quring.
+          </p>
+          <button onClick={startSession} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition">
+            Suhbatdosh Qidirish
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (status === 'searching') {
-      return (
-          <div className="flex flex-col h-full items-center justify-center p-6 relative overflow-hidden bg-slate-900">
-              {/* Radar Effect */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                   <div className="w-[500px] h-[500px] border border-blue-500/20 rounded-full animate-ping" style={{animationDuration: '3s'}}></div>
-                   <div className="w-[300px] h-[300px] border border-blue-500/40 rounded-full animate-ping absolute" style={{animationDuration: '2s'}}></div>
-              </div>
-
-              <div className="relative z-10 flex flex-col items-center">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-500 relative mb-6">
-                      <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
-                      {!micPermission && <div className="absolute inset-0 bg-slate-800 flex items-center justify-center"><i className="fa-solid fa-user text-4xl text-gray-500"></i></div>}
-                  </div>
-                  <h2 className="text-2xl font-bold animate-pulse mb-2">Finding Partner...</h2>
-                  <p className="text-gray-400 text-sm">Looking for level {user.level} students</p>
-                  
-                  <button onClick={() => {
-                      setStatus('idle');
-                      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-                  }} className="mt-12 px-8 py-3 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold">
-                      Cancel
-                  </button>
-              </div>
-          </div>
-      );
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-6 bg-[#0c1222]">
+        <div className="relative w-40 h-40 mb-12">
+            <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <i className="fa-solid fa-earth-americas text-5xl text-blue-400 animate-pulse"></i>
+            </div>
+        </div>
+        <h2 className="text-xl font-black italic uppercase tracking-widest animate-pulse">Online foydalanuvchi qidirilmoqda...</h2>
+        <p className="text-slate-500 text-xs mt-3 uppercase font-bold tracking-[0.2em]">Sizning darajangiz: {user.level}</p>
+      </div>
+    );
   }
 
   if (status === 'connected') {
-      return (
-          <div className="flex flex-col h-full bg-slate-950 relative">
-              {/* Remote Video (Simulated AI) */}
-              <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-gradient-to-b from-slate-900 to-indigo-900/20">
-                  <div className="flex flex-col items-center animate-bounce-slow">
-                      <div className="w-40 h-40 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 p-1 mb-4 shadow-[0_0_50px_rgba(59,130,246,0.5)]">
-                          <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center relative overflow-hidden">
-                              <i className="fa-solid fa-robot text-6xl text-white"></i>
-                              {/* Audio Viz */}
-                              <div className="absolute bottom-0 w-full h-1/3 flex items-end justify-center space-x-1 pb-4">
-                                  {[1,2,3,4,5].map(i => (
-                                      <div key={i} className="w-1 bg-blue-400 rounded-full animate-music-bar" style={{height: Math.random() * 20 + 10 + 'px', animationDelay: i * 0.1 + 's'}}></div>
-                                  ))}
-                              </div>
-                          </div>
-                      </div>
-                      <h3 className="text-xl font-bold">Humobek AI</h3>
-                      <p className="text-blue-300 text-sm">{Math.floor(elapsedTime / 60)}:{String(elapsedTime % 60).padStart(2, '0')}</p>
-                  </div>
-              </div>
+    return (
+      <div className="flex flex-col h-full bg-[#0c1222]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+            <div className="absolute top-10 left-0 right-0 flex flex-col items-center">
+                <div className="px-4 py-1.5 bg-blue-600/20 rounded-full border border-blue-500/30 text-blue-400 font-black text-xs">
+                    {Math.floor(elapsedTime / 60)}:{String(elapsedTime % 60).padStart(2, '0')}
+                </div>
+            </div>
 
-              {/* Chat Overlay */}
-              <div className="absolute top-20 left-4 right-4 h-64 overflow-y-auto pointer-events-none fade-mask-y">
-                  <div className="flex flex-col space-y-3 justify-end h-full pb-4">
-                      {transcript.map((t, i) => (
-                          <div key={i} className={`flex ${t.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm backdrop-blur-md ${t.sender === 'me' ? 'bg-blue-600/60 text-white rounded-tr-none' : 'bg-slate-700/60 text-gray-200 rounded-tl-none'}`}>
-                                  {t.text}
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              </div>
+            <div className="w-48 h-48 rounded-[50px] bg-gradient-to-tr from-blue-600/20 to-purple-600/20 p-1 mb-8 shadow-2xl animate-bounce-slow">
+                <div className="w-full h-full rounded-[48px] bg-slate-900 flex items-center justify-center border border-white/10 relative overflow-hidden">
+                    {partnerInfo.type === 'ai' ? (
+                        <i className="fa-solid fa-robot text-7xl text-blue-400"></i>
+                    ) : (
+                        <span className="text-6xl font-black text-white">{partnerInfo.name.charAt(0)}</span>
+                    )}
+                </div>
+            </div>
+            
+            <h3 className="text-2xl font-black italic uppercase tracking-tighter">{partnerInfo.name}</h3>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{partnerInfo.level} • {partnerInfo.type === 'ai' ? 'AI Tutor' : 'English Student'}</p>
+        </div>
 
-              {/* Controls */}
-              <div className="h-1/3 bg-slate-900 rounded-t-3xl p-6 flex flex-col">
-                   <div className="flex justify-between items-center mb-6">
-                       <div className="flex items-center space-x-3">
-                           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/20">
-                               <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
-                           </div>
-                           <div>
-                               <p className="font-bold text-sm">{user.name}</p>
-                               <p className="text-xs text-gray-400">Level: {user.level}</p>
-                           </div>
-                       </div>
-                       <button onClick={handleSimulatedSpeaking} className="bg-blue-500/20 text-blue-300 px-4 py-2 rounded-full text-xs font-bold animate-pulse">
-                           <i className="fa-solid fa-microphone mr-2"></i> Speak (Sim)
-                       </button>
-                   </div>
+        <div className="h-[40%] bg-slate-900/90 backdrop-blur-3xl rounded-t-[50px] border-t border-white/10 p-8 flex flex-col">
+            <div className="flex-1 overflow-y-auto mb-6 space-y-4 no-scrollbar">
+                {transcript.length === 0 ? (
+                    <div className="flex justify-center items-center h-full text-slate-600 font-bold uppercase text-[10px] tracking-widest">Gapirishni boshlang...</div>
+                ) : (
+                    transcript.map((t, i) => (
+                        <div key={i} className={`flex ${t.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[80%] px-5 py-3 rounded-2xl text-xs font-bold ${t.sender === 'me' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/5 text-slate-300 rounded-tl-none border border-white/5'}`}>
+                                {t.text}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
 
-                   <div className="flex items-center justify-around mt-auto">
-                       <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20">
-                           <i className="fa-solid fa-microphone-slash"></i>
-                       </button>
-                       <button onClick={endSession} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/40 active:scale-95 transition">
-                           <i className="fa-solid fa-phone-slash text-2xl"></i>
-                       </button>
-                       <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20">
-                           <i className="fa-solid fa-flag"></i>
-                       </button>
-                   </div>
-              </div>
-          </div>
-      );
+            <div className="flex items-center justify-center">
+                <button onClick={endSession} className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center text-white shadow-[0_10px_30px_rgba(220,38,38,0.4)] active:scale-90 transition">
+                    <i className="fa-solid fa-phone-slash text-2xl"></i>
+                </button>
+            </div>
+        </div>
+      </div>
+    );
   }
 
   if (status === 'ended') {
-      return (
-          <div className="flex flex-col h-full items-center justify-center p-6 animate-slide-up">
-              <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center text-4xl text-white shadow-lg mb-6">
-                  <i className="fa-solid fa-check"></i>
-              </div>
-              <h2 className="text-3xl font-bold mb-2">Session Ended</h2>
-              <p className="text-gray-400 mb-8">Good job practicing today!</p>
-              
-              <div className="w-full max-w-xs glass-card rounded-2xl p-6 mb-8">
-                  <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
-                      <span className="text-gray-400">Duration</span>
-                      <span className="font-bold text-xl">{Math.floor(elapsedTime / 60)}m {elapsedTime % 60}s</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                      <span className="text-gray-400">XP Earned</span>
-                      <span className="font-bold text-xl text-yellow-400">+{Math.max(10, Math.floor(elapsedTime / 60) * 10)} XP</span>
-                  </div>
-              </div>
+    return (
+      <div className="flex flex-col h-full bg-[#0c1222] p-6 overflow-y-auto no-scrollbar">
+        <div className="flex flex-col items-center py-10">
+            <div className="w-24 h-24 rounded-3xl bg-green-500/20 flex items-center justify-center text-green-500 text-4xl mb-6 shadow-lg">
+                <i className="fa-solid fa-chart-simple"></i>
+            </div>
+            <h2 className="text-3xl font-black italic uppercase tracking-tighter">Suhbat Tahlili</h2>
+            <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">Vaqt: {Math.floor(elapsedTime / 60)}m {elapsedTime % 60}s</p>
+        </div>
 
-              <button onClick={() => onNavigate('home')} className="w-full max-w-xs liquid-button py-4 rounded-xl font-bold text-lg">
-                  Back to Home
-              </button>
-          </div>
-      );
+        {isAnalyzing ? (
+            <div className="flex flex-col items-center justify-center p-10 glass-card rounded-[35px]">
+                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest animate-pulse">Xatolar tahlil qilinmoqda...</p>
+            </div>
+        ) : analysis ? (
+            <div className="space-y-6 pb-20">
+                <div className="glass-card rounded-[35px] p-6 border border-white/5">
+                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Grammatik Xatolar</h3>
+                    <div className="space-y-4">
+                        {analysis.grammarErrors.length > 0 ? analysis.grammarErrors.map((err, i) => (
+                            <div key={i} className="p-4 bg-white/5 rounded-2xl border-l-4 border-red-500">
+                                <p className="text-[10px] text-red-400 line-through mb-1">{err.original}</p>
+                                <p className="text-xs font-bold text-green-400 mb-2">{err.corrected}</p>
+                                <p className="text-[10px] text-slate-500 leading-relaxed italic">{err.explanation}</p>
+                            </div>
+                        )) : (
+                            <p className="text-xs text-slate-500 italic">Xatolar topilmadi. Ajoyib!</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="glass-card rounded-[35px] p-6 border border-white/5">
+                    <h3 className="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">Tavsiya qilinadigan so'zlar</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {analysis.vocabularySuggestions.map((s, i) => (
+                            <span key={i} className="px-3 py-1.5 bg-purple-600/10 text-purple-400 rounded-xl text-[10px] font-black border border-purple-500/20">{s}</span>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="glass-card rounded-[35px] p-8 bg-blue-600/10 border border-blue-500/20 flex flex-col items-center">
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] mb-2">Suhbat Bahosi</p>
+                    <h4 className="text-4xl font-black text-white italic">{analysis.overallLevel}</h4>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase mt-2 tracking-widest">+{Math.max(15, Math.floor(elapsedTime / 60) * 15)} XP ISHLANDI</p>
+                </div>
+
+                <button onClick={() => onNavigate('home')} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg uppercase shadow-xl tracking-widest">
+                    Asosiyga Qaytish
+                </button>
+            </div>
+        ) : (
+            <div className="text-center p-10">
+                <p className="text-slate-500 mb-6">Suhbat juda qisqa bo'ldi yoki tahlil amalga oshmadi.</p>
+                <button onClick={() => onNavigate('home')} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg">Asosiyga Qaytish</button>
+            </div>
+        )}
+      </div>
+    );
   }
 
   return null;

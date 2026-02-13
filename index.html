@@ -1,83 +1,62 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>HUMO AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-      // Global process object polyfill for browser
       window.process = window.process || { env: {} };
-      // Note: API_KEY is injected by the platform environment
     </script>
     <style>
+      :root {
+        --tg-safe-area-inset-top: env(safe-area-inset-top, 0px);
+        --tg-safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+      }
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #0f172a; 
+        background-color: #0c1222; 
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
         margin: 0;
         padding: 0;
+        height: 100vh;
+        height: 100dvh;
       }
-      #root { height: 100vh; width: 100vw; }
-      ::-webkit-scrollbar { width: 4px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+      #root { height: 100%; width: 100%; }
+      ::-webkit-scrollbar { width: 0px; display: none; }
 
       .glass-panel {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
       .glass-card {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       .liquid-button {
-        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
       }
+
+      .safe-top { padding-top: var(--tg-safe-area-inset-top); }
+      .safe-bottom { padding-bottom: var(--tg-safe-area-inset-bottom); }
 
       @keyframes slideUpPop {
-        from { transform: translateY(50px) scale(0.9); opacity: 0; }
-        to { transform: translateY(0) scale(1); opacity: 1; }
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes wiggle {
-        0%, 100% { transform: rotate(-5deg); }
-        50% { transform: rotate(5deg); }
-      }
-      @keyframes floatUpFade {
-        0% { transform: translateY(0); opacity: 0; }
-        20% { opacity: 1; }
-        100% { transform: translateY(-80px); opacity: 0; }
-      }
-      @keyframes pulseRing {
-        0% { transform: scale(0.9); opacity: 0.5; }
-        100% { transform: scale(1.6); opacity: 0; }
-      }
-      @keyframes bounceSlow {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-
-      .animate-slide-up { animation: slideUpPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-      .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-      .animate-wiggle { animation: wiggle 0.3s ease-in-out infinite; }
-      .animate-float-up-fade { animation: floatUpFade 1.2s ease-out forwards; }
-      .animate-pulse-ring { animation: pulseRing 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
-      .animate-bounce-slow { animation: bounceSlow 3s ease-in-out infinite; }
-
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      .animate-slide-up { animation: slideUpPop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
     </style>
     <script type="importmap">
     {
@@ -90,7 +69,7 @@
     }
     </script>
   </head>
-  <body class="text-white selection:bg-indigo-500 selection:text-white">
+  <body class="text-white selection:bg-blue-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>

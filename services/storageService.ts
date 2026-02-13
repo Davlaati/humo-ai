@@ -15,12 +15,10 @@ export const getUser = (): UserProfile | null => {
     try {
         user = JSON.parse(data);
     } catch (e) {
-        console.error("JSON parse error for user data, clearing storage.");
         localStorage.removeItem(USER_KEY);
         return null;
     }
     
-    // Telegram OAuth Integratsiyasi
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.initDataUnsafe?.user) {
       const tgUser = tg.initDataUnsafe.user;
@@ -29,7 +27,6 @@ export const getUser = (): UserProfile | null => {
       user.avatarUrl = tgUser.photo_url || user.avatarUrl;
     }
 
-    // Default qiymatlar (Crash bo'lishini oldini olish uchun)
     if (!user.settings) user.settings = { language: 'Uz', theme: 'dark' };
     if (user.telegramStars === undefined) user.telegramStars = 0;
     if (!user.starsHistory) user.starsHistory = [];
@@ -39,7 +36,6 @@ export const getUser = (): UserProfile | null => {
     
     return user as UserProfile;
   } catch (e) {
-    console.error("User storage read error:", e);
     return null;
   }
 };
@@ -49,38 +45,48 @@ export const saveUser = (user: UserProfile) => {
     const userData = { ...user };
     if (!userData.settings) userData.settings = { language: 'Uz', theme: 'dark' };
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
-    
-    // Theme classni bodyga qo'shish
-    if (userData.settings && userData.settings.theme === 'light') {
-      document.body.classList.add('light-mode');
-    } else {
-      document.body.classList.remove('light-mode');
-    }
-  } catch (e) {
-    console.error("User storage save error:", e);
-  }
+  } catch (e) {}
 };
 
-export const getEntryNotification = (): EntryNotification | null => {
-  try {
-    const data = localStorage.getItem(NOTIFICATION_KEY);
-    if (!data) return {
-        id: 'welcome_v1',
-        title: 'Xush kelibsiz!',
-        description: 'Sizni yana Humo AI ilovasida ko\'rganimizdan mamnunmiz. Keling, bugun bilimlarimizni yanada oshiramiz!',
-        buttonText: 'Darsni boshlash',
-        target: 'all',
-        isActive: true,
-        createdAt: new Date().toISOString()
-    };
-    return JSON.parse(data);
-  } catch (e) {
-    return null;
-  }
-};
+export const getLeaderboardData = (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
+    return new Promise((resolve) => {
+        // Real-time simulyatsiyasi uchun biroz kutish, lekin bag bo'lmasligi uchun aniq resolve
+        setTimeout(() => {
+            const names = ["Anvar", "Dilnoza", "Jasur", "Nigora", "Sherzod", "Kamola", "Otabek", "Malika", "Sardor", "Zilola", "Farrux", "Madina", "Bobur", "Gulnoza", "Azamat", "Umida", "Rustam", "Zaynab", "Sanjar", "Barno"];
+            const mockUsers: LeaderboardEntry[] = names.map((name, i) => {
+                const baseXP = period === 'weekly' ? 1200 : period === 'monthly' ? 5000 : 25000;
+                const randomXP = Math.floor(Math.random() * baseXP) + 100;
+                return {
+                    userId: `mock_${i}`,
+                    name: name,
+                    xp: randomXP,
+                    wins: Math.floor(randomXP / 120),
+                    rank: 0,
+                    isCurrentUser: false,
+                    trend: Math.random() > 0.5 ? 'up' : 'same'
+                };
+            });
+            
+            // Joriy foydalanuvchini qo'shish
+            mockUsers.push({
+                userId: currentUser.id,
+                name: currentUser.name,
+                xp: currentUser.xp,
+                wins: currentUser.wins || 0,
+                rank: 0,
+                isCurrentUser: true,
+                trend: 'same'
+            });
 
-export const saveEntryNotification = (notif: EntryNotification) => {
-  localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(notif));
+            // XP bo'yicha saralash
+            const sorted = mockUsers.sort((a, b) => b.xp - a.xp);
+            
+            // Ranklarni belgilash
+            const finalData = sorted.map((u, index) => ({ ...u, rank: index + 1 }));
+            
+            resolve(finalData);
+        }, 600); // Tezroq javob qaytarish
+    });
 };
 
 export const convertHumoToStars = (starsAmount: number): UserProfile | null => {
@@ -107,43 +113,48 @@ export const convertHumoToStars = (starsAmount: number): UserProfile | null => {
   return user;
 };
 
-export const purchaseStars = (starsAmount: number): UserProfile | null => {
-  const user = getUser();
-  if (!user) return null;
-
-  const transaction: StarsTransaction = {
-    id: `xtr_${Date.now()}`,
-    type: 'purchase',
-    amount: starsAmount,
-    status: 'completed',
-    timestamp: new Date().toISOString()
-  };
-
-  user.telegramStars += starsAmount;
-  user.starsHistory.unshift(transaction);
-  
-  saveUser(user);
-  return user;
-};
-
-export const adminAdjustStars = (userId: string, amount: number, type: 'admin_bonus' | 'admin_deduction'): UserProfile | null => {
+export const adminUpdateBalance = (stars: number, coins: number): UserProfile | null => {
   const user = getUser();
   if (!user) return null;
 
   const transaction: StarsTransaction = {
     id: `adm_${Date.now()}`,
-    type: type,
-    amount: Math.abs(amount),
+    type: 'admin_bonus',
+    amount: stars,
     status: 'completed',
     timestamp: new Date().toISOString()
   };
 
-  user.telegramStars += amount;
+  user.telegramStars += stars;
+  user.coins += coins;
   if (user.telegramStars < 0) user.telegramStars = 0;
-  user.starsHistory.unshift(transaction);
+  if (user.coins < 0) user.coins = 0;
   
+  user.starsHistory.unshift(transaction);
   saveUser(user);
   return user;
+};
+
+export const getEntryNotification = (): EntryNotification | null => {
+  try {
+    const data = localStorage.getItem(NOTIFICATION_KEY);
+    if (!data) return {
+        id: 'welcome_v1',
+        title: 'Xush kelibsiz!',
+        description: 'Sizni yana Humo AI ilovasida ko\'rganimizdan mamnunmiz. Keling, bugun bilimlarimizni yanada oshiramiz!',
+        buttonText: 'Darsni boshlash',
+        target: 'all',
+        isActive: true,
+        createdAt: new Date().toISOString()
+    };
+    return JSON.parse(data);
+  } catch (e) {
+    return null;
+  }
+};
+
+export const saveEntryNotification = (notif: EntryNotification) => {
+  localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(notif));
 };
 
 export const getTransactions = (): Transaction[] => {
@@ -161,15 +172,6 @@ export const addTransaction = (transaction: Transaction) => {
   localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(txs));
 };
 
-export const updateTransactionStatus = (id: string, status: 'approved' | 'rejected') => {
-  const txs = getTransactions();
-  const index = txs.findIndex(t => t.id === id);
-  if (index !== -1) {
-    txs[index].status = status;
-    localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(txs));
-  }
-};
-
 export const incrementActiveTime = (seconds: number): UserProfile | null => {
   const user = getUser();
   if (user) {
@@ -178,35 +180,4 @@ export const incrementActiveTime = (seconds: number): UserProfile | null => {
     return user;
   }
   return null;
-};
-
-export const getLeaderboardData = (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const mockUsers: LeaderboardEntry[] = Array.from({ length: 20 }).map((_, i) => {
-                const baseXP = period === 'weekly' ? 500 : period === 'monthly' ? 2000 : 10000;
-                const randomXP = Math.floor(Math.random() * baseXP);
-                return {
-                    userId: `mock_${i}`,
-                    name: `User ${i + 1}`,
-                    xp: randomXP,
-                    wins: Math.floor(randomXP / 50),
-                    rank: 0,
-                    isCurrentUser: false,
-                    trend: Math.random() > 0.5 ? 'up' : 'down'
-                };
-            });
-            mockUsers.push({
-                userId: currentUser.id,
-                name: currentUser.name,
-                xp: currentUser.xp,
-                wins: currentUser.wins || 0,
-                rank: 0,
-                isCurrentUser: true,
-                trend: 'same'
-            });
-            mockUsers.sort((a, b) => b.xp - a.xp);
-            resolve(mockUsers.map((u, index) => ({ ...u, rank: index + 1 })));
-        }, 600);
-    });
 };

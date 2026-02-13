@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Transaction, UserProfile, EntryNotification } from '../types';
-import { getTransactions, updateTransactionStatus, getUser, adminAdjustStars, getEntryNotification, saveEntryNotification } from '../services/storageService';
+import { getTransactions, getUser, adminUpdateBalance, getEntryNotification, saveEntryNotification } from '../services/storageService';
 
 const Admin: React.FC = () => {
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [adjustAmount, setAdjustAmount] = useState<number>(0);
+  
+  // Balans boshqaruvi
+  const [starAmt, setStarAmt] = useState<number>(0);
+  const [coinAmt, setCoinAmt] = useState<number>(0);
 
   // Notification states
   const [notif, setNotif] = useState<EntryNotification>(getEntryNotification() || {
@@ -21,140 +24,136 @@ const Admin: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAction = (id: string, action: 'approved' | 'rejected') => {
-    updateTransactionStatus(id, action);
-  };
-
-  const handleAdjustStars = (type: 'admin_bonus' | 'admin_deduction') => {
-      if (adjustAmount <= 0) return;
-      const amt = type === 'admin_bonus' ? adjustAmount : -adjustAmount;
-      adminAdjustStars(currentUser?.id || '', amt, type);
-      setAdjustAmount(0);
-      alert("Balans o'zgartirildi!");
+  const handleUpdateBalances = () => {
+      if (starAmt === 0 && coinAmt === 0) return;
+      adminUpdateBalance(starAmt, coinAmt);
+      setStarAmt(0);
+      setCoinAmt(0);
+      alert("Foydalanuvchi balansi muvaffaqiyatli o'zgartirildi!");
   };
 
   const handleSaveNotif = () => {
       saveEntryNotification(notif);
-      alert("Xabarnoma saqlandi!");
+      alert("Kirish xabarnomasi yangilandi!");
   };
 
   return (
-    <div className="p-4 pb-24 h-full overflow-y-auto no-scrollbar space-y-8 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-blue-400">Master Admin</h1>
-        <span className="px-3 py-1 bg-white/5 text-gray-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5">v2.0</span>
+    <div className="p-4 pb-24 h-full overflow-y-auto no-scrollbar space-y-8 animate-fade-in relative z-10 bg-slate-950">
+      
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-blue-600/5 blur-[100px] pointer-events-none"></div>
+
+      <div className="flex justify-between items-end px-2 pt-4">
+        <div>
+           <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white">Boshqaruv</h1>
+           <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Humo AI Central Command</p>
+        </div>
+        <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+           <i className="fa-solid fa-gears text-slate-500"></i>
+        </div>
       </div>
 
-      {/* Entry Notification Management */}
-      <div className="glass-card p-6 rounded-3xl border border-purple-500/20 bg-purple-500/5">
-          <h3 className="font-bold text-lg mb-4 flex items-center">
-             <i className="fa-solid fa-bell text-purple-400 mr-2"></i> Kirish Xabarnomasi
+      {/* Statistics Quick View */}
+      <div className="grid grid-cols-2 gap-4">
+          <div className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Foydalanuvchi</p>
+             <p className="font-black text-white truncate">{currentUser?.name || 'Noma'lum'}</p>
+          </div>
+          <div className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">ID</p>
+             <p className="font-black text-blue-400 truncate">#{currentUser?.id.slice(-6)}</p>
+          </div>
+      </div>
+
+      {/* Balance Command Center */}
+      <div className="glass-panel p-6 rounded-[40px] border border-blue-500/20 bg-blue-500/5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+              <i className="fa-solid fa-piggy-bank text-6xl"></i>
+          </div>
+          
+          <h3 className="font-black text-sm uppercase tracking-widest mb-6 flex items-center">
+             <span className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>
+             Balansni Tahrirlash
           </h3>
+          
           <div className="space-y-4">
-              <div>
-                  <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Sarlavha (Katta matn)</label>
+              <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Stars (+/-)</label>
+                      <input 
+                        type="number"
+                        value={starAmt || ''}
+                        onChange={(e) => setStarAmt(parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                        className="w-full bg-slate-900/80 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-blue-500 font-black text-center"
+                      />
+                  </div>
+                  <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Coins (+/-)</label>
+                      <input 
+                        type="number"
+                        value={coinAmt || ''}
+                        onChange={(e) => setCoinAmt(parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                        className="w-full bg-slate-900/80 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-yellow-500 font-black text-center"
+                      />
+                  </div>
+              </div>
+              
+              <button 
+                onClick={handleUpdateBalances}
+                className="w-full py-5 bg-white text-slate-950 rounded-[25px] font-black text-xs uppercase tracking-[0.2em] active:scale-95 transition shadow-xl"
+              >
+                O'zgarishlarni Saqlash
+              </button>
+          </div>
+      </div>
+
+      {/* Marketing Tools */}
+      <div className="glass-card p-7 rounded-[45px] border border-purple-500/20 bg-purple-500/5">
+          <h3 className="font-black text-sm uppercase tracking-widest mb-6 flex items-center">
+             <i className="fa-solid fa-bullhorn text-purple-400 mr-2"></i> Kirish Banneri
+          </h3>
+          <div className="space-y-5">
+              <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Sarlavha</label>
                   <input 
                     type="text"
                     value={notif.title}
                     onChange={(e) => setNotif({...notif, title: e.target.value})}
-                    placeholder="$ 100"
-                    className="w-full bg-slate-900 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-purple-500 font-bold mt-1"
+                    className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 font-bold"
                   />
               </div>
-              <div>
-                  <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Tavsif</label>
+              <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Xabar matni</label>
                   <textarea 
                     value={notif.description}
                     onChange={(e) => setNotif({...notif, description: e.target.value})}
-                    placeholder="Xabar matni..."
-                    className="w-full bg-slate-900 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-purple-500 text-sm mt-1 h-24"
+                    className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 text-sm h-28"
                   />
               </div>
+              
               <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Tugma matni</label>
-                    <input 
-                        type="text"
-                        value={notif.buttonText}
-                        onChange={(e) => setNotif({...notif, buttonText: e.target.value})}
-                        className="w-full bg-slate-900 border border-white/10 p-3 rounded-xl focus:outline-none focus:border-purple-500 font-bold mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Kim uchun?</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Target</label>
                     <select 
                         value={notif.target}
                         onChange={(e) => setNotif({...notif, target: e.target.value as any})}
-                        className="w-full bg-slate-900 border border-white/10 p-3 rounded-xl focus:outline-none focus:border-purple-500 font-bold mt-1 text-xs"
+                        className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl focus:outline-none font-bold text-xs"
                     >
                         <option value="all">Hamma</option>
-                        <option value="has_coins">Coini borlar</option>
-                        <option value="no_coins">Coini yo'qlar</option>
+                        <option value="has_coins">Boylar</option>
+                        <option value="no_coins">Yangi kelganlar</option>
                     </select>
                   </div>
+                  <div className="space-y-1 flex flex-col justify-end">
+                      <button onClick={handleSaveNotif} className="w-full py-4 bg-purple-600 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition text-white">Yuborish</button>
+                  </div>
               </div>
-              <button onClick={handleSaveNotif} className="w-full py-4 bg-purple-600 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition shadow-lg shadow-purple-600/20">Saqlash va Faollashtirish</button>
           </div>
       </div>
       
-      {/* Stars Management */}
-      <div className="glass-card p-6 rounded-3xl border border-blue-500/30 bg-blue-500/5">
-          <h3 className="font-bold text-lg mb-4 flex items-center">
-             <i className="fa-solid fa-star text-blue-400 mr-2"></i> Stars Management
-          </h3>
-          
-          <div className="flex items-center justify-between mb-6 p-4 bg-white/5 rounded-2xl">
-             <div>
-                <p className="text-[10px] text-gray-500 font-bold uppercase">Tanlangan Foydalanuvchi</p>
-                <p className="font-bold text-white">{currentUser?.name}</p>
-             </div>
-             <div className="text-right">
-                <p className="text-[10px] text-gray-500 font-bold uppercase">Balans</p>
-                <p className="font-black text-blue-400">{currentUser?.telegramStars || 0} XTR</p>
-             </div>
-          </div>
-
-          <div className="space-y-4">
-              <input 
-                type="number"
-                value={adjustAmount || ''}
-                onChange={(e) => setAdjustAmount(parseInt(e.target.value))}
-                placeholder="Miqdorni kiriting..."
-                className="w-full bg-slate-900 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-blue-500 font-bold"
-              />
-              <div className="flex space-x-3">
-                  <button onClick={() => handleAdjustStars('admin_bonus')} className="flex-1 py-3 bg-green-600 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition">Stars Qo'shish</button>
-                  <button onClick={() => handleAdjustStars('admin_deduction')} className="flex-1 py-3 bg-red-600 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition">Stars Ayirish</button>
-              </div>
-          </div>
-      </div>
-
-      {/* Fiat Transactions */}
-      <div className="space-y-4">
-          <h3 className="font-black text-xs uppercase tracking-widest text-gray-500">To'lov So'rovlari (Fiat)</h3>
-          <div className="space-y-3">
-            {txs.length > 0 ? txs.map(tx => (
-                <div key={tx.id} className="glass-panel p-4 rounded-2xl border border-white/5">
-                    <div className="flex justify-between mb-2">
-                        <span className="font-bold">{tx.username}</span>
-                        <span className={`text-[10px] px-2 py-1 rounded-full font-black ${tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' : tx.status === 'approved' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                            {tx.status.toUpperCase()}
-                        </span>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-400 mb-4">
-                        <span>{tx.amount} HC</span>
-                        <span>{tx.cost.toLocaleString()} UZS</span>
-                    </div>
-                    {tx.status === 'pending' && (
-                        <div className="flex space-x-2">
-                            <button onClick={() => handleAction(tx.id, 'approved')} className="flex-1 bg-green-600 hover:bg-green-500 py-2 rounded-lg text-[10px] font-black uppercase">Approve</button>
-                            <button onClick={() => handleAction(tx.id, 'rejected')} className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-lg text-[10px] font-black uppercase">Reject</button>
-                        </div>
-                    )}
-                </div>
-            )) : <p className="text-center text-gray-600 text-xs py-10">To'lovlar mavjud emas.</p>}
-          </div>
-      </div>
+      <div className="h-20"></div>
     </div>
   );
 };

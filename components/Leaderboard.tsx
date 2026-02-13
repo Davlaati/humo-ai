@@ -12,165 +12,191 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
   const [period, setPeriod] = useState<LeaderboardPeriod>('weekly');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Safety Timeout: Agar 4 sekund ichida yuklanmasa, loadingni majburan tugatish
+    const safetyTimer = setTimeout(() => {
+        if (loading && isMounted) {
+            console.warn("Leaderboard loading timeout reached.");
+            setLoading(false);
+        }
+    }, 4000);
+    
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
       try {
         const result = await getLeaderboardData(period, user);
-        if (isMounted) setData(result);
+        if (isMounted) {
+          setData(result);
+          setLoading(false);
+          clearTimeout(safetyTimer);
+        }
       } catch (err) {
-        if (isMounted) setError("Leaderboard updating...");
-      } finally {
+        console.error("Leaderboard error:", err);
         if (isMounted) setLoading(false);
       }
     };
 
     fetchData();
-    return () => { isMounted = false; };
-  }, [period, user]);
+    return () => { 
+        isMounted = false;
+        clearTimeout(safetyTimer);
+    };
+  }, [period, user.xp]);
 
   const topThree = data.slice(0, 3);
   const rest = data.slice(3);
-  const currentUserRank = data.find(e => e.isCurrentUser);
-
-  const renderTab = (p: LeaderboardPeriod, label: string) => (
-    <button
-      onClick={() => setPeriod(p)}
-      className={`flex-1 py-2 text-xs font-black rounded-lg transition-all duration-300 uppercase tracking-widest ${
-        period === p 
-          ? 'bg-blue-600 text-white shadow-lg' 
-          : 'text-gray-500 hover:text-white hover:bg-white/5'
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const currentUserEntry = data.find(e => e.isCurrentUser);
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 pb-20 relative overflow-hidden animate-slide-up">
-      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-blue-900/40 to-transparent pointer-events-none z-0"></div>
+    <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in relative">
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4 flex flex-col space-y-6 z-20">
+        <div className="flex items-center justify-between">
+            <div>
+                <h1 className="text-3xl font-black uppercase tracking-tighter text-white italic">Liderlar</h1>
+                <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Humo AI Global</p>
+            </div>
+            <div className="w-12 h-12 bg-yellow-400/10 rounded-2xl flex items-center justify-center border border-yellow-400/20 shadow-lg shadow-yellow-500/5">
+                <i className="fa-solid fa-crown text-yellow-500 text-xl animate-pulse"></i>
+            </div>
+        </div>
 
-      <div className="p-4 z-20 flex items-center justify-between">
-        <button onClick={() => onNavigate('home')} className="w-10 h-10 rounded-full glass-panel flex items-center justify-center active:scale-95 transition border border-white/5">
-          <i className="fa-solid fa-arrow-left text-sm"></i>
-        </button>
-        <h1 className="text-xl font-black italic tracking-tighter uppercase text-white drop-shadow-lg">Global Reyting</h1>
-        <div className="w-10"></div>
-      </div>
-
-      <div className="px-6 mb-6 z-20">
-        <div className="glass-panel p-1 rounded-xl flex space-x-1 border border-white/5">
-          {renderTab('weekly', 'Hafta')}
-          {renderTab('monthly', 'Oy')}
-          {renderTab('alltime', 'Hammasi')}
+        {/* Tab Selection */}
+        <div className="flex p-1.5 bg-white/5 rounded-[22px] border border-white/5 backdrop-blur-3xl shadow-inner">
+           {(['weekly', 'monthly', 'alltime'] as LeaderboardPeriod[]).map((p) => (
+             <button
+               key={p}
+               onClick={() => setPeriod(p)}
+               className={`flex-1 py-3 text-[10px] font-black rounded-[18px] uppercase tracking-widest transition-all duration-500 ${period === p ? 'bg-blue-600 text-white shadow-[0_5px_15px_rgba(37,99,235,0.4)]' : 'text-slate-500'}`}
+             >
+               {p === 'weekly' ? 'Haftalik' : p === 'monthly' ? 'Oylik' : 'Barcha'}
+             </button>
+           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="flex-1 flex flex-col items-center justify-center z-20">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-500 animate-pulse text-[10px] font-black uppercase tracking-widest">Ma'lumotlar o'qilmoqda</p>
-        </div>
-      ) : error ? (
-        <div className="flex-1 flex flex-col items-center justify-center z-20 px-6 text-center">
-            <i className="fa-solid fa-cloud-bolt text-4xl text-gray-500 mb-4 opacity-30"></i>
-            <p className="text-gray-400 text-sm">{error}</p>
-            <button onClick={() => setPeriod(period)} className="mt-4 px-6 py-2 bg-blue-600 rounded-full text-xs font-black uppercase tracking-widest">Yangilash</button>
+        <div className="flex-1 flex flex-col items-center justify-center p-12">
+            <div className="relative w-24 h-24 mb-8">
+                <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <i className="fa-solid fa-bolt text-2xl text-blue-500 animate-pulse"></i>
+                </div>
+            </div>
+            <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Analiz qilinmoqda...</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 z-20 pb-16 no-scrollbar scroll-smooth">
+        <div className="flex-1 overflow-y-auto px-5 pb-44 no-scrollbar">
           
-          <div className="flex justify-center items-end mb-12 mt-8 px-2 relative min-h-[180px]">
-            {topThree[1] && (
-               <div className="flex flex-col items-center mx-2 z-10 w-24">
-                   <div className="w-16 h-16 rounded-full border-2 border-slate-400 shadow-xl bg-slate-800 flex items-center justify-center relative mb-2">
-                       <span className="text-2xl font-black text-slate-400 drop-shadow-md">{topThree[1].name.charAt(0)}</span>
-                       <div className="absolute -bottom-2 bg-slate-400 text-slate-900 text-[10px] font-black px-3 py-0.5 rounded-full shadow border border-slate-900">2</div>
-                   </div>
-                   <p className="text-[10px] font-black text-slate-400 mb-0.5 max-w-[80px] truncate uppercase">{topThree[1].name}</p>
-                   <p className="text-[10px] text-gray-500 font-bold">{topThree[1].xp} XP</p>
+          {/* Podium Area */}
+          <div className="flex justify-center items-end mb-14 h-52 px-2 relative mt-6">
+             {/* 2nd Place */}
+             {topThree[1] && (
+               <div className="flex flex-col items-center w-24 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                  <div className="relative mb-4">
+                    <div className="w-18 h-18 rounded-3xl bg-slate-800 border-2 border-slate-400/30 flex items-center justify-center font-black text-2xl text-slate-300 shadow-2xl relative overflow-hidden">
+                      {topThree[1].name.charAt(0)}
+                      <div className="absolute bottom-0 left-0 w-full h-1.5 bg-slate-400/20"></div>
+                    </div>
+                    <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-slate-400 text-slate-950 text-[11px] font-black px-3.5 py-1 rounded-full shadow-xl border-2 border-[#0c1222]">2</div>
+                  </div>
+                  <p className="text-[11px] font-black truncate w-full text-center text-white uppercase tracking-tighter mb-1">{topThree[1].name}</p>
+                  <p className="text-[10px] font-black text-blue-400">{topThree[1].xp.toLocaleString()} XP</p>
                </div>
-            )}
+             )}
 
-            {topThree[0] && (
-               <div className="flex flex-col items-center mx-2 z-30 w-32 pb-4">
-                   <div className="absolute top-[-35px] text-3xl animate-bounce drop-shadow-2xl">👑</div>
-                   <div className="w-24 h-24 rounded-full border-4 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.4)] bg-gradient-to-br from-yellow-600 via-yellow-400 to-yellow-600 flex items-center justify-center relative mb-3">
-                       <span className="text-4xl font-black text-white drop-shadow-xl">{topThree[0].name.charAt(0)}</span>
-                       <div className="absolute -bottom-3 bg-yellow-400 text-yellow-900 text-xs font-black px-4 py-1 rounded-full shadow-2xl border-2 border-slate-900">1</div>
-                   </div>
-                   <p className="text-xs font-black text-yellow-400 mb-0.5 max-w-[100px] truncate uppercase tracking-tighter">{topThree[0].name}</p>
-                   <p className="text-[10px] text-yellow-200/80 font-black tracking-widest">{topThree[0].xp} XP</p>
+             {/* 1st Place - Center */}
+             {topThree[0] && (
+               <div className="flex flex-col items-center w-36 pb-8 z-10 animate-slide-up">
+                  <div className="relative mb-4">
+                    <div className="absolute -inset-6 bg-yellow-500/15 rounded-full blur-[40px] animate-pulse"></div>
+                    <div className="w-24 h-24 rounded-[38px] bg-gradient-to-br from-yellow-400 via-orange-500 to-yellow-600 border-4 border-yellow-200 flex items-center justify-center font-black text-4xl text-white shadow-[0_15px_50px_rgba(234,179,8,0.4)] relative overflow-hidden">
+                      {topThree[0].name.charAt(0)}
+                      <div className="absolute inset-0 bg-white/15 -skew-x-12 translate-x-[-120%] animate-[shimmer_2.5s_infinite]"></div>
+                    </div>
+                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-950 text-sm font-black px-5 py-1.5 rounded-full shadow-2xl border-4 border-[#0c1222]">1</div>
+                  </div>
+                  <p className="text-sm font-black truncate w-full text-center text-yellow-500 uppercase tracking-tighter mb-1.5">{topThree[0].name}</p>
+                  <p className="text-[11px] font-black text-white bg-white/10 px-3 py-0.5 rounded-full border border-white/5">{topThree[0].xp.toLocaleString()} XP</p>
                </div>
-            )}
+             )}
 
-            {topThree[2] && (
-               <div className="flex flex-col items-center mx-2 z-10 w-24 translate-y-2">
-                   <div className="w-16 h-16 rounded-full border-2 border-orange-700 shadow-xl bg-slate-800 flex items-center justify-center relative mb-2">
-                       <span className="text-2xl font-black text-orange-700 drop-shadow-md">{topThree[2].name.charAt(0)}</span>
-                       <div className="absolute -bottom-2 bg-orange-700 text-orange-100 text-[10px] font-black px-3 py-0.5 rounded-full shadow border border-slate-900">3</div>
-                   </div>
-                   <p className="text-[10px] font-black text-orange-600 mb-0.5 max-w-[80px] truncate uppercase">{topThree[2].name}</p>
-                   <p className="text-[10px] text-gray-500 font-bold">{topThree[2].xp} XP</p>
+             {/* 3rd Place */}
+             {topThree[2] && (
+               <div className="flex flex-col items-center w-24 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                  <div className="relative mb-4">
+                    <div className="w-18 h-18 rounded-3xl bg-slate-800 border-2 border-orange-800/30 flex items-center justify-center font-black text-2xl text-orange-700 shadow-2xl relative overflow-hidden">
+                      {topThree[2].name.charAt(0)}
+                      <div className="absolute bottom-0 left-0 w-full h-1.5 bg-orange-800/20"></div>
+                    </div>
+                    <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-[11px] font-black px-3.5 py-1 rounded-full shadow-xl border-2 border-[#0c1222]">3</div>
+                  </div>
+                  <p className="text-[11px] font-black truncate w-full text-center text-white uppercase tracking-tighter mb-1">{topThree[2].name}</p>
+                  <p className="text-[10px] font-black text-blue-400">{topThree[2].xp.toLocaleString()} XP</p>
                </div>
-            )}
+             )}
           </div>
 
-          <div className="space-y-2.5">
+          {/* List Section */}
+          <div className="space-y-4 mt-6">
             {rest.map((entry) => (
               <div 
                 key={entry.userId}
-                className={`flex items-center p-3.5 rounded-2xl border transition-all duration-300 ${
-                  entry.isCurrentUser 
-                    ? 'bg-blue-600/30 border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.3)] scale-[1.02]' 
-                    : 'glass-card border-white/5 hover:bg-white/5'
-                }`}
+                className={`flex items-center p-5 rounded-[28px] border transition-all duration-300 ${entry.isCurrentUser ? 'bg-blue-600/20 border-blue-500/50 shadow-xl scale-[1.02]' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
               >
-                <div className="w-7 font-black text-gray-500 text-[10px] italic tracking-widest">{entry.rank}</div>
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-sm mr-4 shadow-inner ${entry.isCurrentUser ? 'bg-blue-500 text-white' : 'bg-slate-800 text-gray-400'}`}>
-                    {entry.name.charAt(0)}
+                <span className="w-8 text-xs font-black text-slate-600 italic">#{entry.rank}</span>
+                <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center font-black text-sm mr-4 shadow-inner ${entry.isCurrentUser ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400'}`}>
+                  {entry.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className={`font-black text-sm truncate uppercase tracking-tighter ${entry.isCurrentUser ? 'text-white' : 'text-gray-200'}`}>{entry.name}</p>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{entry.wins} G'alaba</p>
+                  <p className={`text-sm font-black truncate uppercase tracking-tighter ${entry.isCurrentUser ? 'text-white' : 'text-slate-200'}`}>{entry.name}</p>
+                  <div className="flex items-center space-x-2 mt-0.5">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{entry.wins} G'alaba</span>
+                    {entry.trend === 'up' && <i className="fa-solid fa-caret-up text-green-500 text-[9px]"></i>}
+                  </div>
                 </div>
-                <div className="text-right ml-4 shrink-0">
-                    <p className={`font-black text-sm ${entry.isCurrentUser ? 'text-blue-400' : 'text-white'}`}>{entry.xp.toLocaleString()} XP</p>
-                    <div className="flex items-center justify-end space-x-1">
-                        {entry.trend === 'up' && <i className="fa-solid fa-arrow-trend-up text-green-500 text-[8px]"></i>}
-                        {entry.trend === 'down' && <i className="fa-solid fa-arrow-trend-down text-red-500 text-[8px]"></i>}
-                        <span className="text-[8px] text-gray-500 font-black uppercase">Stat</span>
-                    </div>
+                <div className="text-right ml-2">
+                  <p className={`text-base font-black ${entry.isCurrentUser ? 'text-blue-400' : 'text-white'}`}>{entry.xp.toLocaleString()}</p>
+                  <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">XP</p>
                 </div>
               </div>
             ))}
           </div>
-          
-          <div className="h-20"></div>
+        </div>
+      )}
+
+      {/* Floating Personal Stats */}
+      {!loading && currentUserEntry && (
+        <div className="fixed bottom-[115px] left-5 right-5 z-40 animate-slide-up">
+           <div className="bg-[#0c1222]/95 backdrop-blur-3xl p-6 rounded-[35px] border border-blue-500/40 shadow-[0_-25px_60px_rgba(0,0,0,0.7)] flex items-center border-t-blue-400/20">
+              <div className="w-12 font-black text-blue-400 text-2xl italic tracking-tighter">{currentUserEntry.rank}</div>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center font-black text-white mr-5 shadow-xl border border-white/20">
+                {currentUserEntry.name.charAt(0)}
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-black uppercase tracking-tighter text-slate-400 mb-0.5">Sizning o'rningiz</p>
+                <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Global Rank</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black text-white italic tracking-tighter">{currentUserEntry.xp.toLocaleString()}</p>
+                <p className="text-[9px] font-black text-blue-500 uppercase tracking-[0.3em]">Jami XP</p>
+              </div>
+           </div>
         </div>
       )}
       
-      {!loading && currentUserRank && currentUserRank.rank > 3 && (
-          <div className="fixed bottom-24 left-4 right-4 z-40">
-              <div className="bg-slate-900/95 backdrop-blur-xl p-4 rounded-3xl border-2 border-blue-500/50 shadow-[0_0_30px_rgba(0,0,0,0.5)] flex items-center animate-slide-up">
-                <div className="w-8 font-black text-blue-400 text-sm italic">{currentUserRank.rank}</div>
-                <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center font-black mr-4 text-white shadow-lg border-2 border-white/10">
-                    {currentUserRank.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <p className="font-black text-sm text-white uppercase tracking-tighter">Siz</p>
-                    <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">Sizning natijangiz</p>
-                </div>
-                <div className="text-right">
-                    <p className="font-black text-base text-yellow-400 drop-shadow-md">{currentUserRank.xp.toLocaleString()} XP</p>
-                </div>
-              </div>
-          </div>
-      )}
+      <style>{`
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 };
