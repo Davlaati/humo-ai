@@ -1,11 +1,5 @@
 
 export type Language = 'Uz' | 'Ru' | 'Eng';
-export type ThemeMode = 'dark' | 'light';
-
-// Fix: Module '"../types"' has no exported member 'SpeakingStatus'
-export type SpeakingStatus = 'idle' | 'searching' | 'connected' | 'ended';
-// Fix: Module '"../types"' has no exported member 'PartnerType'
-export type PartnerType = 'ai' | 'user';
 
 export enum EnglishLevel {
   Beginner = 'Beginner',
@@ -18,23 +12,9 @@ export enum EnglishLevel {
 
 export type TeachingPersonality = 'Kind' | 'Strict' | 'Relaxed' | 'Demanding' | 'Playful' | 'Serious' | 'Energetic' | 'Calm';
 
-export interface AdminConfig {
-  coinPrices: {
-    humoPerStar: number;
-    fiatPricePer100Humo: number;
-  };
-  apiEndpoints: {
-    main: string;
-    dictionary: string;
-  };
-  adminLinks: {
-    support: string;
-    channel: string;
-  };
-}
-
 export interface EntryNotification {
   id: string;
+  image?: string;
   title: string;
   description: string;
   buttonText: string;
@@ -52,11 +32,16 @@ export interface StarsTransaction {
   timestamp: string;
 }
 
+// UserSettings interface added to define user preferences
+export interface UserSettings {
+  language: Language;
+  theme: 'light' | 'dark';
+}
+
 export interface UserProfile {
   id: string;
   name: string;
   username?: string;
-  avatarUrl?: string;
   age: string;
   level: EnglishLevel;
   goal: string;
@@ -65,23 +50,21 @@ export interface UserProfile {
   practiceFrequency: string;
   interests: string[];
   coins: number;
-  totalCoinsPurchased: number;
   xp: number;
   wins?: number; 
   streak: number;
   lastActiveDate: string;
   lastSpinDate?: string;
+  activeSecondsToday?: number; 
+  activityLog?: string[]; 
+  learnedWords?: Word[]; 
+  avatarUrl?: string;
   joinedAt: string;
-  settings: {
-    language: Language;
-    theme: ThemeMode;
-  };
-  learnedWords?: Word[];
-  activityLog?: string[];
+  isAdmin?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
-  // Fix: Property 'activeSecondsToday' does not exist on type 'UserProfile'
-  activeSecondsToday?: number;
+  // Added settings property to UserProfile interface
+  settings?: UserSettings;
 }
 
 export interface Transaction {
@@ -91,6 +74,7 @@ export interface Transaction {
   amount: number; 
   cost: number; 
   status: 'pending' | 'approved' | 'rejected';
+  proofUrl?: string; 
   createdAt: string;
 }
 
@@ -100,8 +84,24 @@ export interface Word {
   example: string;
   translation: string;
   mastered: boolean;
-  level?: EnglishLevel;
-  category?: string;
+}
+
+export interface GameState {
+  isFighting: boolean;
+  score: number;
+  timeLeft: number;
+}
+
+export type SpeakingStatus = 'idle' | 'searching' | 'matched' | 'connected' | 'ended';
+export type PartnerType = 'user' | 'ai';
+
+export interface SpeakingSession {
+  id: string;
+  partnerName: string;
+  partnerType: PartnerType;
+  durationSeconds: number;
+  xpEarned: number;
+  timestamp: string;
 }
 
 export type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';

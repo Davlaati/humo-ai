@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { UserProfile } from './types';
-import { getUser, saveUser, getEntryNotification } from './services/storageService';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserProfile, EntryNotification as EntryNotifType } from './types';
+import { getUser, saveUser, incrementActiveTime, getEntryNotification } from './services/storageService';
 import Onboarding from './components/Onboarding';
 import Layout from './components/Layout';
 import Home from './components/Home';
@@ -13,82 +13,161 @@ import Game from './components/Game';
 import WordBank from './components/WordBank';
 import SpeakingClub from './components/SpeakingClub';
 import Leaderboard from './components/Leaderboard';
-import LuckWheel from './components/LuckWheel';
+import EntryNotification from './components/EntryNotification';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [isInitialSplash, setIsInitialSplash] = useState(true);
-  const [showAutoWheel, setShowAutoWheel] = useState(false);
+  const [streakReward, setStreakReward] = useState<{days: number, coins: number} | null>(null);
+
+  const [entryNotif, setEntryNotif] = useState<EntryNotifType | null>(null);
+  const [showEntryNotif, setShowEntryNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
+  const [isInitialSplash, setIsInitialSplash] = useState(true);
+
+  const activityIntervalRef = useRef<any>(null);
 
   useEffect(() => {
+    // Telegram WebApp initializatsiya
     const tg = (window as any).Telegram?.WebApp;
-    if (tg) { tg.ready(); tg.expand(); }
-    
-    const stored = getUser();
-    if (stored) {
-        setUser(stored);
-        // Applying initial theme
-        if(stored.settings?.theme === 'light') document.documentElement.classList.add('light-mode');
+    if (tg) {
+      tg.ready();
+      try {
+        tg.expand();
+      } catch (e) { console.warn("Telegram expand fail:", e); }
+      tg.enableClosingConfirmation();
     }
 
+    // Foydalanuvchini yuklash
+    const storedUser = getUser();
+    if (storedUser) setUser(storedUser);
+
+    // Initial Splashdan chiqish va xabarnomani ko'rsatish
     const timer = setTimeout(() => {
-      setIsInitialSplash(false);
-      if (stored) setShowAutoWheel(true);
-      else setIsAppRevealed(true);
-    }, 3000);
+      const activeNotif = getEntryNotification();
+      const currentUser = getUser();
+      
+      setIsInitialSplash(false); 
+
+      if (activeNotif && activeNotif.isActive && currentUser) {
+          let shouldShow = false;
+          if (activeNotif.target === 'all') shouldShow = true;
+          else if (activeNotif.target === 'has_coins' && (currentUser.coins || 0) > 0) shouldShow = true;
+          else if (activeNotif.target === 'no_coins' && (currentUser.coins || 0) === 0) shouldShow = true;
+
+          if (shouldShow) {
+            setEntryNotif(activeNotif);
+            setShowEntryNotif(true);
+          } else {
+            setIsAppRevealed(true);
+          }
+      } else {
+          setIsAppRevealed(true);
+      }
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const handleUpdateUser = (updated: UserProfile) => {
-    saveUser(updated);
-    setUser(updated);
+  useEffect(() => {
+    if (!user) return;
+    activityIntervalRef.current = setInterval(() => {
+      const updatedUser = incrementActiveTime(1);
+      if (updatedUser) {
+        setUser(prev => prev ? { ...prev, activeSecondsToday: updatedUser.activeSecondsToday } : null);
+      }
+    }, 1000);
+    return () => {
+      if (activityIntervalRef.current) clearInterval(activityIntervalRef.current);
+    }
+  }, [user?.id]);
+
+  const handleOnboardingComplete = (profile: UserProfile) => {
+    const newUser = { 
+      ...profile, 
+      id: Date.now().toString(),
+      streak: 1,
+      coins: (profile.coins || 0) + 20 
+    };
+    saveUser(newUser);
+    setUser(newUser);
+    setIsAppRevealed(true);
   };
 
-  if (!user && !isInitialSplash) return <Onboarding onComplete={u => { saveUser(u); setUser(u); setIsAppRevealed(true); }} />;
+  const handleUpdateUser = (updatedUser: UserProfile) => {
+      saveUser(updatedUser);
+      setUser(updatedUser);
+  };
 
-  if (isInitialSplash) return (
-    <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center animate-fade-in">
-        <div className="w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-40 animate-pulse"></div>
-        <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute"></i>
-        <h1 className="mt-20 text-xl font-black italic text-white/50 tracking-widest uppercase">Humo AI</h1>
-    </div>
-  );
+  if (!user && !isInitialSplash) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  if (isInitialSplash) {
+      return (
+          <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center">
+              <div className="relative">
+                  <div className="w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-40 animate-pulse"></div>
+                  <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+              </div>
+              <h1 className="mt-8 text-2xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
+          </div>
+      );
+  }
+
+  if (isAdminMode) {
+      return (
+          <div className="h-full bg-slate-900 text-white relative">
+              <button onClick={() => setIsAdminMode(false)} className="absolute top-4 right-4 text-xs bg-red-500 px-3 py-1.5 rounded-full font-bold z-[2000]">Exit Admin</button>
+              <Admin />
+          </div>
+      )
+  }
+
+  const renderContent = () => {
+      if (!user) return null;
+      switch (activeTab) {
+          case 'home': return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} streakReward={streakReward} onClearStreakReward={() => setStreakReward(null)} />;
+          case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
+          case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
+          case 'game': return <Game user={user} />;
+          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
+          case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
+          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} />;
+          default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
+      }
+  };
 
   return (
     <>
-       <div onDoubleClick={() => setIsAdminMode(true)} className="fixed top-0 left-0 w-12 h-12 z-[11000] opacity-0"></div>
+       <div onDoubleClick={() => setIsAdminMode(true)} className="fixed top-0 left-0 w-12 h-12 z-[3000] opacity-0"></div>
        
-       {showAutoWheel && user && (
-           <LuckWheel user={user} onUpdateUser={handleUpdateUser} onClose={() => { setShowAutoWheel(false); setIsAppRevealed(true); }} />
+       {showEntryNotif && entryNotif && (
+           <div className="fixed inset-0 z-[4000] bg-blue-900/50 backdrop-blur-sm animate-fade-in">
+                <EntryNotification 
+                  notification={entryNotif} 
+                  onClose={() => {
+                      setShowEntryNotif(false);
+                      setIsAppRevealed(true);
+                  }} 
+                />
+           </div>
        )}
 
-       <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-2xl pointer-events-none'}`}>
-          {isAdminMode ? (
-              <div className="h-full bg-slate-950 relative">
-                  <button onClick={() => setIsAdminMode(false)} className="absolute top-4 right-4 bg-red-500 px-3 py-1 rounded-full font-bold z-[12000] text-[10px]">EXIT ADMIN</button>
-                  <Admin />
-              </div>
-          ) : (
-              <Layout activeTab={activeTab} onTabChange={setActiveTab}> 
-                {(() => {
-                    switch (activeTab) {
-                        case 'home': return <Home user={user!} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
-                        case 'learn': return <Lesson user={user!} onUpdateUser={handleUpdateUser} />;
-                        case 'wordbank': return <WordBank user={user!} onUpdateUser={handleUpdateUser} />;
-                        case 'game': return <Game user={user!} />;
-                        case 'speaking-club': return <SpeakingClub user={user!} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
-                        case 'leaderboard': return <Leaderboard user={user!} onNavigate={setActiveTab} />;
-                        case 'profile': return <Profile user={user!} onUpdateUser={handleUpdateUser} />;
-                        case 'wallet': return <Wallet user={user!} />;
-                        default: return <Home user={user!} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
-                    }
-                })()}
-              </Layout>
-          )}
+       <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-xl pointer-events-none'}`}>
+           {activeTab === 'wallet' ? (
+               <Layout activeTab="home" onTabChange={setActiveTab} showNav={false}>
+                   <Wallet user={user!} />
+               </Layout>
+           ) : (
+               <Layout activeTab={activeTab === 'speaking-club' ? 'home' : activeTab} onTabChange={(tab) => {
+                   if (tab === 'home' && activeTab === 'home') setActiveTab('wallet');
+                   else setActiveTab(tab);
+               }} showNav={activeTab !== 'speaking-club'}> 
+                 {renderContent()}
+               </Layout>
+           )}
        </div>
     </>
   );

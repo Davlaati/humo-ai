@@ -10,74 +10,65 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-      :root {
-        --bg-color: #0f172a;
-        --text-color: #ffffff;
-        --card-bg: rgba(255, 255, 255, 0.1);
-        --panel-bg: rgba(255, 255, 255, 0.05);
-      }
-
-      .light-mode {
-        --bg-color: #f8fafc;
-        --text-color: #1e293b;
-        --card-bg: rgba(15, 23, 42, 0.05);
-        --panel-bg: rgba(15, 23, 42, 0.02);
-      }
-
       body {
         font-family: 'Inter', sans-serif;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        transition: background-color 0.3s ease;
+        background-color: #0f172a; /* Slate 900 fallback */
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
       }
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
 
       .glass-panel {
-        background: var(--panel-bg);
+        background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-
-      .light-mode .glass-panel { border-color: rgba(15, 23, 42, 0.1); }
-
       .glass-card {
-        background: var(--card-bg);
+        background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
       }
-
       .liquid-button {
         background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
       }
 
-      @keyframes coinFly {
-        0% { transform: scale(1) translate(0, 0); opacity: 1; }
-        100% { transform: scale(0.2) translate(var(--tx), var(--ty)); opacity: 0; }
+      /* Animations */
+      @keyframes slideUpPop {
+        from { transform: translateY(50px) scale(0.9); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
       }
-
-      .coin-particle {
-        position: fixed;
-        width: 24px;
-        height: 24px;
-        background: #fbbf24;
-        border-radius: 50%;
-        box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        color: white;
-        pointer-events: none;
-      }
-
-      @keyframes slideUpPop { from { transform: translateY(50px) scale(0.9); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes wiggle {
+        0%, 100% { transform: rotate(-5deg); }
+        50% { transform: rotate(5deg); }
+      }
+      @keyframes floatUpFade {
+        0% { transform: translateY(0); opacity: 0; }
+        20% { opacity: 1; }
+        100% { transform: translateY(-80px); opacity: 0; }
+      }
+      @keyframes pulseRing {
+        0% { transform: scale(0.9); opacity: 0.5; }
+        100% { transform: scale(1.6); opacity: 0; }
+      }
+      @keyframes bounceSlow {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+
       .animate-slide-up { animation: slideUpPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
       .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      .animate-wiggle { animation: wiggle 0.3s ease-in-out infinite; }
+      .animate-float-up-fade { animation: floatUpFade 1.2s ease-out forwards; }
+      .animate-pulse-ring { animation: pulseRing 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+      .animate-bounce-slow { animation: bounceSlow 3s ease-in-out infinite; }
+
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -92,7 +83,7 @@
 }
 </script>
 </head>
-  <body class="h-screen w-screen overflow-hidden selection:bg-indigo-500 selection:text-white">
+  <body class="text-white h-screen w-screen overflow-hidden selection:bg-indigo-500 selection:text-white">
     <div id="root"></div>
   </body>
 </html>
