@@ -3,8 +3,9 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { UserProfile } from "../types";
 import { DICTIONARY } from "../data/dictionary";
 
-// Strict SDK Initialization
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// API Key xavfsiz olinishi
+const API_KEY = (typeof process !== 'undefined' && process.env?.API_KEY) || "";
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 /**
  * Manual Base64 decoding as per SDK guidelines (do not use js-base64)
@@ -42,6 +43,7 @@ async function decodeAudioData(
 }
 
 export const generateLessonContent = async (user: UserProfile, topic: string) => {
+  if (!API_KEY) return generateFallbackLesson();
   try {
     const prompt = `
       Create a mini English lesson for a student with level ${user.level}.
@@ -65,11 +67,12 @@ export const generateLessonContent = async (user: UserProfile, topic: string) =>
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Gemini Lesson Error:", error);
-    return null;
+    return generateFallbackLesson();
   }
 };
 
 export const getDictionaryDefinition = async (word: string) => {
+  if (!API_KEY) return null;
   try {
     const prompt = `Define the English word "${word}". Provide Uzbek translation and an example sentence. Return JSON: { "definition": "...", "translation": "...", "example": "..." }`;
     const response = await ai.models.generateContent({
@@ -87,6 +90,7 @@ export const getDictionaryDefinition = async (word: string) => {
  * Text-to-Speech using Gemini 2.5 Flash
  */
 export const playTextToSpeech = async (text: string) => {
+  if (!API_KEY) return;
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
@@ -116,6 +120,7 @@ export const playTextToSpeech = async (text: string) => {
 };
 
 export const generateConversationResponse = async (userText: string, userLevel: string) => {
+  if (!API_KEY) return "That's very interesting! Can you tell me more about it?";
   try {
     const prompt = `You are Humobek AI, a friendly English tutor. User level: ${userLevel}. Response < 30 words. Encourage and ask a question. User: "${userText}"`;
     const response = await ai.models.generateContent({

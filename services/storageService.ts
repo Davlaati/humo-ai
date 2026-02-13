@@ -9,10 +9,16 @@ const CONVERSION_RATE = 10;
 export const getUser = (): UserProfile | null => {
   try {
     const data = localStorage.getItem(USER_KEY);
-    if (!data) return null;
+    if (!data || data === "undefined" || data === "null") return null;
     
-    // Explicitly casting to any to handle runtime checks and initialization for settings
-    let user = JSON.parse(data) as any;
+    let user;
+    try {
+        user = JSON.parse(data);
+    } catch (e) {
+        console.error("JSON parse error for user data, clearing storage.");
+        localStorage.removeItem(USER_KEY);
+        return null;
+    }
     
     // Telegram OAuth Integratsiyasi
     const tg = (window as any).Telegram?.WebApp;
@@ -24,7 +30,6 @@ export const getUser = (): UserProfile | null => {
     }
 
     // Default qiymatlar (Crash bo'lishini oldini olish uchun)
-    // Initialize settings if they do not exist in the stored data
     if (!user.settings) user.settings = { language: 'Uz', theme: 'dark' };
     if (user.telegramStars === undefined) user.telegramStars = 0;
     if (!user.starsHistory) user.starsHistory = [];
@@ -41,8 +46,7 @@ export const getUser = (): UserProfile | null => {
 
 export const saveUser = (user: UserProfile) => {
   try {
-    // Cast to any to ensure we can safely initialize settings if they are missing
-    const userData = user as any;
+    const userData = { ...user };
     if (!userData.settings) userData.settings = { language: 'Uz', theme: 'dark' };
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
     
@@ -60,7 +64,7 @@ export const saveUser = (user: UserProfile) => {
 export const getEntryNotification = (): EntryNotification | null => {
   try {
     const data = localStorage.getItem(NOTIFICATION_KEY);
-    return data ? JSON.parse(data) : {
+    if (!data) return {
         id: 'welcome_v1',
         title: 'Xush kelibsiz!',
         description: 'Sizni yana Humo AI ilovasida ko\'rganimizdan mamnunmiz. Keling, bugun bilimlarimizni yanada oshiramiz!',
@@ -69,6 +73,7 @@ export const getEntryNotification = (): EntryNotification | null => {
         isActive: true,
         createdAt: new Date().toISOString()
     };
+    return JSON.parse(data);
   } catch (e) {
     return null;
   }
