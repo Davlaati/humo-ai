@@ -176,37 +176,36 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
   if (isFinished) {
       return (
-          <div className="p-6 h-full flex flex-col items-center pb-24 animate-fade-in overflow-y-auto no-scrollbar bg-[#0c1222]">
-              {/* Celeb Background Decor */}
-              <div className="fixed inset-0 pointer-events-none z-0">
-                  <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse"></div>
-                  <div className="absolute bottom-[-10%] right-[-10%] w-[120%] h-[50%] bg-purple-600/10 blur-[120px] rounded-full"></div>
-              </div>
-
-              {/* Confetti Particles */}
-              <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="p-6 h-full flex flex-col items-center pb-24 animate-fade-in overflow-y-auto no-scrollbar bg-[#0c1222] relative">
+              {/* Confetti Particles Rain */}
+              <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
                   {Array.from({ length: 40 }).map((_, i) => (
                       <div 
                         key={i} 
-                        className="absolute w-2 h-2 rounded-full animate-celebrate-fall opacity-60"
+                        className="absolute w-2 h-4 rounded-sm animate-celebrate-fall opacity-80"
                         style={{ 
                             left: `${Math.random() * 100}%`, 
                             top: `-20px`, 
                             backgroundColor: ['#fbbf24', '#3b82f6', '#10b981', '#f87171', '#a855f7'][i % 5],
                             animationDelay: `${Math.random() * 3}s`,
-                            animationDuration: `${2 + Math.random() * 2}s`
+                            animationDuration: `${2.5 + Math.random() * 2}s`
                         }}
                       ></div>
                   ))}
               </div>
 
-              <div className="w-32 h-32 bg-gradient-to-tr from-yellow-400 via-orange-500 to-yellow-600 rounded-[40px] flex items-center justify-center text-white text-6xl mt-10 mb-8 shadow-[0_20px_50px_rgba(245,158,11,0.3)] border-4 border-yellow-200 animate-bounce-slow z-10">
-                  <i className="fa-solid fa-trophy drop-shadow-lg"></i>
+              {/* Success Visual */}
+              <div className="relative mt-12 mb-10 z-10">
+                <div className="absolute inset-0 bg-yellow-500 rounded-full blur-[80px] opacity-20 animate-pulse"></div>
+                <div className="w-32 h-32 bg-gradient-to-tr from-yellow-400 via-orange-500 to-yellow-600 rounded-[40px] flex items-center justify-center text-white text-6xl shadow-[0_20px_50px_rgba(245,158,11,0.3)] border-4 border-yellow-200 animate-bounce-slow relative z-10">
+                    <i className="fa-solid fa-trophy drop-shadow-lg"></i>
+                </div>
               </div>
 
               <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white mb-2 z-10 text-center">G'OYAT AJOYIB!</h2>
               <p className="text-blue-400 text-xs font-black uppercase tracking-[0.3em] mb-12 z-10">Dars muvaffaqiyatli yakunlandi</p>
 
+              {/* Rewards Summary Badges */}
               <div className="grid grid-cols-2 gap-4 w-full mb-10 z-10">
                   <div className="glass-card p-6 rounded-[35px] border border-blue-500/20 bg-blue-500/5 flex flex-col items-center shadow-xl animate-slide-up" style={{ animationDelay: '0.1s' }}>
                       <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-3">
@@ -224,12 +223,13 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
                   </div>
               </div>
 
+              {/* Vocabulary Recap */}
               <div className="w-full glass-panel rounded-[45px] p-8 mb-12 border border-white/10 shadow-2xl z-10 relative overflow-hidden animate-slide-up" style={{ animationDelay: '0.3s' }}>
                   <div className="absolute top-0 right-0 p-4 opacity-10">
                       <i className="fa-solid fa-book-open-reader text-6xl text-blue-400"></i>
                   </div>
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-6 flex items-center">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
                     Yangi so'zlar lug'ati
                   </h3>
                   <div className="space-y-4">
