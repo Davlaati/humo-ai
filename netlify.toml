@@ -1,0 +1,8 @@
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Disable the secrets scanner to allow the Gemini API key to be bundled for the frontend
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"

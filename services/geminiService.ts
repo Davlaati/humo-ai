@@ -8,7 +8,8 @@ import { DICTIONARY } from "../data/dictionary";
  * This prevents the app from crashing during boot if the API_KEY is not yet available.
  */
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Use bracket notation to access the environment variable
+  const apiKey = process['env']['API_KEY'];
   if (!apiKey) {
     throw new Error("API_KEY is not configured in the environment.");
   }

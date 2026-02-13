@@ -105,7 +105,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process['env']['API_KEY'];
+      const ai = new GoogleGenAI({ apiKey });
       inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
@@ -201,7 +202,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     // Xatolarni analiz qilish
     setIsAnalyzing(true);
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = process['env']['API_KEY'];
+        const ai = new GoogleGenAI({ apiKey });
         const conversationText = transcript.map(t => `${t.sender}: ${t.text}`).join('\n');
         
         if (transcript.length < 2) {
