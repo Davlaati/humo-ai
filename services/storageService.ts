@@ -29,6 +29,7 @@ export const getUser = (): UserProfile | null => {
 
     if (!user.settings) user.settings = { language: 'Uz', theme: 'dark' };
     if (user.telegramStars === undefined) user.telegramStars = 0;
+    if (user.isPremium === undefined) user.isPremium = false; // Default premium status
     if (!user.starsHistory) user.starsHistory = [];
     if (user.xp === undefined) user.xp = 0;
     if (user.coins === undefined) user.coins = 0;

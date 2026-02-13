@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { convertHumoToStars } from '../services/storageService';
+import { convertHumoToStars, saveUser } from '../services/storageService';
 import { playTapSound } from '../services/audioService';
 
 interface WalletProps {
@@ -18,7 +18,6 @@ const STAR_VARIANTS = [
 ];
 
 const Wallet: React.FC<WalletProps> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'humo' | 'stars'>('humo');
   const [confirmModal, setConfirmModal] = useState<typeof STAR_VARIANTS[0] | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -43,6 +42,47 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
     }, 1200);
   };
 
+  const handleBuyPremium = () => {
+    playTapSound();
+    
+    const tg = (window as any).Telegram?.WebApp;
+    
+    // Backenddan invoice link yaratish kerak. 
+    // Hozircha statik yoki placeholder link ishlatamiz.
+    // Haqiqiy loyihada: const link = await api.createInvoice(200);
+    const mockInvoiceLink = "https://t.me/$..."; 
+
+    if (tg && tg.initData) {
+        // Agar haqiqiy link bo'lmasa, test rejimida ishlaymiz
+        if (mockInvoiceLink === "https://t.me/$...") {
+             const confirmTest = window.confirm("Backend ulanmagan. Test rejimida Premium sotib olinsinmi? (Simulyatsiya)");
+             if (confirmTest) {
+                 const updatedUser = { ...user, isPremium: true };
+                 saveUser(updatedUser);
+                 window.location.reload();
+             }
+             return;
+        }
+
+        tg.openInvoice(mockInvoiceLink, (status: string) => {
+            if (status === 'paid') {
+                tg.showPopup({
+                    title: 'Tabriklaymiz!',
+                    message: "Siz Premium statusini muvaffaqiyatli sotib oldingiz!",
+                    buttons: [{type: 'ok'}]
+                });
+                const updatedUser = { ...user, isPremium: true };
+                saveUser(updatedUser);
+                window.location.reload();
+            } else if (status === 'failed') {
+                tg.showPopup({ title: 'Xatolik', message: "To'lov amalga oshmadi." });
+            }
+        });
+    } else {
+        alert("Bu funksiya faqat Telegram ichida ishlaydi.");
+    }
+  };
+
   return (
     <div className="p-4 pb-24 space-y-6 animate-fade-in h-full overflow-y-auto no-scrollbar relative">
       {/* Balances Display */}
@@ -64,6 +104,65 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
            <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Real platform valyutasi</p>
         </div>
       </div>
+
+      {/* Premium Banner */}
+      {!user.isPremium ? (
+          <div className="w-full relative overflow-hidden rounded-[40px] p-1 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 shadow-[0_10px_40px_rgba(234,179,8,0.3)] animate-slide-up">
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+              <div className="bg-[#0c1222] rounded-[38px] p-6 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/20 blur-[60px] rounded-full"></div>
+                  
+                  <div className="flex justify-between items-start mb-6">
+                      <div>
+                          <h2 className="text-2xl font-black italic tracking-tighter uppercase text-white">
+                              Premium <span className="text-yellow-500">Status</span>
+                          </h2>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Cheksiz imkoniyatlar</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-500/40 animate-pulse">
+                          <i className="fa-solid fa-crown text-white text-xl"></i>
+                      </div>
+                  </div>
+
+                  <div className="space-y-3 mb-8">
+                      <div className="flex items-center space-x-3">
+                          <i className="fa-solid fa-bolt text-yellow-500"></i>
+                          <span className="text-sm font-bold text-gray-300">2x XP Multiplikator</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                          <i className="fa-solid fa-infinity text-blue-400"></i>
+                          <span className="text-sm font-bold text-gray-300">Cheksiz Speaking vaqt</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                          <i className="fa-solid fa-check-double text-green-400"></i>
+                          <span className="text-sm font-bold text-gray-300">Reklamasiz tajriba</span>
+                      </div>
+                  </div>
+
+                  <button 
+                    onClick={handleBuyPremium}
+                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl font-black text-white uppercase tracking-widest shadow-lg active:scale-95 transition flex items-center justify-center"
+                  >
+                      <span>Sotib olish</span>
+                      <div className="w-px h-4 bg-white/30 mx-3"></div>
+                      <i className="fa-solid fa-star mr-1.5"></i> 200
+                  </button>
+              </div>
+          </div>
+      ) : (
+          <div className="w-full rounded-[40px] p-6 bg-gradient-to-br from-slate-800 to-slate-900 border border-yellow-500/30 flex items-center justify-between shadow-xl">
+              <div className="flex items-center space-x-4">
+                  <div className="w-14 h-14 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/50">
+                      <i className="fa-solid fa-crown text-2xl text-yellow-500"></i>
+                  </div>
+                  <div>
+                      <h3 className="text-lg font-black text-white italic">SIZ PREMIUMSIZ!</h3>
+                      <p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">Barcha imkoniyatlar ochiq</p>
+                  </div>
+              </div>
+              <i className="fa-solid fa-check-circle text-green-500 text-2xl"></i>
+          </div>
+      )}
 
       {/* Main Container */}
       <div className="glass-panel p-6 rounded-[40px] border border-white/5 bg-slate-800/20 backdrop-blur-2xl">

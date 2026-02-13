@@ -61,6 +61,7 @@ export interface UserProfile {
   avatarUrl?: string;
   joinedAt: string;
   isAdmin?: boolean;
+  isPremium?: boolean; // Added for Stars Payment
   telegramStars: number;
   starsHistory: StarsTransaction[];
   // Added settings property to UserProfile interface
