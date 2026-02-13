@@ -3,9 +3,17 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { UserProfile } from "../types";
 import { DICTIONARY } from "../data/dictionary";
 
-// API Key xavfsiz olinishi
-const API_KEY = (typeof process !== 'undefined' && process.env?.API_KEY) || "";
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+/**
+ * Lazy initializer for the Gemini AI client.
+ * This prevents the app from crashing during boot if the API_KEY is not yet available.
+ */
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY is not configured in the environment.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 /**
  * Manual Base64 decoding as per SDK guidelines (do not use js-base64)
@@ -43,8 +51,8 @@ async function decodeAudioData(
 }
 
 export const generateLessonContent = async (user: UserProfile, topic: string) => {
-  if (!API_KEY) return generateFallbackLesson();
   try {
+    const ai = getAIClient();
     const prompt = `
       Create a mini English lesson for a student with level ${user.level}.
       Topic: ${topic}.
@@ -72,8 +80,8 @@ export const generateLessonContent = async (user: UserProfile, topic: string) =>
 };
 
 export const getDictionaryDefinition = async (word: string) => {
-  if (!API_KEY) return null;
   try {
+    const ai = getAIClient();
     const prompt = `Define the English word "${word}". Provide Uzbek translation and an example sentence. Return JSON: { "definition": "...", "translation": "...", "example": "..." }`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -82,6 +90,7 @@ export const getDictionaryDefinition = async (word: string) => {
     });
     return JSON.parse(response.text || '{}');
   } catch (error) {
+    console.error("Dictionary lookup failed:", error);
     return null;
   }
 };
@@ -90,8 +99,8 @@ export const getDictionaryDefinition = async (word: string) => {
  * Text-to-Speech using Gemini 2.5 Flash
  */
 export const playTextToSpeech = async (text: string) => {
-  if (!API_KEY) return;
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
@@ -120,8 +129,8 @@ export const playTextToSpeech = async (text: string) => {
 };
 
 export const generateConversationResponse = async (userText: string, userLevel: string) => {
-  if (!API_KEY) return "That's very interesting! Can you tell me more about it?";
   try {
+    const ai = getAIClient();
     const prompt = `You are Humobek AI, a friendly English tutor. User level: ${userLevel}. Response < 30 words. Encourage and ask a question. User: "${userText}"`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -129,6 +138,7 @@ export const generateConversationResponse = async (userText: string, userLevel: 
     });
     return response.text;
   } catch (e) {
+    console.error("Conversation generation failed:", e);
     return "That's very interesting! Can you tell me more about it?";
   }
 };

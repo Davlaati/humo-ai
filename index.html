@@ -10,12 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-      // Browser environment uchun process.env polyfill
-      window.process = {
-        env: {
-          API_KEY: "" // Platform tomonidan avtomatik in'ektsiya qilinadi
-        }
-      };
+      // Global process object polyfill for browser
+      window.process = window.process || { env: {} };
+      // Note: API_KEY is injected by the platform environment
     </script>
     <style>
       body {
@@ -23,7 +20,10 @@
         background-color: #0f172a; 
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
+        margin: 0;
+        padding: 0;
       }
+      #root { height: 100vh; width: 100vw; }
       ::-webkit-scrollbar { width: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
@@ -90,9 +90,8 @@
     }
     </script>
   </head>
-  <body class="text-white h-screen w-screen overflow-hidden selection:bg-indigo-500 selection:text-white">
+  <body class="text-white selection:bg-indigo-500 selection:text-white">
     <div id="root"></div>
-    <!-- React ilovasini ishga tushirish -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
