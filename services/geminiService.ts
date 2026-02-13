@@ -161,3 +161,57 @@ export const generateFallbackLesson = () => {
         }
     };
 };
+
+// --- YANGI QO'SHILGAN KOD: AQLLI LUG'AT MENTOR ---
+
+export const consultWithMentor = async (user: UserProfile, query: string, type: 'lookup' | 'daily' = 'lookup') => {
+  try {
+    const ai = getAIClient();
+    
+    const systemInstruction = `
+      Siz HUMO AI - Aqlli Lug'at va Mentorsiz. Sizning vazifangiz foydalanuvchining darajasi (Level), maqsadi (Goal) va qiziqishlariga (Interests) qarab ingliz tili lug'atini rivojlantirishdir.
+
+      FOYDALANUVCHI KONTEKSTI:
+      - Daraja: ${user.level}
+      - Maqsad: ${user.goal}
+      - Qiziqishlar: ${user.interests.join(', ')}
+
+      QOIDALAR:
+      1. DICTIONARY LOGIC (So'z so'raganda):
+         Quyidagi strukturada javob bering (Markdown formatida):
+         - **[Word]** - [Transcription] - [O'zbekcha tarjimasi]
+         - 🧠 **Nega bu so'z sizga kerak?**: Foydalanuvchining qiziqishiga bog'lang (Masalan: "Siz IT-ga qiziqqaningiz uchun...").
+         - 📖 **Context Story**: So'z ishtirok etgan 2 qatorlik qiziqarli mini-hikoya.
+         - 🎭 **Emotional Tone**: (Positive/Negative/Formal/Slang).
+         - 🔥 **Quick Challenge**: "Hozir ushbu so'zni qatnashgan bitta gap yozing".
+
+      2. 10,000 WORD DATABASE LOGIC ("Daily Words" so'raganda):
+         Har kuni foydalanuvchining darajasiga mos 5 ta "Yangi so'z" (Daily Words) taklif qiling. Ro'yxat shaklida bering va qisqa izoh qo'shing.
+
+      3. PSYCHOLOGY:
+         - Qisqa, lo'nda va do'stona (witty) tonda javob bering.
+         - O'zbek tilida muloqot qiling, lekin inglizcha terminlarni saqlab qoling.
+         - Motivatsiya bering.
+
+      4. MONETIZATION HINT:
+         Agar so'z juda professional yoki qiyin bo'lsa, oxirida: "💡 *Premium (Telegram Stars) orqali chuqur tahlilni ochishingiz mumkin*" deb eslatib o'ting.
+    `;
+
+    const userPrompt = type === 'daily' 
+      ? "Menga bugungi kun uchun 5 ta yangi so'z tavsiya eting (Daily Words)." 
+      : `Quyidagi so'z yoki iborani tahlil qiling: "${query}"`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemInstruction,
+      }
+    });
+
+    return response.text;
+  } catch (error) {
+    console.error("Mentor Error:", error);
+    return "Uzr, hozircha mentor bilan bog'lanib bo'lmadi. Keyinroq urinib ko'ring.";
+  }
+};

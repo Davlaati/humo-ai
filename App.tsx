@@ -14,6 +14,7 @@ import WordBank from './components/WordBank';
 import SpeakingClub from './components/SpeakingClub';
 import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
+import SmartDictionary from './components/SmartDictionary';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -135,6 +136,7 @@ const App: React.FC = () => {
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} />;
+          case 'dictionary': return <SmartDictionary user={user} />;
           default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
       }
   };

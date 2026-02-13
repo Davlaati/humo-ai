@@ -25,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, showN
         <div className="z-50 pb-[calc(var(--tg-safe-area-inset-bottom)+12px)] pt-3 px-4 glass-panel rounded-t-[35px] fixed bottom-0 w-full border-t border-white/5 backdrop-blur-3xl shadow-[0_-15px_50px_rgba(0,0,0,0.5)]">
           <div className="flex justify-between items-center max-w-sm mx-auto">
             <NavButton icon="fa-house" label="Asosiy" active={activeTab === 'home'} onClick={() => onTabChange('home')} />
-            <NavButton icon="fa-book-open" label="Dars" active={activeTab === 'learn'} onClick={() => onTabChange('learn')} />
+            <NavButton icon="fa-book-journal-whills" label="Lug'at" active={activeTab === 'dictionary'} onClick={() => onTabChange('dictionary')} />
             
             <div className="relative -top-10">
                <button 
