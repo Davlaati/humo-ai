@@ -103,7 +103,7 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
                   <i className="fa-solid fa-arrow-right-arrow-left text-blue-400 text-sm"></i>
                 </div>
                 <div>
-                  <p className="text-xs font-black text-white uppercase tracking-tighter">Humo -> Stars</p>
+                  <p className="text-xs font-black text-white uppercase tracking-tighter">{"Humo -> Stars"}</p>
                   <p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(tx.timestamp).toLocaleDateString('uz-UZ')}</p>
                 </div>
               </div>

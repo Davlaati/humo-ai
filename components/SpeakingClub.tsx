@@ -48,6 +48,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
   const [transcript, setTranscript] = useState<{sender: 'me' | 'partner', text: string}[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisReport | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Audio Contexts & Refs
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
@@ -65,29 +66,41 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
   const stopAll = () => {
     if (sessionRef.current) sessionRef.current.close();
-    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
     sourcesRef.current.forEach(s => s.stop());
     sourcesRef.current.clear();
   };
 
   const startSession = async () => {
+    setError(null);
     setStatus('searching');
     
-    // Simulyatsiya qilingan matching (80% AI, 20% Real User)
-    const isRealUser = Math.random() > 0.8;
-    const searchDelay = 3000 + Math.random() * 3000;
+    // Simulyatsiya qilingan matching (60% AI, 40% Real User)
+    const isRealUser = Math.random() > 0.6;
+    const searchDelay = 2000 + Math.random() * 3000;
 
     setTimeout(async () => {
+        const names = ["James (London)", "Akmal (Tashkent)", "Sarah (New York)", "Elena (Moscow)"];
+        const selectedPartnerName = names[Math.floor(Math.random() * names.length)];
+        
         if (isRealUser) {
-            setPartnerInfo({ name: "James (London)", type: 'user', level: 'Advanced' });
+            setPartnerInfo({ name: selectedPartnerName, type: 'user', level: 'Intermediate+' });
         } else {
             setPartnerInfo({ name: "Humobek AI", type: 'ai', level: 'Native' });
         }
-        await connectToLiveAPI(isRealUser ? 'Act as a friendly English student named James from London.' : undefined);
+        
+        const systemPrompt = isRealUser 
+          ? `Siz hozir ingliz tilini o'rganayotgan talaba ${selectedPartnerName} rolidasiz. Foydalanuvchi bilan do'stona va ingliz tilida gaplashing. Faqat ingliz tilidan foydalaning.`
+          : `You are Humobek AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}. Respond like a native speaker.`;
+
+        await connectToLiveAPI(systemPrompt);
     }, searchDelay);
   };
 
-  const connectToLiveAPI = async (customInstruction?: string) => {
+  const connectToLiveAPI = async (systemInstruction: string) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -100,24 +113,32 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
-          systemInstruction: customInstruction || `You are Humobek AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}.`,
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
+          systemInstruction,
           inputAudioTranscription: {},
           outputAudioTranscription: {}
         },
         callbacks: {
           onopen: () => {
-            const source = inputAudioCtxRef.current!.createMediaStreamSource(stream);
-            const scriptProcessor = inputAudioCtxRef.current!.createScriptProcessor(4096, 1, 1);
+            const outCtx = inputAudioCtxRef.current!;
+            const source = outCtx.createMediaStreamSource(stream);
+            const scriptProcessor = outCtx.createScriptProcessor(4096, 1, 1);
+            
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               const int16 = new Int16Array(inputData.length);
-              for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
-              const pcmBlob = { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
+              for (let i = 0; i < inputData.length; i++) {
+                int16[i] = inputData[i] * 32768;
+              }
+              const pcmBlob = { 
+                data: encode(new Uint8Array(int16.buffer)), 
+                mimeType: 'audio/pcm;rate=16000' 
+              };
               sessionPromise.then(s => s.sendRealtimeInput({ media: pcmBlob }));
             };
+            
             source.connect(scriptProcessor);
-            scriptProcessor.connect(inputAudioCtxRef.current!.destination);
+            scriptProcessor.connect(outCtx.destination);
             setStatus('connected');
           },
           onmessage: async (msg: LiveServerMessage) => {
@@ -133,6 +154,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
               source.start(nextStartTimeRef.current);
               nextStartTimeRef.current += buffer.duration;
               sourcesRef.current.add(source);
+              source.onended = () => sourcesRef.current.delete(source);
             }
 
             // Transcriptions
@@ -148,15 +170,19 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                 sourcesRef.current.clear();
                 nextStartTimeRef.current = 0;
             }
+          },
+          onerror: (e) => {
+            console.error("Live API Error:", e);
+            setError("Muloqotda xatolik yuz berdi. Qayta urinib ko'ring.");
           }
         }
       });
 
       sessionRef.current = await sessionPromise;
     } catch (err) {
-      console.error("Live API Connection Failed:", err);
+      console.error("Microphone Access Denied:", err);
       setStatus('idle');
-      alert("Mikrofonni ishlatishda xatolik yuz berdi. Iltimos, ruxsat bering.");
+      setError("Mikrofonga ruxsat berilmagan yoki mikrofon topilmadi.");
     }
   };
 
@@ -177,22 +203,36 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const conversationText = transcript.map(t => `${t.sender}: ${t.text}`).join('\n');
+        
+        if (transcript.length < 2) {
+            setAnalysis({
+                grammarErrors: [],
+                vocabularySuggestions: ["Suhbat juda qisqa bo'ldi."],
+                overallLevel: "N/A"
+            });
+            setIsAnalyzing(false);
+            return;
+        }
+
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Analyze this English conversation transcript for errors. Return JSON. 
+            contents: `Analyze this English conversation transcript for errors by the "me" speaker. Return JSON. 
             Transcript:
             ${conversationText}
             
             JSON schema: { 
-                "grammarErrors": [{"original": "...", "corrected": "...", "explanation": "..."}], 
-                "vocabularySuggestions": ["...", "..."], 
-                "overallLevel": "..." 
+                "grammarErrors": [{"original": "the wrong sentence", "corrected": "the right sentence", "explanation": "why it was wrong"}], 
+                "vocabularySuggestions": ["word1", "word2"], 
+                "overallLevel": "A1-C2" 
             }`,
             config: { responseMimeType: 'application/json' }
         });
-        setAnalysis(JSON.parse(response.text || '{}'));
+        
+        const result = JSON.parse(response.text || '{}');
+        setAnalysis(result);
     } catch (e) {
         console.error("Analysis failed:", e);
+        setError("Tahlil jarayonida xatolik yuz berdi.");
     } finally {
         setIsAnalyzing(false);
     }
@@ -219,12 +259,13 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             </div>
           </div>
           <h2 className="text-3xl font-black mb-3 italic uppercase tracking-tighter">Jonli Muloqot</h2>
-          <p className="text-slate-400 mb-10 max-w-xs text-sm font-medium">
-            Online foydalanuvchilar yoki sun'iy intellekt bilan haqiqiy ovozli suhbat quring.
+          <p className="text-slate-400 mb-10 max-w-xs text-sm font-medium leading-relaxed">
+            Haqiqiy foydalanuvchilar yoki sun'iy intellekt bilan ovozli suhbat quring va xatolaringizni bilib oling.
           </p>
           <button onClick={startSession} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition">
             Suhbatdosh Qidirish
           </button>
+          {error && <p className="mt-4 text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">{error}</p>}
         </div>
       </div>
     );
@@ -241,7 +282,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             </div>
         </div>
         <h2 className="text-xl font-black italic uppercase tracking-widest animate-pulse">Online foydalanuvchi qidirilmoqda...</h2>
-        <p className="text-slate-500 text-xs mt-3 uppercase font-bold tracking-[0.2em]">Sizning darajangiz: {user.level}</p>
+        <p className="text-slate-500 text-xs mt-3 uppercase font-bold tracking-[0.2em]">Kuting, hozir kimdir ulanadi!</p>
       </div>
     );
   }
@@ -268,12 +309,22 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             
             <h3 className="text-2xl font-black italic uppercase tracking-tighter">{partnerInfo.name}</h3>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{partnerInfo.level} • {partnerInfo.type === 'ai' ? 'AI Tutor' : 'English Student'}</p>
+            
+            {/* Wave animation for audio input visual */}
+            <div className="mt-8 flex items-center space-x-1 h-8">
+               {[1,2,3,4,5,4,3,2,1].map((h, i) => (
+                   <div key={i} className="w-1 bg-blue-400 rounded-full animate-pulse" style={{ height: `${h * 4}px`, animationDelay: `${i * 0.1}s` }}></div>
+               ))}
+            </div>
         </div>
 
         <div className="h-[40%] bg-slate-900/90 backdrop-blur-3xl rounded-t-[50px] border-t border-white/10 p-8 flex flex-col">
             <div className="flex-1 overflow-y-auto mb-6 space-y-4 no-scrollbar">
                 {transcript.length === 0 ? (
-                    <div className="flex justify-center items-center h-full text-slate-600 font-bold uppercase text-[10px] tracking-widest">Gapirishni boshlang...</div>
+                    <div className="flex flex-col justify-center items-center h-full text-slate-600 font-bold uppercase text-[10px] tracking-widest text-center">
+                       <i className="fa-solid fa-waveform-lines text-2xl mb-2 opacity-30"></i>
+                       Gapirishni boshlang, tizim avtomatik eshitadi...
+                    </div>
                 ) : (
                     transcript.map((t, i) => (
                         <div key={i} className={`flex ${t.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
@@ -316,7 +367,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                 <div className="glass-card rounded-[35px] p-6 border border-white/5">
                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Grammatik Xatolar</h3>
                     <div className="space-y-4">
-                        {analysis.grammarErrors.length > 0 ? analysis.grammarErrors.map((err, i) => (
+                        {analysis.grammarErrors && analysis.grammarErrors.length > 0 ? analysis.grammarErrors.map((err, i) => (
                             <div key={i} className="p-4 bg-white/5 rounded-2xl border-l-4 border-red-500">
                                 <p className="text-[10px] text-red-400 line-through mb-1">{err.original}</p>
                                 <p className="text-xs font-bold text-green-400 mb-2">{err.corrected}</p>
@@ -331,7 +382,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                 <div className="glass-card rounded-[35px] p-6 border border-white/5">
                     <h3 className="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">Tavsiya qilinadigan so'zlar</h3>
                     <div className="flex flex-wrap gap-2">
-                        {analysis.vocabularySuggestions.map((s, i) => (
+                        {analysis.vocabularySuggestions && analysis.vocabularySuggestions.map((s, i) => (
                             <span key={i} className="px-3 py-1.5 bg-purple-600/10 text-purple-400 rounded-xl text-[10px] font-black border border-purple-500/20">{s}</span>
                         ))}
                     </div>
@@ -339,7 +390,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
                 <div className="glass-card rounded-[35px] p-8 bg-blue-600/10 border border-blue-500/20 flex flex-col items-center">
                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] mb-2">Suhbat Bahosi</p>
-                    <h4 className="text-4xl font-black text-white italic">{analysis.overallLevel}</h4>
+                    <h4 className="text-4xl font-black text-white italic">{analysis.overallLevel || 'Good'}</h4>
                     <p className="text-[9px] text-slate-500 font-bold uppercase mt-2 tracking-widest">+{Math.max(15, Math.floor(elapsedTime / 60) * 15)} XP ISHLANDI</p>
                 </div>
 
