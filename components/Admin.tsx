@@ -57,7 +57,7 @@ const Admin: React.FC = () => {
       <div className="grid grid-cols-2 gap-4">
           <div className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Foydalanuvchi</p>
-             <p className="font-black text-white truncate">{currentUser?.name || 'Noma'lum'}</p>
+             <p className="font-black text-white truncate">{currentUser?.name || "Noma'lum"}</p>
           </div>
           <div className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">ID</p>
