@@ -16,6 +16,11 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const [quizPhase, setQuizPhase] = useState(false);
   const [quizAnswered, setQuizAnswered] = useState<number | null>(null);
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+  
+  // Session Stats
+  const [sessionXP, setSessionXP] = useState(0);
+  const [sessionCoins, setSessionCoins] = useState(0);
+  
   const hasSavedWords = useRef(false);
 
   // Swipe State
@@ -34,7 +39,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
       const timeoutPromise = new Promise<{fallback: boolean, data: any}>((resolve) => {
           setTimeout(() => {
               resolve({ fallback: true, data: generateFallbackLesson() });
-          }, 3000);
+          }, 4000);
       });
 
       const wrappedApiPromise = apiPromise.then(data => ({ fallback: false, data }));
@@ -73,6 +78,8 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   }, [user.id]);
 
   const awardReward = (reason: string, coins: number = 5, xp: number = 5) => {
+    setSessionXP(prev => prev + xp);
+    setSessionCoins(prev => prev + coins);
     if (onUpdateUser) {
       const updatedUser = {
         ...user,
@@ -142,7 +149,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
       
       const correct = content.quiz.options[index] === content.quiz.answer;
       if (correct) {
-          awardReward("To'g'ri javob!");
+          awardReward("To'g'ri javob!", 15, 20);
       }
       
       setTimeout(() => {
@@ -154,7 +161,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
     return (
       <div className="flex flex-col items-center justify-center h-full">
          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-         <p className="text-gray-400 animate-pulse font-medium">Shaxsiy dars tayyorlanmoqda...</p>
+         <p className="text-gray-400 animate-pulse font-medium uppercase text-[10px] tracking-widest">Dars tayyorlanmoqda...</p>
       </div>
     );
   }
@@ -167,11 +174,67 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
   if (isFinished) {
       return (
-          <div className="p-8 h-full flex flex-col items-center justify-center text-center animate-slide-up">
-              <i className="fa-solid fa-circle-check text-7xl text-green-400 mb-6 drop-shadow-lg"></i>
-              <h2 className="text-3xl font-bold mb-2">Dars Yakunlandi!</h2>
-              <p className="text-gray-400 mb-8">Siz bugungi mavzuni a'lo darajada o'zlashtirdingiz. {content.vocab.length} ta yangi so'z!</p>
-              <button onClick={() => window.location.reload()} className="liquid-button px-10 py-4 rounded-2xl font-bold text-lg">Keyingi Dars</button>
+          <div className="p-6 h-full flex flex-col items-center pb-24 animate-fade-in overflow-y-auto no-scrollbar">
+              {/* Confetti Particles */}
+              <div className="absolute inset-0 pointer-events-none z-0">
+                  {Array.from({ length: 20 }).map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="absolute w-2 h-2 rounded-full animate-ping opacity-20"
+                        style={{ 
+                            left: `${Math.random() * 100}%`, 
+                            top: `${Math.random() * 100}%`, 
+                            backgroundColor: ['#fbbf24', '#3b82f6', '#10b981'][i % 3],
+                            animationDelay: `${Math.random() * 2}s`
+                        }}
+                      ></div>
+                  ))}
+              </div>
+
+              <div className="w-28 h-28 bg-gradient-to-tr from-green-400 to-emerald-600 rounded-[35px] flex items-center justify-center text-white text-5xl mb-8 shadow-[0_15px_40px_rgba(16,185,129,0.3)] rotate-3 animate-bounce-slow z-10">
+                  <i className="fa-solid fa-medal"></i>
+              </div>
+
+              <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white mb-2 z-10">Ajoyib natija!</h2>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-10 z-10">Dars muvaffaqiyatli yakunlandi</p>
+
+              <div className="grid grid-cols-2 gap-4 w-full mb-10 z-10">
+                  <div className="glass-card p-6 rounded-[30px] border border-blue-500/20 bg-blue-500/5 flex flex-col items-center">
+                      <i className="fa-solid fa-bolt text-blue-400 text-xl mb-2"></i>
+                      <span className="text-2xl font-black text-white">{sessionXP}</span>
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">XP Ishlandi</span>
+                  </div>
+                  <div className="glass-card p-6 rounded-[30px] border border-yellow-500/20 bg-yellow-500/5 flex flex-col items-center">
+                      <i className="fa-solid fa-coins text-yellow-500 text-xl mb-2"></i>
+                      <span className="text-2xl font-black text-white">{sessionCoins}</span>
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">HC Ishlandi</span>
+                  </div>
+              </div>
+
+              <div className="w-full glass-card rounded-[35px] p-6 mb-10 border border-white/5 bg-slate-900/40 z-10">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">O'rganilgan so'zlar</h3>
+                  <div className="space-y-3">
+                      {content.vocab.map((v: any, i: number) => (
+                          <div key={i} className="flex items-center space-x-4 p-3 bg-white/5 rounded-2xl border border-white/5">
+                              <div className="w-8 h-8 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-400 text-xs font-black">
+                                  {i + 1}
+                              </div>
+                              <div className="flex-1">
+                                  <p className="text-sm font-black text-white uppercase tracking-tighter leading-none mb-1">{v.word}</p>
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase">{v.translation}</p>
+                              </div>
+                              <i className="fa-solid fa-circle-check text-green-500 text-sm"></i>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+              <button 
+                onClick={() => window.location.reload()} 
+                className="w-full py-5 rounded-[25px] liquid-button font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition z-10"
+              >
+                Keyingi darsga o'tish
+              </button>
           </div>
       )
   }
@@ -188,29 +251,29 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
               </div>
 
               <div className="w-full flex justify-between items-center mb-6 z-10">
-                <span className="text-gray-400 text-sm font-semibold">Yakuniy Test</span>
-                <span className="text-blue-400 font-bold uppercase tracking-wider text-[10px]">Bilimingizni sinang</span>
+                <span className="text-gray-400 text-xs font-black uppercase tracking-widest">Final Challenge</span>
+                <span className="text-blue-400 font-black uppercase tracking-[0.2em] text-[10px]">Bilimingizni sinang</span>
               </div>
 
-              <div className="w-full glass-card rounded-3xl p-8 flex flex-col items-center border-t border-white/20 mb-8">
-                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+              <div className="w-full glass-card rounded-3xl p-8 flex flex-col items-center border-t border-white/20 mb-8 shadow-2xl bg-slate-800/20">
+                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-6">
                       <i className="fa-solid fa-graduation-cap text-2xl text-blue-400"></i>
                   </div>
-                  <h2 className="text-2xl font-bold text-center leading-tight mb-8">
+                  <h2 className="text-2xl font-black text-center italic tracking-tighter leading-tight mb-8 text-white uppercase">
                       {content.quiz.question}
                   </h2>
                   <div className="space-y-3 w-full">
                       {content.quiz.options.map((option: string, idx: number) => {
                           const isSelected = quizAnswered === idx;
                           const isCorrect = option === content.quiz.answer;
-                          let btnClass = "w-full py-4 px-6 rounded-2xl text-left font-medium transition-all active:scale-[0.98] flex items-center ";
+                          let btnClass = "w-full py-5 px-6 rounded-2xl text-left font-bold transition-all active:scale-[0.98] flex items-center border ";
                           
                           if (quizAnswered !== null) {
-                              if (isCorrect) btnClass += "bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]";
-                              else if (isSelected) btnClass += "bg-red-500 text-white";
-                              else btnClass += "bg-white/5 text-gray-500 opacity-50";
+                              if (isCorrect) btnClass += "bg-green-600 border-green-400 text-white shadow-[0_0_20px_rgba(34,197,94,0.3)]";
+                              else if (isSelected) btnClass += "bg-red-600 border-red-400 text-white";
+                              else btnClass += "bg-white/5 border-white/5 text-slate-500 opacity-50";
                           } else {
-                              btnClass += "glass-card hover:bg-white/10 text-white border border-white/5";
+                              btnClass += "glass-card hover:bg-white/10 text-slate-300 border-white/5";
                           }
 
                           return (
@@ -219,12 +282,12 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
                                 onClick={() => handleQuizAnswer(idx)}
                                 className={btnClass}
                               >
-                                  <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs font-bold shrink-0">
+                                  <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-4 text-[10px] font-black shrink-0">
                                       {String.fromCharCode(65 + idx)}
                                   </span>
-                                  <span className="text-sm">{option}</span>
-                                  {quizAnswered !== null && isCorrect && <i className="fa-solid fa-check ml-auto"></i>}
-                                  {quizAnswered !== null && isSelected && !isCorrect && <i className="fa-solid fa-xmark ml-auto"></i>}
+                                  <span className="text-xs uppercase tracking-tight">{option}</span>
+                                  {quizAnswered !== null && isCorrect && <i className="fa-solid fa-check ml-auto text-white"></i>}
+                                  {quizAnswered !== null && isSelected && !isCorrect && <i className="fa-solid fa-xmark ml-auto text-white"></i>}
                               </button>
                           );
                       })}
@@ -252,10 +315,10 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
        </div>
 
        <div className="w-full flex justify-between items-center mb-6 z-10">
-          <span className="text-gray-400 text-sm font-bold">So'z {currentIndex + 1} / {content.vocab.length}</span>
-          <div className="flex space-x-1">
+          <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">SO'Z {currentIndex + 1} / {content.vocab.length}</span>
+          <div className="flex space-x-1.5">
              {content.vocab.map((_: any, i: number) => (
-                 <div key={i} className={`h-1.5 w-4 rounded-full transition-all duration-300 ${i <= currentIndex ? 'bg-blue-500 w-6' : 'bg-gray-700'}`}></div>
+                 <div key={i} className={`h-1.5 w-4 rounded-full transition-all duration-300 ${i <= currentIndex ? 'bg-blue-500 w-8 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-gray-700'}`}></div>
              ))}
           </div>
        </div>
@@ -268,16 +331,16 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
                <div className="relative w-full aspect-[3/4] max-w-sm flex items-center justify-between px-8">
                    <div className="flex flex-col items-center opacity-80 animate-pulse">
                        <i className="fa-solid fa-arrow-left text-3xl text-red-400 mb-2"></i>
-                       <span className="font-bold text-red-400 bg-black/40 px-2 py-1 rounded text-[10px]">Qiyin</span>
+                       <span className="font-black text-red-400 bg-black/40 px-3 py-1.5 rounded-xl text-[10px] uppercase">Qiyin</span>
                    </div>
                    
                    <div className="flex flex-col items-center animate-hand-swipe absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                       <i className="fa-regular fa-hand-pointer text-5xl text-white drop-shadow-lg"></i>
-                       <span className="text-[10px] mt-4 bg-black/40 px-3 py-1 rounded-full text-white font-bold">Baholash uchun suring</span>
+                       <i className="fa-regular fa-hand-pointer text-5xl text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]"></i>
+                       <span className="text-[10px] mt-4 bg-black/60 px-4 py-2 rounded-full text-white font-black uppercase tracking-widest border border-white/10 backdrop-blur-md">Baholash uchun suring</span>
                    </div>
 
                    <div className="flex flex-col items-center opacity-80 animate-pulse">
-                       <span className="font-bold text-green-400 bg-black/40 px-2 py-1 rounded mb-2 text-[10px]">Oson</span>
+                       <span className="font-black text-green-400 bg-black/40 px-3 py-1.5 rounded-xl mb-2 text-[10px] uppercase">Oson</span>
                        <i className="fa-solid fa-arrow-right text-3xl text-green-400"></i>
                    </div>
                </div>
@@ -286,9 +349,9 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
        <div className="relative w-full aspect-[3/4] flex items-center justify-center mt-4">
            {nextWord && (
-               <div className="absolute top-4 w-[95%] h-full glass-card rounded-3xl opacity-30 transform scale-95 translate-y-6 border border-white/5 z-0 blur-[2px]">
+               <div className="absolute top-4 w-[95%] h-full glass-card rounded-[45px] opacity-20 transform scale-95 translate-y-8 border border-white/5 z-0 blur-[3px]">
                   <div className="w-full h-full flex items-center justify-center p-8">
-                       <h2 className="text-3xl font-bold text-gray-500">{nextWord.word}</h2>
+                       <h2 className="text-4xl font-black text-slate-500 uppercase italic tracking-tighter">{nextWord.word}</h2>
                   </div>
                </div>
            )}
@@ -304,57 +367,57 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
              onMouseLeave={handleTouchEnd}
              style={{ 
                  transform: `translateX(${dragX}px) rotate(${rotateDeg}deg)`,
-                 transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                 transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
              }}
            >
               <div className={`relative w-full h-full duration-700 preserve-3d transition-transform ${flipped ? 'rotate-y-180' : ''}`}>
                 
                 <div 
-                    className="absolute w-full h-full backface-hidden glass-card rounded-3xl flex flex-col items-center justify-center p-8 border-4 shadow-2xl bg-slate-800/80"
-                    style={{ borderColor: isDragging ? borderColor : 'rgba(59, 130, 246, 0.2)' }}
+                    className="absolute w-full h-full backface-hidden glass-card rounded-[50px] flex flex-col items-center justify-center p-8 border-4 shadow-[0_30px_80px_rgba(0,0,0,0.5)] bg-slate-800/90"
+                    style={{ borderColor: isDragging ? borderColor : 'rgba(59, 130, 246, 0.15)' }}
                 >
                     {dragX > 50 && (
-                        <div className="absolute top-8 right-8 bg-green-500 text-white px-4 py-1 rounded-full font-black text-xs shadow-lg transform rotate-12 z-20">OSON</div>
+                        <div className="absolute top-10 right-10 bg-green-500 text-white px-6 py-2 rounded-full font-black text-xs shadow-xl transform rotate-12 z-20 uppercase tracking-widest">OSON</div>
                     )}
                     {dragX < -50 && (
-                        <div className="absolute top-8 left-8 bg-red-500 text-white px-4 py-1 rounded-full font-black text-xs shadow-lg transform -rotate-12 z-20">QIYIN</div>
+                        <div className="absolute top-10 left-10 bg-red-500 text-white px-6 py-2 rounded-full font-black text-xs shadow-xl transform -rotate-12 z-20 uppercase tracking-widest">QIYIN</div>
                     )}
 
-                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-4 py-1 rounded-full mb-8 font-black tracking-widest uppercase">Yangi So'z</span>
-                    <h2 className="text-5xl font-black mb-6 text-center tracking-tighter text-white drop-shadow-xl">{currentWord.word}</h2>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-5 py-2 rounded-full mb-10 font-black tracking-widest uppercase border border-blue-500/20">Learning Mode</span>
+                    <h2 className="text-6xl font-black mb-8 text-center italic tracking-tighter text-white drop-shadow-2xl uppercase break-all">{currentWord.word}</h2>
                     <button 
                         onTouchEnd={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
                         onClick={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
-                        className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition active:scale-95 border border-white/5"
+                        className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition active:scale-95 border border-white/10 shadow-inner group"
                     >
-                        <i className="fa-solid fa-volume-high text-2xl text-blue-400"></i>
+                        <i className="fa-solid fa-volume-high text-3xl text-blue-400 group-hover:scale-110 transition-transform"></i>
                     </button>
-                    <p className="mt-12 text-gray-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">Ma'nosini bilish uchun bosing</p>
+                    <p className="mt-14 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Tarjimani ko'rish uchun bosing</p>
                 </div>
 
-                <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-3xl flex flex-col p-8 bg-slate-900 border-2 border-blue-500/30 overflow-hidden shadow-2xl">
-                    <div className="flex flex-col items-center mb-6">
-                        <span className="text-[10px] font-black text-blue-400 mb-1 tracking-widest uppercase">O'zbekcha</span>
-                        <h2 className="text-3xl font-black text-yellow-400 text-center">{currentWord.translation}</h2>
-                        <span className="text-gray-500 text-[10px] mt-1 italic">({currentWord.word})</span>
+                <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-[50px] flex flex-col p-10 bg-slate-900 border-4 border-blue-500/30 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
+                    <div className="flex flex-col items-center mb-8">
+                        <span className="text-[10px] font-black text-blue-400 mb-2 tracking-[0.4em] uppercase">Tarjimasi</span>
+                        <h2 className="text-4xl font-black text-yellow-400 text-center italic tracking-tighter uppercase">{currentWord.translation}</h2>
+                        <span className="text-slate-500 text-[11px] mt-2 font-bold italic tracking-wide">({currentWord.word})</span>
                     </div>
 
-                    <div className="flex-1 flex flex-col space-y-4">
-                        <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                            <h3 className="text-[10px] font-black text-purple-300 mb-2 tracking-widest uppercase">Ta'rif (Definition)</h3>
-                            <p className="text-sm leading-relaxed text-gray-200">{currentWord.definition}</p>
+                    <div className="flex-1 flex flex-col space-y-6">
+                        <div className="bg-white/5 rounded-3xl p-6 border border-white/5 shadow-inner">
+                            <h3 className="text-[9px] font-black text-purple-400 mb-2 tracking-[0.3em] uppercase">Definition</h3>
+                            <p className="text-[13px] font-medium leading-relaxed text-slate-300 italic">"{currentWord.definition}"</p>
                         </div>
-                        <div className="bg-white/5 rounded-2xl p-4 border border-white/5 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                            <h3 className="text-[10px] font-black text-blue-300 mb-2 tracking-widest uppercase pl-1">Misol (Example)</h3>
-                            <p className="text-sm italic text-gray-300 pl-1 leading-relaxed">"{currentWord.example}"</p>
+                        <div className="bg-white/5 rounded-3xl p-6 border border-white/5 relative overflow-hidden shadow-inner">
+                            <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                            <h3 className="text-[9px] font-black text-blue-400 mb-2 tracking-[0.3em] uppercase pl-2">Usage Example</h3>
+                            <p className="text-[13px] font-black italic text-slate-200 pl-2 leading-relaxed">"{currentWord.example}"</p>
                         </div>
                     </div>
                     
                     <button 
                         onTouchEnd={(e) => { e.stopPropagation(); setFlipped(false); }}
                         onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
-                        className="mt-4 py-2 text-[10px] font-black text-gray-500 hover:text-white transition uppercase tracking-widest border-t border-white/5"
+                        className="mt-6 py-4 text-[10px] font-black text-slate-500 hover:text-white transition uppercase tracking-[0.3em] border-t border-white/5"
                     >
                         Yopish
                     </button>
@@ -367,14 +430,14 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
        <div className="absolute bottom-24 flex items-center justify-center space-x-12 z-20">
            <button 
              onClick={() => handleSwipe('left')}
-             className="w-16 h-16 rounded-full bg-slate-800/90 border-b-4 border-red-600 text-red-500 shadow-2xl flex items-center justify-center text-2xl active:translate-y-1 active:border-b-0 transition-all duration-150"
+             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
            >
              <i className="fa-solid fa-xmark"></i>
            </button>
            
            <button 
              onClick={() => handleSwipe('right')}
-             className="w-16 h-16 rounded-full bg-slate-800/90 border-b-4 border-green-600 text-green-400 shadow-2xl flex items-center justify-center text-2xl active:translate-y-1 active:border-b-0 transition-all duration-150"
+             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
            >
              <i className="fa-solid fa-check"></i>
            </button>
