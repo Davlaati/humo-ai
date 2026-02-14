@@ -16,7 +16,7 @@ const EntryNotification: React.FC<EntryNotificationProps> = ({ notification, onC
   };
 
   return (
-    <div className="absolute inset-0 z-[4001] flex items-end justify-center p-4">
+    <div className="absolute inset-0 z-[4001] flex items-end justify-center p-4 bg-slate-950/35 backdrop-blur-md">
       <div 
         className={`w-full max-w-sm rounded-[45px] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 bg-[#0c1222] border border-white/10 ${isAnimatingOut ? 'translate-y-[120%] opacity-0' : 'translate-y-0 animate-slide-up'}`}
       >

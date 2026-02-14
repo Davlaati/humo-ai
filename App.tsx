@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, EntryNotification as EntryNotifType } from './types';
-import { getUser, saveUser, incrementActiveTime, getEntryNotification } from './services/storageService';
+import { getUser, saveUser, incrementActiveTime, getEntryNotification, getAppSetting } from './services/storageService';
 import Onboarding from './components/Onboarding';
 import Layout from './components/Layout';
 import Home from './components/Home';
@@ -26,6 +26,7 @@ const App: React.FC = () => {
   const [showEntryNotif, setShowEntryNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
+  const [loadingLogo, setLoadingLogo] = useState<string | null>(null);
 
   const activityIntervalRef = useRef<any>(null);
 
@@ -43,6 +44,9 @@ const App: React.FC = () => {
     // Foydalanuvchini yuklash
     const storedUser = getUser();
     if (storedUser) setUser(storedUser);
+
+    const customLogo = getAppSetting('loading_logo');
+    if (customLogo) setLoadingLogo(customLogo);
 
     // Initial Splashdan chiqish va xabarnomani ko'rsatish
     const timer = setTimeout(() => {
@@ -110,7 +114,11 @@ const App: React.FC = () => {
           <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center">
               <div className="relative">
                   <div className="w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-40 animate-pulse"></div>
-                  <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                  {loadingLogo ? (
+                    <img src={loadingLogo} alt="Humo AI" className="w-20 h-20 object-contain absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]" />
+                  ) : (
+                    <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                  )}
               </div>
               <h1 className="mt-8 text-2xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
           </div>

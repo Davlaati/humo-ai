@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Word } from '../types';
 import { generateLessonContent, generateFallbackLesson, playTextToSpeech } from '../services/geminiService';
+import { addLeaderboardPoints } from '../services/storageService';
 import { playTapSound } from '../services/audioService';
 
 interface LessonProps {
@@ -87,6 +88,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
         coins: user.coins + coins,
         xp: user.xp + xp
       };
+      addLeaderboardPoints(updatedUser, xp);
       onUpdateUser(updatedUser);
       setRewardMessage(`+${coins} HC & +${xp} XP: ${reason}`);
       setTimeout(() => setRewardMessage(null), 2000);
@@ -459,7 +461,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
            </div>
        </div>
 
-       <div className="absolute bottom-24 flex items-center justify-center space-x-12 z-20">
+       <div className="absolute bottom-20 sm:bottom-24 left-0 right-0 flex items-center justify-center space-x-10 sm:space-x-12 z-20">
            <button 
              onClick={() => handleSwipe('left')}
              className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"

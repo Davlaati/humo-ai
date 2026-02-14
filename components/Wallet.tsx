@@ -1,159 +1,146 @@
-import React, { useState } from 'react';
-import { UserProfile } from '../types';
-import { convertHumoToStars, saveUser } from '../services/storageService';
-import { createStarsInvoice, getStarsBalance, simulatePaymentSuccess } from '../services/starsPaymentService';
+import React, { useMemo, useState } from 'react';
+import { PremiumPlanType, UserProfile } from '../types';
+import { getActiveSubscription, submitPremiumRequest, getPremiumRequests, saveUser } from '../services/storageService';
 
 interface WalletProps {
   user: UserProfile;
 }
 
-const STAR_VARIANTS = [
-  { key: 's50', stars: 50, cost: 500 },
-  { key: 's100', stars: 100, cost: 1000 },
-  { key: 's250', stars: 250, cost: 2500 },
-  { key: 's500', stars: 500, cost: 5000 },
+const PLANS: Array<{ type: PremiumPlanType; title: string; price: number; subtitle: string; recommended?: boolean }> = [
+  { type: '7d', title: '7 kun', price: 15000, subtitle: 'Sinov muddati' },
+  { type: '1m', title: '1 oy', price: 55000, subtitle: 'Eng mashhur', recommended: true },
+  { type: '1y', title: '1 yil', price: 550000, subtitle: 'Save compared to monthly' },
 ];
 
+const formatUzs = (amount: number) => `${amount.toLocaleString('ru-RU')} UZS`;
+
 const Wallet: React.FC<WalletProps> = ({ user }) => {
-  const [confirmModal, setConfirmModal] = useState<(typeof STAR_VARIANTS)[0] | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<PremiumPlanType>('1m');
+  const [proofImage, setProofImage] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string>('');
 
-  const handleConvertClick = (variant: (typeof STAR_VARIANTS)[0]) => setConfirmModal(variant);
+  const activeSubscription = useMemo(() => getActiveSubscription(user.id), [user.id, message]);
+  const pendingRequest = useMemo(
+    () => getPremiumRequests().find((item) => item.userId === user.id && item.status === 'pending') || null,
+    [message, user.id],
+  );
 
-  const executeConversion = () => {
-    if (!confirmModal) return;
-    setIsProcessing(true);
+  const handleProofUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    setTimeout(() => {
-      const updatedUser = convertHumoToStars(confirmModal.stars);
-      if (updatedUser) {
-        window.location.reload();
-      } else {
-        setError('HC yetarli emas!');
-      }
-      setIsProcessing(false);
-      setConfirmModal(null);
-    }, 700);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProofImage(String(reader.result || ''));
+    };
+    reader.readAsDataURL(file);
   };
 
-  const syncBalanceFromBackend = async (telegramId: string) => {
-    const balanceData = await getStarsBalance(telegramId);
-    if (!balanceData?.success) return;
-    const updated = { ...user, telegramStars: balanceData.balanceStars };
-    saveUser(updated);
-  };
-
-  const handleBuyStars = async (variant: (typeof STAR_VARIANTS)[0]) => {
-    const telegramId = String((window as any)?.Telegram?.WebApp?.initDataUnsafe?.user?.id || '');
-    const username = String((window as any)?.Telegram?.WebApp?.initDataUnsafe?.user?.username || user.username || '');
-
-    if (!telegramId) {
-      setError('Buy Stars faqat Telegram ichida ishlaydi.');
+  const handleSubmitPremium = () => {
+    if (!proofImage) {
+      setMessage('Iltimos, to‘lov chek rasmini yuklang.');
       return;
     }
 
-    setError('');
-    setIsProcessing(true);
-
-    try {
-      const result = await createStarsInvoice({ telegramId, username, packageKey: variant.key });
-      if (!result?.success) {
-        setError('Invoice yaratilmadi');
-        return;
-      }
-
-      if (result.mode === 'demo') {
-        const simulated = await simulatePaymentSuccess(result.paymentId);
-        if (simulated?.success) {
-          await syncBalanceFromBackend(telegramId);
-          window.location.reload();
-        } else {
-          setError('Demo payment xatoligi');
-        }
-        return;
-      }
-
-      const invoiceLink = result.invoiceLink;
-      if (!invoiceLink) {
-        setError('Invoice link topilmadi');
-        return;
-      }
-
-      const tg = (window as any).Telegram?.WebApp;
-      tg?.openInvoice(invoiceLink, async (status: string) => {
-        if (status === 'paid') {
-          await syncBalanceFromBackend(telegramId);
-          window.location.reload();
-        } else if (status === 'failed' || status === 'cancelled') {
-          setError("To'lov bekor qilindi yoki muvaffaqiyatsiz bo'ldi");
-        }
-      });
-    } catch {
-      setError('To\'lov servisi bilan aloqa yo\'q');
-    } finally {
-      setIsProcessing(false);
-    }
+    setIsSubmitting(true);
+    setTimeout(() => {
+      submitPremiumRequest(user, selectedPlan, proofImage);
+      saveUser({ ...user, isPremium: Boolean(activeSubscription) });
+      setMessage('Your premium account will be activated soon after verification.');
+      setIsSubmitting(false);
+    }, 500);
   };
 
   return (
-    <div className="p-4 pb-24 space-y-6 h-full overflow-y-auto no-scrollbar">
+    <div className="p-4 pb-24 space-y-6 animate-fade-in h-full overflow-y-auto no-scrollbar relative">
       <div className="grid grid-cols-2 gap-4">
-        <div className="glass-card p-5 rounded-[32px] border border-yellow-500/30">
-          <p className="text-[10px] text-yellow-400 font-black uppercase">Humo Coins</p>
+        <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-yellow-500/20 to-transparent border border-yellow-500/30">
+          <p className="text-[10px] text-yellow-400 font-black uppercase tracking-[0.2em]">Humo Coins</p>
           <h1 className="text-3xl font-black text-white">{user.coins.toLocaleString()}</h1>
         </div>
-        <div className="glass-card p-5 rounded-[32px] border border-blue-500/30">
-          <p className="text-[10px] text-blue-400 font-black uppercase">TG Stars</p>
-          <h1 className="text-3xl font-black text-white">{user.telegramStars.toLocaleString()}</h1>
+        <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30">
+          <p className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">Premium</p>
+          <h1 className="text-2xl font-black text-white">{activeSubscription ? 'Active' : 'Standard'}</h1>
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      <div className="space-y-3">
-        <h3 className="font-bold text-white">Buy Stars (Bot Payment)</h3>
-        {STAR_VARIANTS.map((variant) => (
-          <button
-            key={variant.key}
-            onClick={() => handleBuyStars(variant)}
-            disabled={isProcessing}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white py-3 rounded-xl font-bold flex items-center justify-between px-4"
-          >
-            <span>{variant.stars} Stars</span>
-            <span>{variant.cost} HC</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="font-bold text-white">Convert Humo → Stars (local)</h3>
-        {STAR_VARIANTS.map((variant) => (
-          <button
-            key={`convert-${variant.key}`}
-            onClick={() => handleConvertClick(variant)}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-semibold"
-          >
-            Convert: {variant.cost} HC → {variant.stars} Stars
-          </button>
-        ))}
-      </div>
-
-      {confirmModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setConfirmModal(null)}>
-          <div className="bg-slate-900 rounded-2xl p-6 w-full max-w-sm" onClick={(event) => event.stopPropagation()}>
-            <h4 className="font-bold text-white text-lg">Tasdiqlash</h4>
-            <p className="text-slate-300 mt-2">
-              {confirmModal.cost} HC evaziga {confirmModal.stars} Stars konvertatsiya qilinsinmi?
-            </p>
-            <div className="grid grid-cols-2 gap-3 mt-5">
-              <button onClick={() => setConfirmModal(null)} className="bg-slate-700 text-white py-2 rounded-lg">Bekor qilish</button>
-              <button onClick={executeConversion} disabled={isProcessing} className="bg-blue-600 text-white py-2 rounded-lg">
-                {isProcessing ? '...' : 'Tasdiqlash'}
-              </button>
+      {activeSubscription ? (
+        <div className="glass-card p-6 rounded-[36px] border border-green-500/30 bg-green-500/10 animate-slide-up">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-green-300 font-black">Premium badge</p>
+              <h3 className="text-2xl font-black text-white mt-2">Siz premiumsiz!</h3>
+              <p className="text-sm text-slate-300 mt-2">Premium active until {new Date(activeSubscription.expiresAt || '').toLocaleDateString()}</p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-green-500/20 border border-green-400/40 flex items-center justify-center">
+              <i className="fa-solid fa-crown text-green-300 text-2xl"></i>
             </div>
           </div>
         </div>
+      ) : (
+        <>
+          <div className="space-y-3">
+            <h3 className="font-black text-white uppercase tracking-[0.2em] text-xs">Premium Plans</h3>
+            <div className="space-y-3">
+              {PLANS.map((plan) => (
+                <button
+                  key={plan.type}
+                  onClick={() => setSelectedPlan(plan.type)}
+                  className={`w-full text-left p-5 rounded-[28px] border transition-all duration-300 ${
+                    selectedPlan === plan.type
+                      ? 'bg-blue-600/20 border-blue-500/60 shadow-[0_12px_30px_rgba(59,130,246,0.2)]'
+                      : 'bg-slate-900/60 border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-black">{plan.subtitle}</p>
+                      <h4 className="text-2xl font-black text-white mt-1">{plan.title}</h4>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black text-yellow-300">{formatUzs(plan.price)}</p>
+                      {plan.recommended && (
+                        <span className="inline-block mt-1 px-2 py-1 text-[9px] rounded-full bg-blue-500 text-white font-black uppercase tracking-widest">
+                          Recommended
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400">1 month = 55,000 UZS • 1 year = 550,000 UZS (Save compared to monthly)</p>
+          </div>
+
+          <div className="glass-card p-6 rounded-[32px] border border-white/10 bg-slate-900/60 space-y-4">
+            <h3 className="font-black text-white uppercase tracking-[0.2em] text-xs">Payment Instruction</h3>
+            <p className="text-sm text-slate-300">Admin karta raqamiga to‘lov qiling va chek rasmini yuklang.</p>
+            <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-400/20 text-sm text-blue-200">
+              Karta: <span className="font-black text-white">9860 1234 5678 9012</span>
+            </div>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-widest text-slate-400 font-black">Chek rasmi</span>
+              <input type="file" accept="image/*" onChange={handleProofUpload} className="mt-2 w-full text-sm text-slate-300" />
+            </label>
+
+            {proofImage && <img src={proofImage} alt="proof" className="w-full h-40 object-cover rounded-2xl border border-white/10" />}
+
+            <button
+              onClick={handleSubmitPremium}
+              disabled={isSubmitting || Boolean(pendingRequest)}
+              className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black uppercase tracking-[0.2em] text-xs"
+            >
+              {pendingRequest ? 'Pending verification' : isSubmitting ? 'Yuborilmoqda...' : 'Submit for Verification'}
+            </button>
+
+            {pendingRequest && (
+              <p className="text-sm text-yellow-300">Your premium account will be activated soon after verification.</p>
+            )}
+            {message && <p className="text-sm text-green-300">{message}</p>}
+          </div>
+        </>
       )}
     </div>
   );

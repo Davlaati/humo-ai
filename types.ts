@@ -117,3 +117,29 @@ export interface LeaderboardEntry {
   isCurrentUser: boolean;
   trend: 'up' | 'down' | 'same';
 }
+
+
+export type PremiumPlanType = '7d' | '1m' | '1y';
+
+export interface PremiumSubscription {
+  id: string;
+  userId: string;
+  planType: PremiumPlanType;
+  price: number;
+  status: 'pending' | 'approved' | 'rejected';
+  proofImage?: string;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export interface LeaderboardUserRecord {
+  id: string;
+  telegramId?: string;
+  username?: string;
+  points_total: number;
+  points_weekly: number;
+  points_monthly: number;
+  created_at: string;
+  weekKey: string;
+  monthKey: string;
+}
