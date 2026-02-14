@@ -16,9 +16,24 @@
   from = "/api/bot"
   to = "/.netlify/functions/bot"
   status = 200
+  force = true
+
+# Explicit admin rewrites (trailing slash holatlarini ham qoplaydi)
+[[redirects]]
+  from = "/admin"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+  force = true
 
 # SPA fallback: React Router route'lari 404 bermasligi uchun
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = true
