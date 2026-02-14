@@ -105,8 +105,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const apiKey = process['env']['API_KEY'];
-      const ai = new GoogleGenAI({ apiKey });
+      // Fix: Follow the Google GenAI hard requirements for API key usage and initialization.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
@@ -135,6 +135,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                 data: encode(new Uint8Array(int16.buffer)), 
                 mimeType: 'audio/pcm;rate=16000' 
               };
+              // CRITICAL: Solely rely on sessionPromise resolves and then call `session.sendRealtimeInput`.
               sessionPromise.then(s => s.sendRealtimeInput({ media: pcmBlob }));
             };
             
@@ -202,8 +203,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     // Xatolarni analiz qilish
     setIsAnalyzing(true);
     try {
-        const apiKey = process['env']['API_KEY'];
-        const ai = new GoogleGenAI({ apiKey });
+        // Fix: Use process.env.API_KEY directly as per guidelines.
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const conversationText = transcript.map(t => `${t.sender}: ${t.text}`).join('\n');
         
         if (transcript.length < 2) {

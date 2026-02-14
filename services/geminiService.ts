@@ -7,13 +7,9 @@ import { DICTIONARY } from "../data/dictionary";
  * Lazy initializer for the Gemini AI client.
  * This prevents the app from crashing during boot if the API_KEY is not yet available.
  */
+// Fix: Use process.env.API_KEY directly in the constructor as per hard requirements in the guidelines.
 const getAIClient = () => {
-  // Use bracket notation to access the environment variable
-  const apiKey = process['env']['API_KEY'];
-  if (!apiKey) {
-    throw new Error("API_KEY is not configured in the environment.");
-  }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 /**
