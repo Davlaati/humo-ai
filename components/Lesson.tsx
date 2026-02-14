@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Word } from '../types';
 import { generateLessonContent, generateFallbackLesson, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
+import { completeLesson } from '../services/publicApiService';
 
 interface LessonProps {
   user: UserProfile;
@@ -81,6 +82,14 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const awardReward = (reason: string, coins: number = 5, xp: number = 5) => {
     setSessionXP(prev => prev + xp);
     setSessionCoins(prev => prev + coins);
+
+    const telegramId = String((window as any)?.Telegram?.WebApp?.initDataUnsafe?.user?.id || user.id || '');
+    if (telegramId) {
+      completeLesson(telegramId, xp).catch(() => {
+        // silently fallback to local state updates
+      });
+    }
+
     if (onUpdateUser) {
       const updatedUser = {
         ...user,
@@ -176,7 +185,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
   if (isFinished) {
       return (
-          <div className="p-6 h-full flex flex-col items-center pb-24 animate-fade-in overflow-y-auto no-scrollbar bg-[#0c1222] relative">
+          <div className="px-4 pt-4 h-full flex flex-col items-center pb-28 animate-fade-in overflow-y-auto no-scrollbar bg-[#0c1222] relative">
               {/* Confetti Particles Rain */}
               <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
                   {Array.from({ length: 40 }).map((_, i) => (
@@ -273,7 +282,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
   if (quizPhase && currentIndex === content.vocab.length) {
       return (
-          <div className="p-6 h-full flex flex-col items-center pb-24 animate-slide-up relative">
+          <div className="px-4 pt-4 h-full flex flex-col items-center pb-28 animate-slide-up relative">
               <div className="absolute top-4 left-0 right-0 flex justify-center z-50">
                 {rewardMessage && (
                   <div className="bg-yellow-500 text-slate-900 px-4 py-2 rounded-full font-bold shadow-lg animate-bounce text-sm">
@@ -337,7 +346,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const borderColor = dragX > 0 ? `rgba(74, 222, 128, ${opacityInput})` : `rgba(248, 113, 113, ${opacityInput})`;
 
   return (
-    <div className="p-6 h-full flex flex-col items-center pb-24 relative overflow-hidden">
+    <div className="px-3 pt-3 h-full flex flex-col items-center pb-28 relative overflow-hidden">
        <div className="absolute top-4 left-0 right-0 flex justify-center z-50 pointer-events-none">
         {rewardMessage && (
           <div className="bg-yellow-500 text-slate-900 px-4 py-2 rounded-full font-bold shadow-lg animate-bounce text-sm">
@@ -420,7 +429,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
                     <button 
                         onTouchEnd={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
                         onClick={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
-                        className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition active:scale-95 border border-white/10 shadow-inner group"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition active:scale-95 border border-white/10 shadow-inner group"
                     >
                         <i className="fa-solid fa-volume-high text-3xl text-blue-400 group-hover:scale-110 transition-transform"></i>
                     </button>
@@ -459,17 +468,17 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
            </div>
        </div>
 
-       <div className="absolute bottom-24 flex items-center justify-center space-x-12 z-20">
+       <div className="absolute bottom-20 sm:bottom-24 flex items-center justify-center space-x-8 sm:space-x-12 z-20">
            <button 
              onClick={() => handleSwipe('left')}
-             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
            >
              <i className="fa-solid fa-xmark"></i>
            </button>
            
            <button 
              onClick={() => handleSwipe('right')}
-             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
            >
              <i className="fa-solid fa-check"></i>
            </button>
