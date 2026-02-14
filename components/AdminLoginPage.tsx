@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
 
 const ADMIN_TOKEN_KEY = 'admin_jwt_token';
 
@@ -7,7 +6,6 @@ function getTelegramUserId(): string | null {
   const telegramIdFromWebApp = (window as any)?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
   if (telegramIdFromWebApp) return String(telegramIdFromWebApp);
 
-  // Web-admin fallback for testing outside Telegram
   const urlParam = new URLSearchParams(window.location.search).get('tg_id');
   if (urlParam) return urlParam;
 
@@ -15,7 +13,6 @@ function getTelegramUserId(): string | null {
 }
 
 const AdminLoginPage: React.FC = () => {
-  const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'error' | 'idle'>('loading');
   const [error, setError] = useState('');
 
@@ -27,7 +24,10 @@ const AdminLoginPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (existingToken) return;
+    if (existingToken) {
+      window.location.replace('/admin/dashboard');
+      return;
+    }
 
     const autoLogin = async () => {
       if (!telegramId) {
@@ -55,7 +55,7 @@ const AdminLoginPage: React.FC = () => {
         }
 
         localStorage.setItem(ADMIN_TOKEN_KEY, payload.token);
-        navigate('/admin/dashboard', { replace: true });
+        window.location.replace('/admin/dashboard');
       } catch {
         setStatus('error');
         setError('Login service unavailable');
@@ -63,14 +63,11 @@ const AdminLoginPage: React.FC = () => {
     };
 
     autoLogin();
-  }, [existingToken, navigate, telegramId]);
-
-  if (existingToken) {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
+  }, [existingToken, telegramId]);
 
   if (status === 'idle') {
-    return <Navigate to="/" replace />;
+    window.location.replace('/');
+    return null;
   }
 
   return (
@@ -84,7 +81,7 @@ const AdminLoginPage: React.FC = () => {
         {status === 'error' && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
         <button
-          onClick={() => navigate('/', { replace: true })}
+          onClick={() => window.location.replace('/')}
           className="mt-6 w-full rounded-xl bg-slate-700 py-3 font-bold hover:bg-slate-600"
         >
           Mini App Home
