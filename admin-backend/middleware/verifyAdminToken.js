@@ -10,7 +10,12 @@ export function verifyAdminToken(req, res, next) {
   const token = authHeader.slice(7);
 
   try {
-    req.admin = jwt.verify(token, env.jwtSecret);
+    const payload = jwt.verify(token, env.jwtSecret);
+    if (String(payload.telegram_id) !== env.adminTelegramId) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    req.admin = payload;
     return next();
   } catch {
     return res.status(401).json({ success: false, message: 'Unauthorized' });

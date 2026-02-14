@@ -1,14 +1,12 @@
 {
   "name": "humo-admin-backend",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "node --watch server.js",
-    "start": "node server.js",
-    "generate:admin-hash": "node scripts/generate-admin-hash.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-validator": "^7.2.1",

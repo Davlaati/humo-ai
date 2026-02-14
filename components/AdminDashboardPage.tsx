@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 
 const ADMIN_TOKEN_KEY = 'admin_jwt_token';
@@ -6,14 +6,45 @@ const ADMIN_TOKEN_KEY = 'admin_jwt_token';
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+  const [verifying, setVerifying] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    const verify = async () => {
+      if (!token) {
+        setVerifying(false);
+        setIsAuthorized(false);
+        return;
+      }
+
+      try {
+        const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+        const response = await fetch(`${apiBase}/api/admin/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setIsAuthorized(response.ok);
+      } catch {
+        setIsAuthorized(false);
+      } finally {
+        setVerifying(false);
+      }
+    };
+
+    verify();
+  }, [token]);
 
   if (!token) {
     return <Navigate to="/admin" replace />;
   }
 
+  if (!verifying && !isAuthorized) {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    return <Navigate to="/" replace />;
+  }
+
   const handleLogout = () => {
     localStorage.removeItem(ADMIN_TOKEN_KEY);
-    navigate('/admin', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (
@@ -28,7 +59,9 @@ const AdminDashboardPage: React.FC = () => {
             Logout
           </button>
         </div>
-        <p className="text-slate-300 mt-4">Siz admin tizimiga muvaffaqiyatli kirdingiz.</p>
+        <p className="text-slate-300 mt-4">
+          {verifying ? 'Sessiya tekshirilmoqda...' : 'Telegram admin sessiyasi faol.'}
+        </p>
       </div>
     </div>
   );
