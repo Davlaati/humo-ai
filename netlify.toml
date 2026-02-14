@@ -1,4 +1,3 @@
-
 [build]
   command = "npm run build"
   publish = "dist"
@@ -16,4 +15,10 @@
 [[redirects]]
   from = "/api/bot"
   to = "/.netlify/functions/bot"
+  status = 200
+
+# SPA fallback: React Router route'lari 404 bermasligi uchun
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
   status = 200
