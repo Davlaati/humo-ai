@@ -89,6 +89,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
             </div>
             <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Analiz qilinmoqda...</p>
         </div>
+
+      ) : data.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center px-6 pb-36">
+          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-slate-900/70 p-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-500/10 border border-blue-400/20 flex items-center justify-center mb-4">
+              <i className="fa-solid fa-ranking-star text-blue-400"></i>
+            </div>
+            <h3 className="text-white font-black text-lg">Reyting hozircha bo'sh</h3>
+            <p className="text-slate-400 text-sm mt-2">Darslarni tugatib birinchi bo'lib reytingga kiring.</p>
+          </div>
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-5 pb-44 no-scrollbar">
           
