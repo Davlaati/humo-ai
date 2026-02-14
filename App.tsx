@@ -15,6 +15,7 @@ import SpeakingClub from './components/SpeakingClub';
 import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
+import { fetchLoadingLogo } from './services/publicApiService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -26,6 +27,7 @@ const App: React.FC = () => {
   const [showEntryNotif, setShowEntryNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
+  const [loadingLogoUrl, setLoadingLogoUrl] = useState<string | null>(null);
 
   const activityIntervalRef = useRef<any>(null);
 
@@ -39,6 +41,10 @@ const App: React.FC = () => {
       } catch (e) { console.warn("Telegram expand fail:", e); }
       tg.enableClosingConfirmation();
     }
+
+    fetchLoadingLogo().then((r) => {
+      if (r?.success && r.imageUrl) setLoadingLogoUrl(r.imageUrl);
+    }).catch(() => {});
 
     // Foydalanuvchini yuklash
     const storedUser = getUser();
@@ -110,7 +116,11 @@ const App: React.FC = () => {
           <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center">
               <div className="relative">
                   <div className="w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-40 animate-pulse"></div>
-                  <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                  {loadingLogoUrl ? (
+                    <img src={loadingLogoUrl} alt="Loading Logo" className="w-16 h-16 object-contain absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]" />
+                  ) : (
+                    <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                  )}
               </div>
               <h1 className="mt-8 text-2xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
           </div>

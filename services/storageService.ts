@@ -1,5 +1,6 @@
 
 import { UserProfile, Transaction, LeaderboardEntry, LeaderboardPeriod, StarsTransaction, EntryNotification } from "../types";
+import { fetchLeaderboard } from './publicApiService';
 
 const USER_KEY = 'humo_user';
 const TRANSACTIONS_KEY = 'humo_transactions';
@@ -49,45 +50,29 @@ export const saveUser = (user: UserProfile) => {
   } catch (e) {}
 };
 
-export const getLeaderboardData = (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
-    return new Promise((resolve) => {
-        // Real-time simulyatsiyasi uchun biroz kutish, lekin bag bo'lmasligi uchun aniq resolve
-        setTimeout(() => {
-            const names = ["Anvar", "Dilnoza", "Jasur", "Nigora", "Sherzod", "Kamola", "Otabek", "Malika", "Sardor", "Zilola", "Farrux", "Madina", "Bobur", "Gulnoza", "Azamat", "Umida", "Rustam", "Zaynab", "Sanjar", "Barno"];
-            const mockUsers: LeaderboardEntry[] = names.map((name, i) => {
-                const baseXP = period === 'weekly' ? 1200 : period === 'monthly' ? 5000 : 25000;
-                const randomXP = Math.floor(Math.random() * baseXP) + 100;
-                return {
-                    userId: `mock_${i}`,
-                    name: name,
-                    xp: randomXP,
-                    wins: Math.floor(randomXP / 120),
-                    rank: 0,
-                    isCurrentUser: false,
-                    trend: Math.random() > 0.5 ? 'up' : 'same'
-                };
-            });
-            
-            // Joriy foydalanuvchini qo'shish
-            mockUsers.push({
-                userId: currentUser.id,
-                name: currentUser.name,
-                xp: currentUser.xp,
-                wins: currentUser.wins || 0,
-                rank: 0,
-                isCurrentUser: true,
-                trend: 'same'
-            });
+export const getLeaderboardData = async (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
+  const telegramId = String((window as any)?.Telegram?.WebApp?.initDataUnsafe?.user?.id || currentUser.id || '');
 
-            // XP bo'yicha saralash
-            const sorted = mockUsers.sort((a, b) => b.xp - a.xp);
-            
-            // Ranklarni belgilash
-            const finalData = sorted.map((u, index) => ({ ...u, rank: index + 1 }));
-            
-            resolve(finalData);
-        }, 600); // Tezroq javob qaytarish
-    });
+  try {
+    const response = await fetchLeaderboard(period, telegramId, 100);
+    if (response?.success && Array.isArray(response.data)) {
+      return response.data;
+    }
+  } catch (error) {
+    console.warn('Leaderboard API unavailable, using local-only fallback', error);
+  }
+
+  return [
+    {
+      userId: currentUser.id,
+      name: currentUser.name,
+      xp: currentUser.xp,
+      wins: currentUser.wins || 0,
+      rank: 1,
+      isCurrentUser: true,
+      trend: 'same',
+    },
+  ];
 };
 
 export const convertHumoToStars = (starsAmount: number): UserProfile | null => {
