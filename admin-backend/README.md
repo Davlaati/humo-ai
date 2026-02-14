@@ -1,51 +1,85 @@
-# HUMO AI Admin Backend (Express + PostgreSQL)
+# Admin Auth Backend (Node.js + Express)
 
-Scalable, modular Admin Panel backend for Telegram Mini App.
+Secure admin login system for HUMO AI admin panel.
 
-## Architecture
-- Clean modular split:
-  - `controllers/`
-  - `services/`
-  - `repositories/`
-  - `middlewares/`
-  - `routes/`
-- JWT admin authentication + RBAC middleware.
-- SQL injection protection via parameterized `pg` queries.
-- Validation via `zod`.
+Admin panel UI: `https://humo-ai.netlify.app/admin`
 
-## Run
+## File structure
+
+```text
+admin-backend/
+  config/
+    env.js
+  auth/
+    adminAuthService.js
+  routes/
+    adminRoutes.js
+  middleware/
+    verifyAdminToken.js
+  scripts/
+    generate-admin-hash.js
+  server.js
+  package.json
+  .env.example
+```
+
+## Setup
+
 ```bash
 cd admin-backend
 npm install
+npm run generate:admin-hash
+# copy the generated hash into .env as ADMIN_PASSWORD_HASH
 cp .env.example .env
 npm run dev
 ```
 
-## DB
-Run `src/db/schema.sql` on PostgreSQL.
+## Environment variables
 
-## Implemented API
-- `POST /admin/login`
-- `POST /admin/logout`
-- `GET /admin/users`
-- `GET /admin/users/:id`
-- `PATCH /admin/users/:id`
-- `POST /admin/users/:id/ban`
-- `POST /admin/users/:id/unban`
-- `GET /admin/payments`
-- `POST /admin/payments/:id/verify`
-- `POST /admin/payments/:id/refund`
-- `GET /admin/ai-usage`
-- `GET /admin/ai-usage/:userId`
-- `GET /admin/settings`
-- `PATCH /admin/settings`
-- `GET /admin/logs`
-- `GET /admin/admin-logs`
+- `ADMIN_LOGIN`
+- `ADMIN_PASSWORD_HASH`
+- `JWT_SECRET`
+- `PORT`
 
-## Failure-mode handling
-- **Payment double verify**: idempotent service returns `idempotent: true` if already paid.
-- **Admin token theft**: short expiry + `ADMIN_TOKEN_VERSION` rotation for global revocation.
-- **Database down**: app startup health check fails fast; all queries centralized via repository layer.
-- **AI abuse**: `warning_flag` from high token usage, with room for auto-block worker.
-- **100k users**: pagination on list endpoints + indexes in SQL schema.
-- **Queue/backup**: Redis queue hook planned via `.env` and modular service structure.
+## API
+
+### `POST /api/admin/login`
+
+Request:
+
+```json
+{
+  "login": "337520209",
+  "password": "Davlatbek09"
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "token": "JWT_TOKEN"
+}
+```
+
+Failed response:
+
+```json
+{
+  "success": false,
+  "message": "Invalid credentials"
+}
+```
+
+## Example curl
+
+```bash
+curl -X POST http://localhost:8080/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"login":"337520209","password":"Davlatbek09"}'
+```
+
+## Route protection
+
+All routes under `/api/admin/*` except `/api/admin/login` are protected by `verifyAdminToken` middleware.
