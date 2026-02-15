@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, EntryNotification as EntryNotifType } from './types';
-import { getUser, saveUser, incrementActiveTime, getEntryNotification } from './services/storageService';
+import { getUser, saveUser, incrementActiveTime, getEntryNotification, getAppSetting } from './services/storageService';
 import Onboarding from './components/Onboarding';
 import Layout from './components/Layout';
 import Home from './components/Home';
@@ -26,6 +26,7 @@ const App: React.FC = () => {
   const [showEntryNotif, setShowEntryNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
+  const [loadingLogo, setLoadingLogo] = useState('');
 
   const activityIntervalRef = useRef<any>(null);
 
@@ -39,6 +40,8 @@ const App: React.FC = () => {
       } catch (e) { console.warn("Telegram expand fail:", e); }
       tg.enableClosingConfirmation();
     }
+
+    setLoadingLogo(getAppSetting('loading_logo'));
 
     // Foydalanuvchini yuklash
     const storedUser = getUser();
@@ -89,7 +92,10 @@ const App: React.FC = () => {
       ...profile, 
       id: Date.now().toString(),
       streak: 1,
-      coins: (profile.coins || 0) + 20 
+      coins: (profile.coins || 0) + 20,
+      pointsTotal: 0,
+      pointsWeekly: 0,
+      pointsMonthly: 0,
     };
     saveUser(newUser);
     setUser(newUser);
@@ -110,7 +116,11 @@ const App: React.FC = () => {
           <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center">
               <div className="relative">
                   <div className="w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-40 animate-pulse"></div>
-                  <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                  {loadingLogo ? (
+                    <img src={loadingLogo} alt="Humo loading logo" className="w-20 h-20 object-cover rounded-3xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(96,165,250,0.5)]" />
+                  ) : (
+                    <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                  )}
               </div>
               <h1 className="mt-8 text-2xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
           </div>
@@ -146,7 +156,7 @@ const App: React.FC = () => {
        <div onDoubleClick={() => setIsAdminMode(true)} className="fixed top-0 left-0 w-12 h-12 z-[3000] opacity-0"></div>
        
        {showEntryNotif && entryNotif && (
-           <div className="fixed inset-0 z-[4000] bg-blue-900/50 backdrop-blur-sm animate-fade-in">
+           <div className="fixed inset-0 z-[4000] bg-gradient-to-b from-slate-950/70 to-blue-950/40 backdrop-blur-md animate-fade-in">
                 <EntryNotification 
                   notification={entryNotif} 
                   onClose={() => {

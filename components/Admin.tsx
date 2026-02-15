@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserProfile, AdminPayment, SystemLog, AdminStats, EnglishLevel } from '../types';
-import { getUser, getTransactions } from '../services/storageService';
+import { UserProfile, AdminPayment, SystemLog, AdminStats, EnglishLevel, SubscriptionRequest, LeaderboardPeriod } from '../types';
+import { getSubscriptions, getTopUsers, resetWeeklyLeaderboard, reviewSubscriptionRequest, setAppSetting } from '../services/storageService';
 import GrowthDashboard from './GrowthDashboard';
 
 // --- SUB-COMPONENTS ---
@@ -38,6 +38,9 @@ const Admin: React.FC = () => {
   const [activeModule, setActiveModule] = useState<'dashboard' | 'users' | 'payments' | 'ai' | 'settings' | 'logs'>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRequest[]>(getSubscriptions());
+  const [topUsers, setTopUsers] = useState<UserProfile[]>(getTopUsers('alltime', 100));
+  const [logoPreview, setLogoPreview] = useState('');
   
   // Mock Data for Production Feel
   const stats: AdminStats = {
@@ -139,39 +142,29 @@ const Admin: React.FC = () => {
 
   const renderPayments = () => (
     <div className="space-y-6 animate-fade-in">
-       <div className="glass-card rounded-[35px] overflow-hidden border border-white/5">
-        <table className="w-full text-left">
-          <thead className="bg-white/5 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            <tr>
-              <th className="p-5">Transaction</th>
-              <th className="p-5">Amount</th>
-              <th className="p-5">Status</th>
-              <th className="p-5">Date</th>
-              <th className="p-5 text-right">Manual</th>
-            </tr>
-          </thead>
-          <tbody className="text-xs">
-            {payments.map(pay => (
-              <tr key={pay.id} className="border-t border-white/5">
-                <td className="p-5">
-                  <p className="font-black text-white">{pay.txId}</p>
-                  <p className="text-[10px] text-slate-500">User: @{pay.username}</p>
-                </td>
-                <td className="p-5 font-black text-indigo-400">{pay.amount} {pay.currency}</td>
-                <td className="p-5">
-                   <div className="flex items-center space-x-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${pay.status === 'paid' ? 'bg-emerald-500' : pay.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
-                      <span className="uppercase text-[10px] font-black">{pay.status}</span>
-                   </div>
-                </td>
-                <td className="p-5 text-slate-500">{pay.createdAt}</td>
-                <td className="p-5 text-right">
-                  <button className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 font-black text-[9px] uppercase hover:bg-emerald-500/20 transition">Verify</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="glass-card p-6 rounded-[35px] border border-white/5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Pending Premium Requests</h3>
+          <span className="text-[10px] text-amber-400 font-black">{subscriptions.filter(s => s.status === 'pending').length} pending</span>
+        </div>
+        <div className="space-y-4">
+          {subscriptions.length === 0 && <p className="text-xs text-slate-500">No requests yet.</p>}
+          {subscriptions.map((sub) => (
+            <div key={sub.id} className="p-4 rounded-2xl border border-white/10 bg-slate-900/40">
+              <div className="flex flex-wrap justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black text-white">@{sub.username || sub.userId} · {sub.planType}</p>
+                  <p className="text-[10px] text-slate-500">{sub.price.toLocaleString()} UZS · {new Date(sub.createdAt).toLocaleString('uz-UZ')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { reviewSubscriptionRequest(sub.id, 'approved'); setSubscriptions(getSubscriptions()); }} className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 font-black text-[9px] uppercase">Approve</button>
+                  <button onClick={() => { reviewSubscriptionRequest(sub.id, 'rejected'); setSubscriptions(getSubscriptions()); }} className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-400 font-black text-[9px] uppercase">Reject</button>
+                </div>
+              </div>
+              {sub.proofImage && <img src={sub.proofImage} alt="proof" className="mt-3 w-full h-40 object-cover rounded-xl border border-white/10" />}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -179,22 +172,32 @@ const Admin: React.FC = () => {
   const renderSettings = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
       <div className="glass-card p-8 rounded-[40px] border border-white/5 space-y-6">
-        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">System Toggles</h3>
-        <div className="space-y-4">
-          <ToggleItem label="AI Chat Feature" description="Enable/Disable Gemini AI functionality globally" active={true} />
-          <ToggleItem label="User Registration" description="Allow new users to join via Telegram" active={true} />
-          <ToggleItem label="Payment Gateways" description="Enable Stars and Humo Coin purchases" active={false} />
-          <ToggleItem label="Premium Hub" description="Enable restricted premium content" active={true} />
+        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Leaderboard Controls</h3>
+        <button onClick={() => { resetWeeklyLeaderboard(); setTopUsers(getTopUsers('alltime', 100)); }} className="w-full py-4 bg-indigo-600 rounded-[20px] font-black text-white text-xs uppercase tracking-widest">Reset Weekly Leaderboard</button>
+        <div className="max-h-80 overflow-y-auto space-y-2">
+          {topUsers.map((u, i) => (
+            <div key={u.id} className="p-3 rounded-xl bg-white/5 flex items-center justify-between">
+              <p className="text-xs font-black text-white">#{i + 1} {u.name}</p>
+              <p className="text-[10px] text-blue-400 font-black">{u.pointsTotal || 0} pts</p>
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="glass-card p-8 rounded-[40px] border border-white/5 flex flex-col">
-        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">AI Master Prompt Editor</h3>
-        <textarea 
-          className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl p-4 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500 h-64"
-          defaultValue={`You are HUMO AI - a creative English dictionary mentor. Your task is to develop user vocabulary based on Level, Goal, and Interests. Rules: 1. Vibe check...`}
-        />
-        <button className="mt-6 w-full py-4 bg-indigo-600 rounded-[20px] font-black text-white text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition">Save Prompt v2.4.1</button>
+        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Loading Logo Config</h3>
+        <label className="p-6 rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-500/5 text-center cursor-pointer">
+          <span className="text-[10px] uppercase tracking-widest font-black text-indigo-400">Upload splash logo</span>
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => setLogoPreview(String(reader.result || ''));
+            reader.readAsDataURL(file);
+          }} />
+        </label>
+        {logoPreview && <img src={logoPreview} alt="logo preview" className="mt-4 h-40 object-contain rounded-2xl border border-white/10" />}
+        <button onClick={() => { if (logoPreview) setAppSetting('loading_logo', logoPreview); }} className="mt-6 w-full py-4 bg-indigo-600 rounded-[20px] font-black text-white text-xs uppercase tracking-widest">Save Loading Logo</button>
       </div>
     </div>
   );

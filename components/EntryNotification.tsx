@@ -18,7 +18,7 @@ const EntryNotification: React.FC<EntryNotificationProps> = ({ notification, onC
   return (
     <div className="absolute inset-0 z-[4001] flex items-end justify-center p-4">
       <div 
-        className={`w-full max-w-sm rounded-[45px] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 bg-[#0c1222] border border-white/10 ${isAnimatingOut ? 'translate-y-[120%] opacity-0' : 'translate-y-0 animate-slide-up'}`}
+        className={`w-full max-w-sm rounded-[45px] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 bg-gradient-to-b from-slate-900/95 to-slate-950/90 border border-white/10 backdrop-blur-2xl ${isAnimatingOut ? 'translate-y-[120%] opacity-0' : 'translate-y-0 animate-slide-up'}`}
       >
         {/* Glow behind content */}
         <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>

@@ -44,9 +44,34 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
         isMounted = false;
         clearTimeout(safetyTimer);
     };
-  }, [period, user.xp]);
+  }, [period, user.pointsTotal, user.pointsWeekly, user.pointsMonthly]);
 
   const topThree = data.slice(0, 3);
+
+  if (!loading && data.length === 0) {
+    return (
+      <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in relative">
+        <div className="px-6 pt-6 pb-4 flex flex-col space-y-6 z-20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-black uppercase tracking-tighter text-white italic">Liderlar</h1>
+              <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Humo AI Global</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="glass-card w-full max-w-sm rounded-[35px] p-8 border border-white/10 text-center bg-slate-900/50">
+            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 mx-auto mb-4 flex items-center justify-center">
+              <i className="fa-solid fa-trophy text-blue-400 text-2xl"></i>
+            </div>
+            <h3 className="text-lg font-black text-white uppercase">Hali reyting yo'q</h3>
+            <p className="text-xs text-slate-400 mt-2">Darslarni yakunlab birinchi bo'lib ochko to'plang.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const rest = data.slice(3);
   const currentUserEntry = data.find(e => e.isCurrentUser);
 

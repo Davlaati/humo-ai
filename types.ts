@@ -1,4 +1,3 @@
-
 export type Language = 'Uz' | 'Ru' | 'Eng';
 
 export enum EnglishLevel {
@@ -12,10 +11,8 @@ export enum EnglishLevel {
 
 export type TeachingPersonality = 'Kind' | 'Strict' | 'Relaxed' | 'Demanding' | 'Playful' | 'Serious' | 'Energetic' | 'Calm';
 
-// Added missing LeaderboardPeriod type
 export type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';
 
-// Added missing LeaderboardEntry type
 export interface LeaderboardEntry {
   userId: string;
   name: string;
@@ -26,7 +23,6 @@ export interface LeaderboardEntry {
   trend: 'up' | 'same' | 'down';
 }
 
-// Added missing Transaction type
 export interface Transaction {
   id: string;
   type: string;
@@ -35,7 +31,6 @@ export interface Transaction {
   timestamp: string;
 }
 
-// Added missing SpeakingStatus and PartnerType for SpeakingClub
 export type SpeakingStatus = 'idle' | 'searching' | 'connected' | 'ended';
 export type PartnerType = 'ai' | 'user';
 
@@ -59,6 +54,19 @@ export interface StarsTransaction {
   timestamp: string;
 }
 
+export interface SubscriptionRequest {
+  id: string;
+  userId: string;
+  username?: string;
+  planType: '7d' | '1m' | '1y';
+  price: number;
+  status: 'pending' | 'approved' | 'rejected';
+  proofImage: string;
+  expiresAt?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
 export interface UserSettings {
   language: Language;
   theme: 'light' | 'dark';
@@ -76,6 +84,7 @@ export interface UserProfile {
   id: string;
   name: string;
   username?: string;
+  telegramId?: string;
   age: string;
   level: EnglishLevel;
   goal: string;
@@ -85,17 +94,21 @@ export interface UserProfile {
   interests: string[];
   coins: number;
   xp: number;
-  wins?: number; 
+  pointsTotal?: number;
+  pointsWeekly?: number;
+  pointsMonthly?: number;
+  wins?: number;
   streak: number;
   lastActiveDate: string;
   lastSpinDate?: string;
-  activeSecondsToday?: number; 
-  activityLog?: string[]; 
-  learnedWords?: Word[]; 
+  activeSecondsToday?: number;
+  activityLog?: string[];
+  learnedWords?: Word[];
   avatarUrl?: string;
   joinedAt: string;
   isAdmin?: boolean;
   isPremium?: boolean;
+  premiumExpiresAt?: string;
   telegramStars: number;
   starsHistory: StarsTransaction[];
   settings?: UserSettings;
@@ -103,7 +116,6 @@ export interface UserProfile {
   aiRequestsCount?: number;
 }
 
-// Admin Specific Types
 export interface AdminPayment {
   id: string;
   userId: string;

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Word } from '../types';
 import { generateLessonContent, generateFallbackLesson, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
+import { addLessonPoints } from '../services/storageService';
 
 interface LessonProps {
   user: UserProfile;
@@ -82,11 +83,11 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
     setSessionXP(prev => prev + xp);
     setSessionCoins(prev => prev + coins);
     if (onUpdateUser) {
-      const updatedUser = {
+      const updatedUser = addLessonPoints({
         ...user,
         coins: user.coins + coins,
         xp: user.xp + xp
-      };
+      }, xp);
       onUpdateUser(updatedUser);
       setRewardMessage(`+${coins} HC & +${xp} XP: ${reason}`);
       setTimeout(() => setRewardMessage(null), 2000);
@@ -337,7 +338,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const borderColor = dragX > 0 ? `rgba(74, 222, 128, ${opacityInput})` : `rgba(248, 113, 113, ${opacityInput})`;
 
   return (
-    <div className="p-6 h-full flex flex-col items-center pb-24 relative overflow-hidden">
+    <div className="p-4 sm:p-6 h-full flex flex-col items-center pb-28 sm:pb-24 relative overflow-hidden">
        <div className="absolute top-4 left-0 right-0 flex justify-center z-50 pointer-events-none">
         {rewardMessage && (
           <div className="bg-yellow-500 text-slate-900 px-4 py-2 rounded-full font-bold shadow-lg animate-bounce text-sm">
@@ -459,17 +460,17 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
            </div>
        </div>
 
-       <div className="absolute bottom-24 flex items-center justify-center space-x-12 z-20">
+       <div className="absolute bottom-20 sm:bottom-24 flex items-center justify-center space-x-8 sm:space-x-12 z-20">
            <button 
              onClick={() => handleSwipe('left')}
-             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
            >
              <i className="fa-solid fa-xmark"></i>
            </button>
            
            <button 
              onClick={() => handleSwipe('right')}
-             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
            >
              <i className="fa-solid fa-check"></i>
            </button>
