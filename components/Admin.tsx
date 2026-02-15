@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, AdminPayment, SystemLog, AdminStats, EnglishLevel } from '../types';
 import { getUser, getTransactions } from '../services/storageService';
+import GrowthDashboard from './GrowthDashboard';
 
 // --- SUB-COMPONENTS ---
 
@@ -72,44 +73,7 @@ const Admin: React.FC = () => {
   // --- MODULE RENDERS ---
 
   const renderDashboard = () => (
-    <div className="space-y-8 animate-fade-in">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total Users" value={stats.totalUsers.toLocaleString()} trend="+12%" icon="fa-users" color="bg-indigo-500" />
-        <StatCard label="Active (24h)" value={stats.active24h.toLocaleString()} trend="+5.4%" icon="fa-bolt" color="bg-amber-500" />
-        <StatCard label="AI Requests" value={stats.aiRequests.toLocaleString()} trend="+28%" icon="fa-brain" color="bg-emerald-500" />
-        <StatCard label="Premium Rate" value="18.5%" trend="+2%" icon="fa-crown" color="bg-purple-500" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card p-6 rounded-[35px] border border-white/5">
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">User Growth (Last 7 Days)</h3>
-          <div className="h-40 flex items-end justify-between px-2">
-            {[45, 60, 55, 80, 70, 95, 110].map((h, i) => (
-              <div key={i} className="w-8 bg-indigo-500/20 rounded-t-lg relative group">
-                <div className="absolute bottom-0 w-full bg-indigo-500 rounded-t-lg transition-all duration-1000" style={{ height: `${h}%` }}></div>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[10px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">{h}</div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-4 text-[8px] font-black text-slate-600 uppercase">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-          </div>
-        </div>
-
-        <div className="glass-card p-6 rounded-[35px] border border-white/5">
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Recent Activity Log</h3>
-          <div className="space-y-4">
-            {logs.slice(0, 4).map(log => (
-              <div key={log.id} className="flex items-center space-x-3 text-xs border-b border-white/5 pb-3 last:border-0">
-                <div className={`w-2 h-2 rounded-full ${log.type === 'error' ? 'bg-rose-500' : log.type === 'action' ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
-                <span className="text-slate-300 flex-1 truncate">{log.message}</span>
-                <span className="text-[10px] text-slate-600">{log.timestamp.split(' ')[1]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <GrowthDashboard />
   );
 
   const renderUsers = () => (
