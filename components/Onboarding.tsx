@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, EnglishLevel, TeachingPersonality } from '../types';
 
@@ -140,8 +141,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         return (
           <div className="flex flex-col items-center justify-center h-full text-center p-8 relative z-10 animate-fade-in">
             <div className="w-32 h-32 bg-blue-500 rounded-full blur-2xl absolute opacity-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-            <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 mb-6 relative z-10"></i>
-            <h1 className="text-4xl font-bold mb-2">{t('welcome_title')}</h1>
+            {/* LOGO INTEGRATION */}
+            <img 
+              src="./logo.png" 
+              alt="Humo AI" 
+              className="w-48 mb-8 relative z-10 drop-shadow-xl" 
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            {/* Fallback Icon if Image Fails (hidden by default unless logic added, but kept image simple) */}
+            <h1 className="text-3xl font-bold mb-2">{t('welcome_title')}</h1>
             <p className="text-gray-300 mb-10">{t('welcome_desc')}</p>
             <button onClick={next} className="w-full liquid-button py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">{t('welcome_btn')}</button>
           </div>

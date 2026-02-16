@@ -1,16 +1,25 @@
+
 import React, { useState, useMemo } from 'react';
 import { UserProfile } from '../types';
+import UserBadges from './UserBadges';
 
 interface ProfileProps {
   user: UserProfile;
   onUpdateUser: (user: UserProfile) => void;
+  onShowAdmin?: () => void;
 }
 
 const INTERESTS_OPTIONS = ['Technology', 'Business', 'Travel', 'Movies', 'Music', 'Sports', 'Gaming', 'Food', 'Fashion', 'Art', 'Science', 'History'];
 
-const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
+const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin }) => {
   const [isEditingInterests, setIsEditingInterests] = useState(false);
   const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
+
+  // Admin Login States
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [adminLogin, setAdminLogin] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const toggleInterest = (interest: string) => {
     if (editedInterests.includes(interest)) {
@@ -29,6 +38,18 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
     }
     onUpdateUser({ ...user, interests: editedInterests });
     setIsEditingInterests(false);
+  };
+
+  const handleAdminAuth = () => {
+    if (adminLogin === 'davlaati' && adminPassword === '337520209') {
+        if (onShowAdmin) onShowAdmin();
+        setShowLoginModal(false);
+        setAdminLogin('');
+        setAdminPassword('');
+        setLoginError('');
+    } else {
+        setLoginError("Login yoki parol noto'g'ri!");
+    }
   };
 
   return (
@@ -52,6 +73,9 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
          <StatCard label="O'rganildi" value={`${(user.learnedWords || []).length} so'z`} icon="fa-brain" color="text-pink-400" />
          <StatCard label="G'alaba" value={`${user.wins || 0} marta`} icon="fa-chart-line" color="text-green-400" />
       </div>
+
+      {/* Gamification: Achievements Grid */}
+      <UserBadges user={user} />
 
       {/* Activity Heatmap Section */}
       <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/5">
@@ -78,16 +102,6 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
             <span>90 kun avval</span>
             <span>Bugun</span>
         </div>
-      </div>
-
-      <div className="glass-card rounded-2xl p-6">
-         <h3 className="font-bold mb-4">Yutuqlar</h3>
-         <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
-            <Achievement icon="fa-shoe-prints" title="Ilk Qadam" earned={true} />
-            <Achievement icon="fa-shield-cat" title="So'z Jangchisi" earned={user.xp > 100} />
-            <Achievement icon="fa-graduation-cap" title="Vunderkind" earned={user.xp > 1000} />
-            <Achievement icon="fa-stopwatch" title="Tezlik Ustasi" earned={(user.wins || 0) > 10} />
-         </div>
       </div>
       
        <div className="glass-card rounded-2xl p-6 relative">
@@ -136,6 +150,64 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
                </button>
              </div>
            </div>
+         </div>
+       )}
+
+       {/* Secret Admin Trigger */}
+       <div className="pt-10 pb-4 flex justify-center">
+          <p 
+            onClick={() => setShowLoginModal(true)}
+            className="text-[10px] text-white/80 font-mono tracking-widest cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
+          >
+            date corp
+          </p>
+       </div>
+
+       {/* Admin Login Modal */}
+       {showLoginModal && (
+         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#0f172a]/95 backdrop-blur-xl animate-fade-in">
+            <div className="glass-card w-full max-w-xs p-8 rounded-[30px] border border-white/10 shadow-2xl animate-slide-up">
+                <div className="flex flex-col items-center mb-6">
+                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-3 border border-white/10">
+                        <i className="fa-solid fa-lock text-white/70"></i>
+                    </div>
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Admin Tizimi</h3>
+                </div>
+
+                <div className="space-y-4">
+                    <input 
+                        type="text" 
+                        placeholder="Login"
+                        value={adminLogin}
+                        onChange={(e) => setAdminLogin(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors text-center font-mono"
+                    />
+                    <input 
+                        type="password" 
+                        placeholder="Parol"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors text-center font-mono"
+                    />
+                    
+                    {loginError && <p className="text-red-400 text-[10px] text-center font-bold">{loginError}</p>}
+
+                    <div className="flex space-x-2 pt-2">
+                        <button 
+                            onClick={() => { setShowLoginModal(false); setLoginError(''); }}
+                            className="flex-1 py-3 rounded-xl bg-white/5 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-white/10 transition"
+                        >
+                            Bekor
+                        </button>
+                        <button 
+                            onClick={handleAdminAuth}
+                            className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 active:scale-95 transition"
+                        >
+                            Kirish
+                        </button>
+                    </div>
+                </div>
+            </div>
          </div>
        )}
 
@@ -206,14 +278,5 @@ const StatCard: React.FC<{ label: string; value: string | number; icon: string; 
         </div>
     </div>
 );
-
-const Achievement: React.FC<{ icon: string; title: string; earned: boolean }> = ({ icon, title, earned }) => (
-    <div className={`flex flex-col items-center min-w-[80px] space-y-2 group transition-all duration-300 ${earned ? 'opacity-100 scale-100' : 'opacity-30 grayscale scale-95'}`}>
-        <div className={`w-16 h-16 rounded-2xl glass-panel flex items-center justify-center border-2 ${earned ? 'border-purple-500/50 shadow-lg shadow-purple-500/10' : 'border-white/5'}`}>
-            <i className={`fa-solid ${icon} text-2xl ${earned ? 'text-purple-400' : 'text-gray-600'}`}></i>
-        </div>
-        <span className="text-[9px] font-black text-center uppercase tracking-tighter leading-tight">{title}</span>
-    </div>
-)
 
 export default Profile;

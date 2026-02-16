@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { convertHumoToStars, saveUser } from '../services/storageService';
@@ -92,7 +91,7 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
               <i className="fa-solid fa-coins text-yellow-400 text-xs"></i>
               <p className="text-[10px] text-yellow-400 font-black uppercase tracking-[0.2em]">Humo Coins</p>
            </div>
-           <h1 className="text-3xl font-black text-white">{user.coins.toLocaleString()}</h1>
+           <h1 className="text-3xl font-black text-white">{(user.coins ?? 0).toLocaleString()}</h1>
            <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">O'yin ichidagi valyuta</p>
         </div>
         <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 shadow-[0_10px_30px_rgba(59,130,246,0.1)]">
@@ -100,7 +99,7 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
               <i className="fa-solid fa-star text-blue-400 text-xs"></i>
               <p className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">TG Stars</p>
            </div>
-           <h1 className="text-3xl font-black text-white">{user.telegramStars.toLocaleString()}</h1>
+           <h1 className="text-3xl font-black text-white">{(user.telegramStars ?? 0).toLocaleString()}</h1>
            <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Real platform valyutasi</p>
         </div>
       </div>

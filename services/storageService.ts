@@ -1,4 +1,3 @@
-
 import { UserProfile, Transaction, LeaderboardEntry, LeaderboardPeriod, StarsTransaction, EntryNotification } from "../types";
 
 const USER_KEY = 'humo_user';
@@ -29,7 +28,7 @@ export const getUser = (): UserProfile | null => {
 
     if (!user.settings) user.settings = { language: 'Uz', theme: 'dark' };
     if (user.telegramStars === undefined) user.telegramStars = 0;
-    if (user.isPremium === undefined) user.isPremium = false; // Default premium status
+    if (user.isPremium === undefined) user.isPremium = false; 
     if (!user.starsHistory) user.starsHistory = [];
     if (user.xp === undefined) user.xp = 0;
     if (user.coins === undefined) user.coins = 0;
@@ -51,25 +50,37 @@ export const saveUser = (user: UserProfile) => {
 
 export const getLeaderboardData = (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
     return new Promise((resolve) => {
-        // Real-time simulyatsiyasi uchun biroz kutish, lekin bag bo'lmasligi uchun aniq resolve
         setTimeout(() => {
-            const names = ["Anvar", "Dilnoza", "Jasur", "Nigora", "Sherzod", "Kamola", "Otabek", "Malika", "Sardor", "Zilola", "Farrux", "Madina", "Bobur", "Gulnoza", "Azamat", "Umida", "Rustam", "Zaynab", "Sanjar", "Barno"];
-            const mockUsers: LeaderboardEntry[] = names.map((name, i) => {
-                const baseXP = period === 'weekly' ? 1200 : period === 'monthly' ? 5000 : 25000;
-                const randomXP = Math.floor(Math.random() * baseXP) + 100;
-                return {
-                    userId: `mock_${i}`,
-                    name: name,
-                    xp: randomXP,
-                    wins: Math.floor(randomXP / 120),
-                    rank: 0,
-                    isCurrentUser: false,
-                    trend: Math.random() > 0.5 ? 'up' : 'same'
-                };
-            });
+            // Realroq ismlar va natijalar
+            const mockData = [
+                { name: "Malika", xp: period === 'weekly' ? 1283 : 4500, wins: 12 },
+                { name: "Sardor", xp: period === 'weekly' ? 1090 : 4200, wins: 9 },
+                { name: "Sherzod", xp: period === 'weekly' ? 1072 : 4100, wins: 10 },
+                { name: "Nigora", xp: period === 'weekly' ? 1056 : 3900, wins: 8 },
+                { name: "Jasur", xp: period === 'weekly' ? 1027 : 3850, wins: 8 },
+                { name: "Zaynab", xp: period === 'weekly' ? 1011 : 3700, wins: 8 },
+                { name: "Umida", xp: period === 'weekly' ? 987 : 3600, wins: 8 },
+                { name: "Bobur", xp: period === 'weekly' ? 961 : 3500, wins: 8 },
+                { name: "Otabek", xp: period === 'weekly' ? 868 : 3100, wins: 7 },
+                { name: "Farrux", xp: period === 'weekly' ? 790 : 2900, wins: 6 },
+                { name: "Anvar", xp: period === 'weekly' ? 640 : 2500, wins: 5 },
+                { name: "Kamola", xp: period === 'weekly' ? 610 : 2400, wins: 5 },
+                { name: "Zilola", xp: period === 'weekly' ? 580 : 2200, wins: 4 },
+                { name: "Madina", xp: period === 'weekly' ? 550 : 2100, wins: 4 }
+            ];
+
+            const leaderboard: LeaderboardEntry[] = mockData.map((m, i) => ({
+                userId: `user_${i}`,
+                name: m.name,
+                xp: m.xp,
+                wins: m.wins,
+                rank: 0,
+                isCurrentUser: false,
+                trend: Math.random() > 0.7 ? 'up' : 'same'
+            }));
             
             // Joriy foydalanuvchini qo'shish
-            mockUsers.push({
+            leaderboard.push({
                 userId: currentUser.id,
                 name: currentUser.name,
                 xp: currentUser.xp,
@@ -79,14 +90,11 @@ export const getLeaderboardData = (period: LeaderboardPeriod, currentUser: UserP
                 trend: 'same'
             });
 
-            // XP bo'yicha saralash
-            const sorted = mockUsers.sort((a, b) => b.xp - a.xp);
-            
-            // Ranklarni belgilash
+            const sorted = leaderboard.sort((a, b) => b.xp - a.xp);
             const finalData = sorted.map((u, index) => ({ ...u, rank: index + 1 }));
             
             resolve(finalData);
-        }, 600); // Tezroq javob qaytarish
+        }, 500);
     });
 };
 

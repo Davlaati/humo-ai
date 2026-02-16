@@ -108,11 +108,23 @@ const App: React.FC = () => {
   if (isInitialSplash) {
       return (
           <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center">
-              <div className="relative">
-                  <div className="w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-40 animate-pulse"></div>
-                  <i className="fa-solid fa-feather-pointed text-6xl text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+              <div className="relative flex flex-col items-center">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500 rounded-full blur-[80px] opacity-30 animate-pulse"></div>
+                  {/* LOGO INTEGRATION */}
+                  <img 
+                    src="./logo.png" 
+                    alt="Humo AI" 
+                    className="w-56 h-auto relative z-10 drop-shadow-[0_0_25px_rgba(59,130,246,0.6)] animate-pulse" 
+                    onError={(e) => {
+                      // Fallback if image not found
+                      e.currentTarget.style.display = 'none';
+                      const fallback = document.getElementById('splash-fallback');
+                      if(fallback) fallback.style.display = 'block';
+                    }}
+                  />
+                  {/* Fallback Text just in case */}
+                  <h1 id="splash-fallback" className="hidden mt-4 text-4xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
               </div>
-              <h1 className="mt-8 text-2xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
           </div>
       );
   }
@@ -135,7 +147,7 @@ const App: React.FC = () => {
           case 'game': return <Game user={user} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
-          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} />;
+          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
           case 'dictionary': return <SmartDictionary user={user} />;
           default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
       }
@@ -143,8 +155,6 @@ const App: React.FC = () => {
 
   return (
     <>
-       <div onDoubleClick={() => setIsAdminMode(true)} className="fixed top-0 left-0 w-12 h-12 z-[3000] opacity-0"></div>
-       
        {showEntryNotif && entryNotif && (
            <div className="fixed inset-0 z-[4000] bg-blue-900/50 backdrop-blur-sm animate-fade-in">
                 <EntryNotification 

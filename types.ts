@@ -12,33 +12,6 @@ export enum EnglishLevel {
 
 export type TeachingPersonality = 'Kind' | 'Strict' | 'Relaxed' | 'Demanding' | 'Playful' | 'Serious' | 'Energetic' | 'Calm';
 
-// Added missing LeaderboardPeriod type
-export type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';
-
-// Added missing LeaderboardEntry type
-export interface LeaderboardEntry {
-  userId: string;
-  name: string;
-  xp: number;
-  wins: number;
-  rank: number;
-  isCurrentUser: boolean;
-  trend: 'up' | 'same' | 'down';
-}
-
-// Added missing Transaction type
-export interface Transaction {
-  id: string;
-  type: string;
-  amount: number;
-  status: string;
-  timestamp: string;
-}
-
-// Added missing SpeakingStatus and PartnerType for SpeakingClub
-export type SpeakingStatus = 'idle' | 'searching' | 'connected' | 'ended';
-export type PartnerType = 'ai' | 'user';
-
 export interface EntryNotification {
   id: string;
   image?: string;
@@ -59,17 +32,10 @@ export interface StarsTransaction {
   timestamp: string;
 }
 
+// UserSettings interface added to define user preferences
 export interface UserSettings {
   language: Language;
   theme: 'light' | 'dark';
-}
-
-export interface Word {
-  term: string;
-  definition: string;
-  example: string;
-  translation: string;
-  mastered: boolean;
 }
 
 export interface UserProfile {
@@ -95,38 +61,59 @@ export interface UserProfile {
   avatarUrl?: string;
   joinedAt: string;
   isAdmin?: boolean;
-  isPremium?: boolean;
+  isPremium?: boolean; // Added for Stars Payment
   telegramStars: number;
   starsHistory: StarsTransaction[];
+  // Added settings property to UserProfile interface
   settings?: UserSettings;
-  status?: 'active' | 'blocked';
-  aiRequestsCount?: number;
 }
 
-// Admin Specific Types
-export interface AdminPayment {
+export interface Transaction {
   id: string;
   userId: string;
   username: string;
-  amount: number;
-  currency: 'XTR' | 'USD';
-  status: 'pending' | 'paid' | 'failed';
-  txId: string;
+  amount: number; 
+  cost: number; 
+  status: 'pending' | 'approved' | 'rejected';
+  proofUrl?: string; 
   createdAt: string;
 }
 
-export interface SystemLog {
+export interface Word {
+  term: string;
+  definition: string;
+  example: string;
+  translation: string;
+  mastered: boolean;
+}
+
+export interface GameState {
+  isFighting: boolean;
+  score: number;
+  timeLeft: number;
+}
+
+export type SpeakingStatus = 'idle' | 'searching' | 'matched' | 'connected' | 'ended';
+export type PartnerType = 'user' | 'ai';
+
+export interface SpeakingSession {
   id: string;
-  type: 'info' | 'error' | 'action';
-  message: string;
-  adminName?: string;
+  partnerName: string;
+  partnerType: PartnerType;
+  durationSeconds: number;
+  xpEarned: number;
   timestamp: string;
 }
 
-export interface AdminStats {
-  totalUsers: number;
-  active24h: number;
-  newToday: number;
-  totalPayments: number;
-  aiRequests: number;
+export type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';
+
+export interface LeaderboardEntry {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  xp: number;
+  wins: number;
+  rank: number;
+  isCurrentUser: boolean;
+  trend: 'up' | 'down' | 'same';
 }
