@@ -46,20 +46,49 @@ const Admin: React.FC = () => {
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
 
   useEffect(() => {
-    const refreshData = () => {
-      setTxs(getTransactions().reverse());
-      setCurrentUser(getUser());
-      setUsers(getAllUsers());
-      setAnalytics(getPlatformAnalytics());
-      setLogs(getAdminLogs());
-      setDictItems(getDictionaryItems());
-      setDiscounts(getDiscounts());
-      setPackages(getSubscriptionPackages());
+    let isMounted = true;
+    
+    const refreshData = async () => {
+      try {
+        const [
+          transactions,
+          allUsers,
+          platformAnalytics,
+          adminLogs,
+          dictionaryItems,
+          allDiscounts,
+          subPackages
+        ] = await Promise.all([
+          getTransactions(),
+          getAllUsers(),
+          getPlatformAnalytics(),
+          getAdminLogs(),
+          getDictionaryItems(),
+          getDiscounts(),
+          getSubscriptionPackages()
+        ]);
+
+        if (isMounted) {
+          setTxs(transactions.reverse());
+          setCurrentUser(getUser());
+          setUsers(allUsers);
+          setAnalytics(platformAnalytics);
+          setLogs(adminLogs);
+          setDictItems(dictionaryItems);
+          setDiscounts(allDiscounts);
+          setPackages(subPackages);
+        }
+      } catch (err) {
+        console.error("Admin data refresh failed:", err);
+      }
     };
 
     refreshData();
-    const interval = setInterval(refreshData, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(refreshData, 10000); // Refresh every 10s
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleUpdateBalances = () => {
