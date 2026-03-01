@@ -43,17 +43,52 @@ const App: React.FC = () => {
 
     // Foydalanuvchini yuklash
     const initUser = async () => {
-      const storedUser = getUser();
-      if (storedUser) {
-        setUser(storedUser);
-      } else {
-        const tg = (window as any).Telegram?.WebApp;
-        const tgId = tg?.initDataUnsafe?.user?.id;
-        if (tgId) {
-          const { initializeFromSupabase } = await import("./services/storageService");
-          const remoteUser = await initializeFromSupabase(String(tgId));
-          if (remoteUser) setUser(remoteUser);
+      const tg = (window as any).Telegram?.WebApp;
+      const tgUser = tg?.initDataUnsafe?.user;
+      
+      if (tgUser) {
+        const tgId = String(tgUser.id);
+        const { fetchUserFromSupabase, syncUserToSupabase } = await import("./services/supabaseService");
+        
+        // 1. Supabase'dan tekshirish
+        const remoteUser = await fetchUserFromSupabase(tgId);
+        
+        if (remoteUser) {
+          // Mavjud foydalanuvchi
+          const fullUser = { 
+            ...remoteUser, 
+            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
+            username: tgUser.username || remoteUser.username,
+            avatarUrl: tgUser.photo_url || remoteUser.avatarUrl,
+            activeSecondsToday: 0
+          } as UserProfile;
+          setUser(fullUser);
+          saveUser(fullUser);
+        } else {
+          // Yangi foydalanuvchi yaratish
+          const newUser: UserProfile = {
+            id: tgId,
+            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
+            username: tgUser.username || `user_${tgId.slice(-4)}`,
+            avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgId}`,
+            coins: 500, // Bonus for new users
+            xp: 0,
+            streak: 0,
+            level: 1,
+            isPremium: false,
+            telegramStars: 0,
+            starsHistory: [],
+            settings: { language: 'Uz', theme: 'dark' },
+            activeSecondsToday: 0
+          };
+          setUser(newUser);
+          saveUser(newUser);
+          await syncUserToSupabase(newUser);
         }
+      } else {
+        // Local storage fallback for development
+        const storedUser = getUser();
+        if (storedUser) setUser(storedUser);
       }
     };
     initUser();
