@@ -132,7 +132,7 @@ export const playTextToSpeech = async (text: string) => {
 export const generateConversationResponse = async (userText: string, userLevel: string) => {
   try {
     const ai = getAIClient();
-    const prompt = `You are Humobek AI, a friendly English tutor. User level: ${userLevel}. Response < 30 words. Encourage and ask a question. User: "${userText}"`;
+    const prompt = `You are Ravona AI, a friendly English tutor. User level: ${userLevel}. Response < 30 words. Encourage and ask a question. User: "${userText}"`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -169,7 +169,7 @@ export const consultWithMentor = async (user: UserProfile, query: string, type: 
     const ai = getAIClient();
     
     const systemInstruction = `
-      # ROLE: Siz HUMO AI - Telegram Mini App uchun yaratilgan eng kreativ va aqlli lug'at mentorsiz. 
+      # ROLE: Siz RAVONA AI - Telegram Mini App uchun yaratilgan eng kreativ va aqlli lug'at mentorsiz. 
 
       # FOYDALANUVCHI PROFILI (USER DNA):
       - Ism: ${user.name}
@@ -199,7 +199,7 @@ export const consultWithMentor = async (user: UserProfile, query: string, type: 
       - "Visual Prompting": So'zni tushuntirish uchun ASCII art yoki emojilardan maksimal foydalaning.
 
       # 4. MONETIZATION (Premium Push):
-      - Foydalanuvchi 3 tadan ortiq murakkab so'z so'rasa, "Senda akademik salohiyat yuqori (${user.goal})! Humo Premium'da IELTS 8+ lug'at paketi ochildi, Stars orqali ulanishni xohlaysanmi?" deb taklif bering.
+      - Foydalanuvchi 3 tadan ortiq murakkab so'z so'rasa, "Senda akademik salohiyat yuqori (${user.goal})! Ravona Premium'da IELTS 8+ lug'at paketi ochildi, Stars orqali ulanishni xohlaysanmi?" deb taklif bering.
 
       # 5. TECHNICAL RULES:
       - Javoblar qisqa, vizual skanerlashga oson (bullet points) bo'lsin.

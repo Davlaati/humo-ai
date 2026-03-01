@@ -13,8 +13,51 @@ interface SpeakingClubProps {
 interface AnalysisReport {
   grammarErrors: { original: string; corrected: string; explanation: string }[];
   vocabularySuggestions: string[];
+  pronunciationFeedback: string[];
+  fluencyFeedback: string;
+  scores: {
+    grammar: number;
+    vocabulary: number;
+    fluency: number;
+    pronunciation: number;
+  };
   overallLevel: string;
 }
+
+const AI_PERSONALITIES = [
+  {
+    id: 'ravona',
+    name: 'Ravona AI',
+    role: 'Supportive Tutor',
+    voice: 'Zephyr',
+    description: 'Friendly and encouraging, perfect for beginners.',
+    prompt: (user: UserProfile) => `You are Ravona AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}. Respond like a native speaker with a warm and encouraging tone.`
+  },
+  {
+    id: 'sarah',
+    name: 'Sarah (London)',
+    role: 'Grammar Expert',
+    voice: 'Kore',
+    description: 'Focuses on precision and British English elegance.',
+    prompt: (user: UserProfile) => `You are Sarah, a strict but fair English grammar expert from London. Focus on correcting the user's grammar and pronunciation. Use British English. Current User: ${user.name}, Level: ${user.level}.`
+  },
+  {
+    id: 'alex',
+    name: 'Alex (NYC)',
+    role: 'Casual Friend',
+    voice: 'Puck',
+    description: 'Cool, uses slang and idioms. Great for natural flow.',
+    prompt: (user: UserProfile) => `You are Alex, a casual friend from New York City. Use American slang and idioms naturally. Don't be too formal. Just have a cool conversation. Current User: ${user.name}, Level: ${user.level}.`
+  },
+  {
+    id: 'dr_aris',
+    name: 'Dr. Aris',
+    role: 'Academic Professor',
+    voice: 'Charon',
+    description: 'Advanced vocabulary and formal structures for IELTS/TOEFL.',
+    prompt: (user: UserProfile) => `You are Dr. Aris, an academic professor. Use sophisticated vocabulary and formal structures. Challenge the user to use more advanced English. Current User: ${user.name}, Level: ${user.level}.`
+  }
+];
 
 // Audio Helpers
 function encode(bytes: Uint8Array) {
@@ -43,12 +86,15 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
 
 const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateUser }) => {
   const [status, setStatus] = useState<SpeakingStatus>('idle');
-  const [partnerInfo, setPartnerInfo] = useState<{name: string, type: PartnerType, level: string}>({ name: 'Humobek AI', type: 'ai', level: 'Native' });
+  const [partnerInfo, setPartnerInfo] = useState<{name: string, type: PartnerType, level: string}>({ name: 'Ravona AI', type: 'ai', level: 'Native' });
   const [elapsedTime, setElapsedTime] = useState(0);
   const [transcript, setTranscript] = useState<{sender: 'me' | 'partner', text: string}[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisReport | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedPersonality, setSelectedPersonality] = useState(AI_PERSONALITIES[0]);
+  const [showPersonalityPicker, setShowPersonalityPicker] = useState(false);
 
   // Audio Contexts & Refs
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
@@ -74,33 +120,38 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     sourcesRef.current.clear();
   };
 
-  const startSession = async () => {
+  const startSession = async (personalityOverride?: typeof AI_PERSONALITIES[0]) => {
     setError(null);
     setStatus('searching');
+    setShowPersonalityPicker(false);
     
-    // Simulyatsiya qilingan matching (60% AI, 40% Real User)
-    const isRealUser = Math.random() > 0.6;
+    // Simulyatsiya qilingan matching (70% AI, 30% Real User)
+    const isRealUser = personalityOverride ? false : Math.random() > 0.7;
     const searchDelay = 2000 + Math.random() * 3000;
 
     setTimeout(async () => {
         const names = ["James (London)", "Akmal (Tashkent)", "Sarah (New York)", "Elena (Moscow)"];
         const selectedPartnerName = names[Math.floor(Math.random() * names.length)];
         
+        let systemPrompt = "";
+        let voice = "Zephyr";
+
         if (isRealUser) {
             setPartnerInfo({ name: selectedPartnerName, type: 'user', level: 'Intermediate+' });
+            systemPrompt = `Siz hozir ingliz tilini o'rganayotgan talaba ${selectedPartnerName} rolidasiz. Foydalanuvchi bilan do'stona va ingliz tilida gaplashing. Faqat ingliz tilidan foydalaning.`;
         } else {
-            setPartnerInfo({ name: "Humobek AI", type: 'ai', level: 'Native' });
+            const personality = personalityOverride || AI_PERSONALITIES[Math.floor(Math.random() * AI_PERSONALITIES.length)];
+            setSelectedPersonality(personality);
+            setPartnerInfo({ name: personality.name, type: 'ai', level: 'Native' });
+            systemPrompt = personality.prompt(user);
+            voice = personality.voice;
         }
         
-        const systemPrompt = isRealUser 
-          ? `Siz hozir ingliz tilini o'rganayotgan talaba ${selectedPartnerName} rolidasiz. Foydalanuvchi bilan do'stona va ingliz tilida gaplashing. Faqat ingliz tilidan foydalaning.`
-          : `You are Humobek AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}. Respond like a native speaker.`;
-
-        await connectToLiveAPI(systemPrompt);
+        await connectToLiveAPI(systemPrompt, voice);
     }, searchDelay);
   };
 
-  const connectToLiveAPI = async (systemInstruction: string) => {
+  const connectToLiveAPI = async (systemInstruction: string, voice: string = 'Zephyr') => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -114,7 +165,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice as any } } },
           systemInstruction,
           inputAudioTranscription: {},
           outputAudioTranscription: {}
@@ -218,13 +269,21 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Analyze this English conversation transcript for errors by the "me" speaker. Return JSON. 
+            contents: `Analyze this English conversation transcript for errors and performance by the "me" speaker. Provide detailed feedback on grammar, vocabulary, pronunciation (based on phonetic hints in transcript), and fluency. Return JSON. 
             Transcript:
             ${conversationText}
             
             JSON schema: { 
-                "grammarErrors": [{"original": "the wrong sentence", "corrected": "the right sentence", "explanation": "why it was wrong"}], 
+                "grammarErrors": [{"original": "...", "corrected": "...", "explanation": "..."}], 
                 "vocabularySuggestions": ["word1", "word2"], 
+                "pronunciationFeedback": ["word1 - sounds like '...', should be '...'"],
+                "fluencyFeedback": "Brief summary of pacing and hesitation",
+                "scores": {
+                    "grammar": 1-10,
+                    "vocabulary": 1-10,
+                    "fluency": 1-10,
+                    "pronunciation": 1-10
+                },
                 "overallLevel": "A1-C2" 
             }`,
             config: { responseMimeType: 'application/json' }
@@ -245,7 +304,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
   if (status === 'idle') {
     return (
-      <div className="flex flex-col h-full bg-[#0c1222] p-6 animate-fade-in">
+      <div className="flex flex-col h-full bg-[#0c1222] p-6 animate-fade-in overflow-y-auto no-scrollbar">
         <div className="flex items-center mb-10">
           <button onClick={() => onNavigate('home')} className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center mr-4 border border-white/10 active:scale-90 transition">
             <i className="fa-solid fa-arrow-left text-lg"></i>
@@ -253,7 +312,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
           <h1 className="text-2xl font-black italic uppercase tracking-tighter">Speaking Club</h1>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center text-center pb-20">
+        <div className="flex-1 flex flex-col items-center justify-center text-center pb-10">
           <div className="relative w-44 h-44 mb-10">
             <div className="absolute inset-0 bg-blue-500 rounded-full blur-[60px] opacity-20 animate-pulse"></div>
             <div className="relative w-full h-full glass-card rounded-full flex items-center justify-center border-4 border-blue-500/30 shadow-2xl">
@@ -264,11 +323,45 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
           <p className="text-slate-400 mb-10 max-w-xs text-sm font-medium leading-relaxed">
             Haqiqiy foydalanuvchilar yoki sun'iy intellekt bilan ovozli suhbat quring va xatolaringizni bilib oling.
           </p>
-          <button onClick={startSession} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition">
-            Suhbatdosh Qidirish
-          </button>
+          
+          <div className="w-full space-y-4">
+            <button onClick={() => startSession()} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition">
+              Tasodifiy Suhbatdosh
+            </button>
+            <button onClick={() => setShowPersonalityPicker(true)} className="w-full glass-card py-5 rounded-[25px] font-black text-lg uppercase tracking-widest active:scale-95 transition border border-white/10">
+              AI Tutor Tanlash
+            </button>
+          </div>
+          
           {error && <p className="mt-4 text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">{error}</p>}
         </div>
+
+        {/* Personality Picker Modal */}
+        {showPersonalityPicker && (
+            <div className="fixed inset-0 z-[5000] bg-[#0c1222]/90 backdrop-blur-xl p-6 flex flex-col animate-fade-in">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black italic uppercase tracking-tighter">AI Tutor Tanlash</h3>
+                    <button onClick={() => setShowPersonalityPicker(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                        <i className="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-10">
+                    {AI_PERSONALITIES.map((p) => (
+                        <div key={p.id} onClick={() => startSession(p)} className="glass-card p-5 rounded-[30px] border border-white/5 active:scale-95 transition flex items-center">
+                            <div className="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center mr-4">
+                                <i className={`fa-solid ${p.id === 'ravona' ? 'fa-robot' : p.id === 'sarah' ? 'fa-user-tie' : p.id === 'alex' ? 'fa-user-ninja' : 'fa-user-graduate'} text-2xl text-blue-400`}></i>
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-black text-sm uppercase tracking-tight">{p.name}</h4>
+                                <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">{p.role}</p>
+                                <p className="text-[10px] text-slate-500 leading-tight">{p.description}</p>
+                            </div>
+                            <i className="fa-solid fa-chevron-right text-slate-700 ml-2"></i>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
       </div>
     );
   }
@@ -366,6 +459,21 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             </div>
         ) : analysis ? (
             <div className="space-y-6 pb-20">
+                {/* Scores Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                    {[
+                        { label: 'Grammar', score: analysis.scores?.grammar || 0, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+                        { label: 'Vocab', score: analysis.scores?.vocabulary || 0, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+                        { label: 'Fluency', score: analysis.scores?.fluency || 0, color: 'text-green-400', bg: 'bg-green-400/10' },
+                        { label: 'Pronun.', score: analysis.scores?.pronunciation || 0, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+                    ].map((s, i) => (
+                        <div key={i} className={`glass-card rounded-3xl p-4 flex flex-col items-center justify-center border border-white/5 ${s.bg}`}>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${s.color} mb-1`}>{s.label}</span>
+                            <span className="text-2xl font-black">{s.score}/10</span>
+                        </div>
+                    ))}
+                </div>
+
                 <div className="glass-card rounded-[35px] p-6 border border-white/5">
                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Grammatik Xatolar</h3>
                     <div className="space-y-4">
@@ -379,6 +487,27 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                             <p className="text-xs text-slate-500 italic">Xatolar topilmadi. Ajoyib!</p>
                         )}
                     </div>
+                </div>
+
+                <div className="glass-card rounded-[35px] p-6 border border-white/5">
+                    <h3 className="text-xs font-black text-orange-400 uppercase tracking-widest mb-4">Talaffuz (Pronunciation)</h3>
+                    <div className="space-y-2">
+                        {analysis.pronunciationFeedback && analysis.pronunciationFeedback.length > 0 ? analysis.pronunciationFeedback.map((f, i) => (
+                            <p key={i} className="text-xs font-bold text-slate-300 flex items-start">
+                                <i className="fa-solid fa-circle-dot text-[8px] mt-1.5 mr-2 text-orange-400"></i>
+                                {f}
+                            </p>
+                        )) : (
+                            <p className="text-xs text-slate-500 italic">Talaffuzda muammo sezilmadi.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="glass-card rounded-[35px] p-6 border border-white/5">
+                    <h3 className="text-xs font-black text-green-400 uppercase tracking-widest mb-4">Ravonlik (Fluency)</h3>
+                    <p className="text-xs font-bold text-slate-300 leading-relaxed">
+                        {analysis.fluencyFeedback || "Siz juda ravon gapirdingiz!"}
+                    </p>
                 </div>
 
                 <div className="glass-card rounded-[35px] p-6 border border-white/5">

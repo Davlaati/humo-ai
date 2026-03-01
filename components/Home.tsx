@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
-import LuckWheel from './LuckWheel';
 import DailyStreakCard from './DailyStreakCard';
 import { validateAndUpdateStreak } from '../services/streakSystem';
 import { checkAchievements } from '../services/achievementSystem';
@@ -16,7 +15,6 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakReward, onClearStreakReward }) => {
-  const [showLuckWheel, setShowLuckWheel] = useState(false);
   const prevStats = useRef({ xp: user.xp, wins: user.wins || 0 });
 
   // Initialize Gamification Logic
@@ -55,8 +53,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
   };
 
   return (
-    // FIX 3: Removed "h-full overflow-y-auto" to prevent double scrollbar/jitter
-    <div className="p-5 pb-40 space-y-8 animate-slide-up">
+    <div className="p-5 pb-40 space-y-8 animate-slide-up overflow-x-hidden">
       
       {/* 1. HEADER */}
       <div className="flex justify-between items-center pt-2 mb-2">
@@ -82,13 +79,12 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
       <div className="space-y-4">
          <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest pl-1">Ilovalar</h2>
          
-         {/* FIX 1: Unified Liquid Glass Effect for all cards */}
          <div className="grid grid-cols-2 gap-3">
             
             {/* Darslar (Full Width) */}
             <div 
               onClick={() => handleAction('learn')}
-              className="col-span-2 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-6 relative h-44 overflow-visible group active:scale-[0.98] transition-all shadow-[0_10px_40px_rgba(0,0,0,0.2)] cursor-pointer"
+              className="col-span-2 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-6 relative min-h-[12rem] h-auto overflow-visible group active:scale-[0.98] transition-all shadow-[0_10px_40px_rgba(0,0,0,0.2)] cursor-pointer"
             >
                 <div className="relative z-10 w-2/3">
                     <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-3 border border-blue-500/30">
@@ -98,13 +94,11 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                     <p className="text-slate-400 text-xs font-bold leading-tight">Yangi mavzular va interaktiv mashqlar</p>
                     <div className="mt-4 bg-white/10 w-fit px-4 py-1.5 rounded-full text-[10px] font-black uppercase backdrop-blur-sm border border-white/5 group-hover:bg-blue-500 group-hover:text-white transition-colors">Boshlash</div>
                 </div>
-                {/* 3D Pop-out Visual */}
-                <div className="absolute -right-6 -top-8 w-44 h-44 filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.4)] transition-transform group-hover:scale-105 group-hover:-translate-y-2 duration-300">
+                <div className="absolute -right-6 -top-8 w-44 h-44 filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.4)] transition-transform group-hover:scale-105 group-hover:-translate-y-2 duration-300 pointer-events-none">
                     <div className="w-full h-full flex items-center justify-center text-[110px] transform -rotate-12">
                         📚
                     </div>
                 </div>
-                {/* Inner Shine */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-[35px]"></div>
             </div>
 
@@ -120,7 +114,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                     <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">Speaking</h3>
                     <p className="text-slate-500 text-[9px] font-bold">AI Mentor</p>
                 </div>
-                <div className="absolute -right-3 -top-5 w-28 h-28 filter drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform">
+                <div className="absolute -right-3 -top-5 w-28 h-28 filter drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform pointer-events-none">
                      <div className="w-full h-full flex items-center justify-center text-[75px] transform rotate-6">
                         🎧
                     </div>
@@ -139,7 +133,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                     <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">Lug'at</h3>
                     <p className="text-slate-500 text-[9px] font-bold">Smart Mentor</p>
                 </div>
-                <div className="absolute -right-3 -top-5 w-28 h-28 filter drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform">
+                <div className="absolute -right-3 -top-5 w-28 h-28 filter drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform pointer-events-none">
                      <div className="w-full h-full flex items-center justify-center text-[75px] transform -rotate-6">
                         📖
                     </div>
@@ -155,34 +149,53 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                     <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">O'yin</h3>
                     <p className="text-slate-500 text-[9px] font-bold">PvP Battle</p>
                 </div>
-                <div className="absolute -right-2 -top-4 w-24 h-24 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform">
+                <div className="absolute -right-2 -top-4 w-24 h-24 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform pointer-events-none">
                      <div className="w-full h-full flex items-center justify-center text-[65px] transform rotate-12">
                         🎮
                     </div>
                 </div>
             </div>
 
-            {/* Market (Half) */}
+            {/* Top Rating (Half) */}
             <div 
-              onClick={() => handlePlaceholder('Marketplace')}
+              onClick={() => handleAction('leaderboard')}
               className="col-span-1 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-5 relative h-36 overflow-visible group active:scale-[0.98] transition-all shadow-lg cursor-pointer"
             >
-                <div className="absolute top-3 right-3 bg-white/10 px-2 py-0.5 rounded text-[8px] font-black text-slate-300 uppercase border border-white/5">Tez Kunda</div>
                 <div className="relative z-10 mt-2">
-                    <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">Market</h3>
-                    <p className="text-slate-500 text-[9px] font-bold">Shop</p>
+                    <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">Top Rating</h3>
+                    <p className="text-slate-500 text-[9px] font-bold">Leaderboard</p>
                 </div>
-                <div className="absolute -right-2 -top-4 w-24 h-24 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform">
+                <div className="absolute -right-2 -top-4 w-24 h-24 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform pointer-events-none">
                      <div className="w-full h-full flex items-center justify-center text-[65px] transform -rotate-12">
-                        🛒
+                        🏆
                     </div>
+                </div>
+            </div>
+
+            {/* Market (Full Width) */}
+            <div 
+              onClick={() => handlePlaceholder('Marketplace')}
+              className="col-span-2 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-5 relative h-28 overflow-visible group active:scale-[0.98] transition-all shadow-lg cursor-pointer"
+            >
+                <div className="absolute top-3 right-3 bg-white/10 px-2 py-0.5 rounded text-[8px] font-black text-slate-300 uppercase border border-white/5 z-20">Tez Kunda</div>
+                <div className="flex items-center space-x-4 relative z-10 h-full">
+                    <div className="w-12 h-12 rounded-2xl bg-orange-500/20 flex items-center justify-center border border-orange-500/30">
+                        <i className="fa-solid fa-shop text-orange-400"></i>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">Market</h3>
+                        <p className="text-slate-500 text-[9px] font-bold">Shop & Items</p>
+                    </div>
+                </div>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-5xl opacity-20 grayscale pointer-events-none transform rotate-12">
+                    🛒
                 </div>
             </div>
 
          </div>
       </div>
 
-      {/* 4. FOYDALI BO'LIMLAR (FIX 2: Big Banners like Zoom Tadbirlar) */}
+      {/* 4. FOYDALI BO'LIMLAR */}
       <div className="pt-4">
           <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest pl-1 mb-4 flex items-center">
              Foydali Xizmatlar 
@@ -201,53 +214,22 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                   bgEmoji="💰"
               />
 
-              {/* Baxt Charxi Banner */}
+              {/* Translator Banner */}
               <LargeBannerItem 
-                  title="Baxt Charxi" 
-                  subtitle="Har kuni bepul yutuqlar"
-                  icon="fa-dharmachakra"
-                  color="text-yellow-400"
-                  bgColor="bg-yellow-500/20"
-                  onClick={() => handleAction(() => setShowLuckWheel(true))}
-                  bgEmoji="🎡"
-              />
-
-              {/* Tarjimon Banner */}
-              <LargeBannerItem 
-                  title="Tarjimon" 
-                  subtitle="Matnlarni tezkor tarjima qilish"
+                  title="AI Tarjimon" 
+                  subtitle="Matnlarni professional darajada tarjima qiling"
                   icon="fa-language"
                   color="text-blue-400"
                   bgColor="bg-blue-500/20"
-                  onClick={() => handlePlaceholder('Tarjimon')}
+                  onClick={() => handleAction('translator')}
                   bgEmoji="🌐"
-              />
-
-              {/* Referral Banner */}
-              <LargeBannerItem 
-                  title="Referal Tizim" 
-                  subtitle="Do'stlarni chaqirib bonus oling"
-                  icon="fa-users"
-                  color="text-purple-400"
-                  bgColor="bg-purple-500/20"
-                  onClick={() => handlePlaceholder('Referal')}
-                  bgEmoji="🤝"
               />
           </div>
       </div>
-
-      {showLuckWheel && (
-        <LuckWheel 
-          user={user} 
-          onUpdateUser={onUpdateUser} 
-          onClose={() => setShowLuckWheel(false)} 
-        />
-      )}
     </div>
   );
 };
 
-// FIX 2: New Component for Large Banners (replacing small lists)
 interface LargeBannerItemProps {
     title: string;
     subtitle: string;
@@ -256,14 +238,19 @@ interface LargeBannerItemProps {
     bgColor: string;
     onClick: () => void;
     bgEmoji: string;
+    isComingSoon?: boolean;
 }
 
-const LargeBannerItem: React.FC<LargeBannerItemProps> = ({ title, subtitle, icon, color, bgColor, onClick, bgEmoji }) => (
+const LargeBannerItem: React.FC<LargeBannerItemProps> = ({ title, subtitle, icon, color, bgColor, onClick, bgEmoji, isComingSoon }) => (
     <div 
         onClick={onClick}
         className="glass-card rounded-[30px] p-1 relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer h-28 border border-white/5 shadow-md"
     >
         <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50"></div>
+        
+        {isComingSoon && (
+            <div className="absolute top-3 right-3 bg-white/10 px-2 py-0.5 rounded text-[8px] font-black text-slate-300 uppercase border border-white/5 z-20">Tez Kunda</div>
+        )}
         
         <div className="bg-[#0f172a]/40 backdrop-blur-md rounded-[28px] p-5 h-full flex items-center justify-between relative z-10 border border-white/5">
             <div className="flex items-center space-x-5">
@@ -281,7 +268,6 @@ const LargeBannerItem: React.FC<LargeBannerItemProps> = ({ title, subtitle, icon
             </div>
         </div>
 
-        {/* Decorative Background Emoji */}
         <div className="absolute right-[-10px] top-[-10px] text-8xl opacity-5 grayscale pointer-events-none transform rotate-12 filter blur-[1px]">
             {bgEmoji}
         </div>

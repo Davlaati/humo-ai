@@ -47,7 +47,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
         <div className="flex items-center justify-between mb-8">
             <div>
                 <h1 className="text-3xl font-black uppercase italic tracking-tighter leading-none">Liderlar</h1>
-                <p className="text-[10px] font-bold text-blue-500/80 uppercase tracking-[0.2em] mt-1">Humo AI Global</p>
+                <p className="text-[10px] font-bold text-blue-500/80 uppercase tracking-[0.2em] mt-1">Ravona AI Global</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20">
                 <i className="fa-solid fa-crown text-yellow-500 text-lg"></i>

@@ -24,7 +24,7 @@ const steps = [
 type LangKey = 'Uz' | 'Ru' | 'Eng';
 
 const TRANSLATIONS: Record<string, Record<LangKey, string>> = {
-  welcome_title: { Uz: "Salom, men Humo AI", Ru: "Привет, я Humo AI", Eng: "Hi, I'm Humo AI" },
+  welcome_title: { Uz: "Salom, men Ravona AI", Ru: "Привет, я Ravona AI", Eng: "Hi, I'm Ravona AI" },
   welcome_desc: { Uz: "Keling, shaxsiy o'quv rejangizni tuzamiz.", Ru: "Давайте составим ваш персональный план обучения.", Eng: "Let's create your personalized learning plan." },
   welcome_btn: { Uz: "Boshladik!", Ru: "Поехали!", Eng: "Let's Go!" },
   name_title: { Uz: "Ismingiz nima?", Ru: "Как вас зовут?", Eng: "What's your name?" },
@@ -72,17 +72,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       const texts = selectedLang === 'Uz' ? [
         'Shaxsiy interfeys yaratilmoqda...',
         'O\'quv yo\'li tahlil qilinmoqda...',
-        'Humobek tayyorlanmoqda...',
+        'Ravona tayyorlanmoqda...',
         'Deyarli tayyor...'
       ] : selectedLang === 'Ru' ? [
         'Создание персонального интерфейса...',
         'Анализ лучшего пути обучения...',
-        'Подготовка Humobek...',
+        'Подготовка Ravona...',
         'Почти готово...'
       ] : [
         'Creating your personalized interface...',
         'Analyzing best learning path...',
-        'Preparing Humobek...',
+        'Preparing Ravona...',
         'Almost there...'
       ];
       let textIndex = 0;
@@ -144,7 +144,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             {/* LOGO INTEGRATION */}
             <img 
               src="./logo.png" 
-              alt="Humo AI" 
+              alt="Ravona AI" 
               className="w-48 mb-8 relative z-10 drop-shadow-xl" 
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />

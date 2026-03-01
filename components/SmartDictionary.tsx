@@ -78,7 +78,7 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user }) => {
         <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-3 rotate-3">
           <i className="fa-solid fa-book-journal-whills text-3xl text-white"></i>
         </div>
-        <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white">HUMO MENTOR</h1>
+        <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white">RAVONA MENTOR</h1>
         <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Aqlli Lug'at</p>
       </div>
 

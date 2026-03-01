@@ -24,7 +24,7 @@ async def start_handler(message: Message):
     /start buyrug'iga javob
     """
     await message.answer(
-        "👋 Salom! Men Humo AI botiman.\n"
+        "👋 Salom! Men Ravona AI botiman.\n"
         "Premium obuna sotib olish uchun /buy buyrug'ini yuboring."
     )
 

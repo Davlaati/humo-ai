@@ -15,6 +15,7 @@ import SpeakingClub from './components/SpeakingClub';
 import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
+import Translator from './components/Translator';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -41,8 +42,21 @@ const App: React.FC = () => {
     }
 
     // Foydalanuvchini yuklash
-    const storedUser = getUser();
-    if (storedUser) setUser(storedUser);
+    const initUser = async () => {
+      const storedUser = getUser();
+      if (storedUser) {
+        setUser(storedUser);
+      } else {
+        const tg = (window as any).Telegram?.WebApp;
+        const tgId = tg?.initDataUnsafe?.user?.id;
+        if (tgId) {
+          const { initializeFromSupabase } = await import("./services/storageService");
+          const remoteUser = await initializeFromSupabase(String(tgId));
+          if (remoteUser) setUser(remoteUser);
+        }
+      }
+    };
+    initUser();
 
     // Initial Splashdan chiqish va xabarnomani ko'rsatish
     const timer = setTimeout(() => {
@@ -113,7 +127,7 @@ const App: React.FC = () => {
                   {/* LOGO INTEGRATION */}
                   <img 
                     src="./logo.png" 
-                    alt="Humo AI" 
+                    alt="Ravona AI" 
                     className="w-56 h-auto relative z-10 drop-shadow-[0_0_25px_rgba(59,130,246,0.6)] animate-pulse" 
                     onError={(e) => {
                       // Fallback if image not found
@@ -123,7 +137,7 @@ const App: React.FC = () => {
                     }}
                   />
                   {/* Fallback Text just in case */}
-                  <h1 id="splash-fallback" className="hidden mt-4 text-4xl font-black italic tracking-tighter text-white opacity-80 uppercase">Humo AI</h1>
+                  <h1 id="splash-fallback" className="hidden mt-4 text-4xl font-black italic tracking-tighter text-white opacity-80 uppercase">Ravona AI</h1>
               </div>
           </div>
       );
@@ -149,6 +163,7 @@ const App: React.FC = () => {
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
           case 'dictionary': return <SmartDictionary user={user} />;
+          case 'translator': return <Translator onNavigate={setActiveTab} />;
           default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
       }
   };
@@ -163,6 +178,7 @@ const App: React.FC = () => {
                       setShowEntryNotif(false);
                       setIsAppRevealed(true);
                   }} 
+                  onNavigate={setActiveTab}
                 />
            </div>
        )}
@@ -173,10 +189,10 @@ const App: React.FC = () => {
                    <Wallet user={user!} />
                </Layout>
            ) : (
-               <Layout activeTab={activeTab === 'speaking-club' ? 'home' : activeTab} onTabChange={(tab) => {
+               <Layout activeTab={activeTab} onTabChange={(tab) => {
                    if (tab === 'home' && activeTab === 'home') setActiveTab('wallet');
                    else setActiveTab(tab);
-               }} showNav={activeTab !== 'speaking-club'}> 
+               }} showNav={true}> 
                  {renderContent()}
                </Layout>
            )}

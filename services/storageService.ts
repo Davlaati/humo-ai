@@ -1,8 +1,22 @@
-import { UserProfile, Transaction, LeaderboardEntry, LeaderboardPeriod, StarsTransaction, EntryNotification } from "../types";
+import { 
+  UserProfile, Transaction, LeaderboardEntry, LeaderboardPeriod, 
+  StarsTransaction, EntryNotification, SubscriptionPackage, 
+  Discount, DictionaryItem, AdminLog, PlatformAnalytics 
+} from "../types";
+import { 
+  syncUserToSupabase, logAdminActionToSupabase, saveDictionaryItemToSupabase,
+  fetchLeaderboardFromSupabase, fetchAllUsersFromSupabase, fetchAnalyticsFromSupabase,
+  updatePremiumStatusInSupabase
+} from "./supabaseService";
 
-const USER_KEY = 'humo_user';
-const TRANSACTIONS_KEY = 'humo_transactions';
-const NOTIFICATION_KEY = 'humo_entry_notification';
+const USER_KEY = 'ravona_user';
+const TRANSACTIONS_KEY = 'ravona_transactions';
+const NOTIFICATION_KEY = 'ravona_entry_notification';
+const USERS_LIST_KEY = 'ravona_users_list';
+const PACKAGES_KEY = 'ravona_subscription_packages';
+const DISCOUNTS_KEY = 'ravona_discounts';
+const DICTIONARY_KEY = 'ravona_dictionary_items';
+const ADMIN_LOGS_KEY = 'ravona_admin_logs';
 const CONVERSION_RATE = 10; 
 
 export const getUser = (): UserProfile | null => {
@@ -45,76 +59,52 @@ export const saveUser = (user: UserProfile) => {
     const userData = { ...user };
     if (!userData.settings) userData.settings = { language: 'Uz', theme: 'dark' };
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
+    
+    // Sync to Supabase
+    syncUserToSupabase(userData);
   } catch (e) {}
 };
 
-export const getLeaderboardData = (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            // Realroq ismlar va natijalar
-            const mockData = [
-                { name: "Malika", xp: period === 'weekly' ? 1283 : 4500, wins: 12 },
-                { name: "Sardor", xp: period === 'weekly' ? 1090 : 4200, wins: 9 },
-                { name: "Sherzod", xp: period === 'weekly' ? 1072 : 4100, wins: 10 },
-                { name: "Nigora", xp: period === 'weekly' ? 1056 : 3900, wins: 8 },
-                { name: "Jasur", xp: period === 'weekly' ? 1027 : 3850, wins: 8 },
-                { name: "Zaynab", xp: period === 'weekly' ? 1011 : 3700, wins: 8 },
-                { name: "Umida", xp: period === 'weekly' ? 987 : 3600, wins: 8 },
-                { name: "Bobur", xp: period === 'weekly' ? 961 : 3500, wins: 8 },
-                { name: "Otabek", xp: period === 'weekly' ? 868 : 3100, wins: 7 },
-                { name: "Farrux", xp: period === 'weekly' ? 790 : 2900, wins: 6 },
-                { name: "Anvar", xp: period === 'weekly' ? 640 : 2500, wins: 5 },
-                { name: "Kamola", xp: period === 'weekly' ? 610 : 2400, wins: 5 },
-                { name: "Zilola", xp: period === 'weekly' ? 580 : 2200, wins: 4 },
-                { name: "Madina", xp: period === 'weekly' ? 550 : 2100, wins: 4 }
-            ];
+export const getLeaderboardData = async (period: LeaderboardPeriod, currentUser: UserProfile): Promise<LeaderboardEntry[]> => {
+    const data = await fetchLeaderboardFromSupabase(period);
+    
+    // Ensure current user is in the list if not already
+    const isCurrentInList = data.find(u => u.userId === currentUser.id);
+    if (!isCurrentInList) {
+        data.push({
+            userId: currentUser.id,
+            name: currentUser.name,
+            xp: currentUser.xp,
+            wins: currentUser.wins || 0,
+            rank: 0,
+            isCurrentUser: true,
+            trend: 'same'
+        });
+    }
 
-            const leaderboard: LeaderboardEntry[] = mockData.map((m, i) => ({
-                userId: `user_${i}`,
-                name: m.name,
-                xp: m.xp,
-                wins: m.wins,
-                rank: 0,
-                isCurrentUser: false,
-                trend: Math.random() > 0.7 ? 'up' : 'same'
-            }));
-            
-            // Joriy foydalanuvchini qo'shish
-            leaderboard.push({
-                userId: currentUser.id,
-                name: currentUser.name,
-                xp: currentUser.xp,
-                wins: currentUser.wins || 0,
-                rank: 0,
-                isCurrentUser: true,
-                trend: 'same'
-            });
-
-            const sorted = leaderboard.sort((a, b) => b.xp - a.xp);
-            const finalData = sorted.map((u, index) => ({ ...u, rank: index + 1 }));
-            
-            resolve(finalData);
-        }, 500);
-    });
+    return data.map(u => ({
+        ...u,
+        isCurrentUser: u.userId === currentUser.id
+    })).sort((a, b) => b.xp - a.xp).map((u, i) => ({ ...u, rank: i + 1 }));
 };
 
-export const convertHumoToStars = (starsAmount: number): UserProfile | null => {
+export const convertRavonaToStars = (starsAmount: number): UserProfile | null => {
   const user = getUser();
   if (!user) return null;
   
-  const humoCost = starsAmount * CONVERSION_RATE;
-  if (user.coins < humoCost) return null;
+  const ravonaCost = starsAmount * CONVERSION_RATE;
+  if (user.coins < ravonaCost) return null;
 
   const transaction: StarsTransaction = {
     id: `tx_${Date.now()}`,
     type: 'conversion',
     amount: starsAmount,
-    costInHumo: humoCost,
+    costInRavona: ravonaCost,
     status: 'completed',
     timestamp: new Date().toISOString()
   };
 
-  user.coins -= humoCost;
+  user.coins -= ravonaCost;
   user.telegramStars += starsAmount;
   user.starsHistory.unshift(transaction);
   
@@ -150,8 +140,9 @@ export const getEntryNotification = (): EntryNotification | null => {
     if (!data) return {
         id: 'welcome_v1',
         title: 'Xush kelibsiz!',
-        description: 'Sizni yana Humo AI ilovasida ko\'rganimizdan mamnunmiz. Keling, bugun bilimlarimizni yanada oshiramiz!',
+        description: 'Sizni yana Ravona AI ilovasida ko\'rganimizdan mamnunmiz. Keling, bugun bilimlarimizni yanada oshiramiz!',
         buttonText: 'Darsni boshlash',
+        buttonAction: { type: 'close', value: '' },
         target: 'all',
         isActive: true,
         createdAt: new Date().toISOString()
@@ -164,6 +155,124 @@ export const getEntryNotification = (): EntryNotification | null => {
 
 export const saveEntryNotification = (notif: EntryNotification) => {
   localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(notif));
+};
+
+// --- Admin Management Methods ---
+
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+  return await fetchAllUsersFromSupabase();
+};
+
+export const saveAllUsers = (users: UserProfile[]) => {
+  localStorage.setItem(USERS_LIST_KEY, JSON.stringify(users));
+};
+
+export const updateOtherUser = (userId: string, updates: Partial<UserProfile>) => {
+  const users = getAllUsers();
+  const index = users.findIndex(u => u.id === userId);
+  if (index !== -1) {
+    users[index] = { ...users[index], ...updates };
+    saveAllUsers(users);
+    
+    // If it's the current user, update them too
+    const currentUser = getUser();
+    if (currentUser && currentUser.id === userId) {
+      saveUser({ ...currentUser, ...updates });
+    }
+  }
+};
+
+export const getSubscriptionPackages = (): SubscriptionPackage[] => {
+  try {
+    const data = localStorage.getItem(PACKAGES_KEY);
+    return data ? JSON.parse(data) : [
+      { id: '1', name: 'Premium Monthly', price: 50, durationDays: 30, features: ['AI Chat', 'No Ads', 'Exclusive Lessons'], isActive: true },
+      { id: '2', name: 'Premium Yearly', price: 500, durationDays: 365, features: ['AI Chat', 'No Ads', 'Exclusive Lessons', 'Priority Support'], isActive: true }
+    ];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveSubscriptionPackage = (pkg: SubscriptionPackage) => {
+  const pkgs = getSubscriptionPackages();
+  const index = pkgs.findIndex(p => p.id === pkg.id);
+  if (index !== -1) pkgs[index] = pkg;
+  else pkgs.push(pkg);
+  localStorage.setItem(PACKAGES_KEY, JSON.stringify(pkgs));
+};
+
+export const getDiscounts = (): Discount[] => {
+  try {
+    const data = localStorage.getItem(DISCOUNTS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveDiscount = (discount: Discount) => {
+  const discounts = getDiscounts();
+  const index = discounts.findIndex(d => d.id === discount.id);
+  if (index !== -1) discounts[index] = discount;
+  else discounts.push(discount);
+  localStorage.setItem(DISCOUNTS_KEY, JSON.stringify(discounts));
+};
+
+export const deleteDiscount = (id: string) => {
+  const discounts = getDiscounts().filter(d => d.id !== id);
+  localStorage.setItem(DISCOUNTS_KEY, JSON.stringify(discounts));
+};
+
+export const getDictionaryItems = (): DictionaryItem[] => {
+  try {
+    const data = localStorage.getItem(DICTIONARY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveDictionaryItem = (item: DictionaryItem) => {
+  const items = getDictionaryItems();
+  const index = items.findIndex(i => i.id === item.id);
+  if (index !== -1) items[index] = item;
+  else items.push(item);
+  localStorage.setItem(DICTIONARY_KEY, JSON.stringify(items));
+  
+  // Sync to Supabase
+  saveDictionaryItemToSupabase(item);
+};
+
+export const getAdminLogs = (): AdminLog[] => {
+  try {
+    const data = localStorage.getItem(ADMIN_LOGS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const addAdminLog = (action: string, details: string) => {
+  const logs = getAdminLogs();
+  const user = getUser();
+  const newLog: AdminLog = {
+    id: `log_${Date.now()}`,
+    adminId: user?.id || 'system',
+    action,
+    details,
+    timestamp: new Date().toISOString(),
+    ip: '127.0.0.1' // Mock IP
+  };
+  logs.unshift(newLog);
+  localStorage.setItem(ADMIN_LOGS_KEY, JSON.stringify(logs.slice(0, 100))); // Keep last 100
+  
+  // Sync to Supabase
+  logAdminActionToSupabase(newLog);
+};
+
+export const getPlatformAnalytics = async (): Promise<PlatformAnalytics> => {
+  return await fetchAnalyticsFromSupabase();
 };
 
 export const getTransactions = (): Transaction[] => {
@@ -179,6 +288,17 @@ export const addTransaction = (transaction: Transaction) => {
   const txs = getTransactions();
   txs.push(transaction);
   localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(txs));
+};
+
+export const initializeFromSupabase = async (userId: string): Promise<UserProfile | null> => {
+  const { fetchUserFromSupabase } = await import("./supabaseService");
+  const remoteUser = await fetchUserFromSupabase(userId);
+  if (remoteUser) {
+    const fullUser = { ...remoteUser } as UserProfile;
+    saveUser(fullUser);
+    return fullUser;
+  }
+  return null;
 };
 
 export const incrementActiveTime = (seconds: number): UserProfile | null => {

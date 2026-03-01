@@ -28,6 +28,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const [dragX, setDragX] = useState(0);
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Tutorial State
   const [showSwipeHelp, setShowSwipeHelp] = useState(true);
@@ -94,7 +95,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   };
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-      if (isFinished || quizPhase) return;
+      if (isFinished || quizPhase || isAnimating) return;
       if (showSwipeHelp) setShowSwipeHelp(false);
       setIsDragging(true);
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
@@ -102,7 +103,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   };
 
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-      if (!isDragging) return;
+      if (!isDragging || isAnimating) return;
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
       setDragX(clientX - startX);
   };
@@ -123,25 +124,39 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
   const handleSwipe = (direction: 'left' | 'right') => {
       if (showSwipeHelp) setShowSwipeHelp(false);
-      setFlipped(false);
-      setDragX(0);
+      if (isAnimating) return;
       
-      if (direction === 'right') {
-          awardReward("O'zlashtirildi!");
-          if (onUpdateUser) {
-              const currentWordTerm = content.vocab[currentIndex].word;
-              const updatedLearnedWords = (user.learnedWords || []).map(w => 
-                w.term.toLowerCase() === currentWordTerm.toLowerCase() ? { ...w, mastered: true } : w
-              );
-              onUpdateUser({ ...user, learnedWords: updatedLearnedWords });
+      setIsAnimating(true);
+      setIsDragging(false);
+      
+      // Animate out of screen
+      const exitX = direction === 'right' ? 600 : -600;
+      setDragX(exitX);
+      
+      setTimeout(() => {
+          setFlipped(false);
+          setDragX(0);
+          
+          if (direction === 'right') {
+              awardReward("O'zlashtirildi!");
+              if (onUpdateUser) {
+                  const currentWordTerm = content.vocab[currentIndex].word;
+                  const updatedLearnedWords = (user.learnedWords || []).map(w => 
+                    w.term.toLowerCase() === currentWordTerm.toLowerCase() ? { ...w, mastered: true } : w
+                  );
+                  onUpdateUser({ ...user, learnedWords: updatedLearnedWords });
+              }
           }
-      }
 
-      if (currentIndex + 1 >= content.vocab.length) {
-          setQuizPhase(true);
-      } else {
-          setCurrentIndex(prev => prev + 1);
-      }
+          if (currentIndex + 1 >= content.vocab.length) {
+              setQuizPhase(true);
+          } else {
+              setCurrentIndex(prev => prev + 1);
+          }
+          
+          // Small delay to allow reset before next card can be swiped
+          setTimeout(() => setIsAnimating(false), 100);
+      }, 400);
   };
 
   const handleQuizAnswer = (index: number) => {
@@ -389,7 +404,7 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
            )}
 
            <div 
-             className="absolute w-full h-full z-10 perspective-1000 cursor-grab active:cursor-grabbing"
+             className="absolute w-full h-full z-10 perspective-1000 cursor-grab active:cursor-grabbing select-none touch-none"
              onTouchStart={handleTouchStart}
              onTouchMove={handleTouchMove}
              onTouchEnd={handleTouchEnd}

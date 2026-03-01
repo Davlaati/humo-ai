@@ -563,7 +563,7 @@ export const DICTIONARY: Omit<Word, 'mastered'>[] = [
   { term: "Much", translation: "Ko'p", definition: "A great amount or quantity of.", example: "Thank you so much." },
   { term: "Music", translation: "Musiqa", definition: "Vocal or instrumental sounds (or both) combined in such a way as to produce beauty of form, harmony, and expression of emotion.", example: "I love music." },
   { term: "Must", translation: "Kerak/Shart", definition: "Be obliged to; should (expressing necessity).", example: "You must come." },
-  { term: "My", translation: "Mening", definition: "Belonging to or associated with the speaker.", example: "My name is Humo." },
+  { term: "My", translation: "Mening", definition: "Belonging to or associated with the speaker.", example: "My name is Ravona." },
   { term: "Myself", translation: "O'zim", definition: "Used by a speaker to refer to himself or herself as the object of a verb or preposition when he or she is also the subject of the clause.", example: "I did it myself." },
 
   // N

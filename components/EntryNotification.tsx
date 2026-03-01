@@ -5,9 +5,10 @@ import { EntryNotification as EntryNotifType } from '../types';
 interface EntryNotificationProps {
   notification: EntryNotifType;
   onClose: () => void;
+  onNavigate?: (tab: string) => void;
 }
 
-const EntryNotification: React.FC<EntryNotificationProps> = ({ notification, onClose }) => {
+const EntryNotification: React.FC<EntryNotificationProps> = ({ notification, onClose, onNavigate }) => {
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   const handleDismiss = () => {
@@ -15,65 +16,76 @@ const EntryNotification: React.FC<EntryNotificationProps> = ({ notification, onC
     setTimeout(onClose, 500); 
   };
 
+  const handleAction = () => {
+    if (!notification.buttonAction || notification.buttonAction.type === 'close') {
+      handleDismiss();
+      return;
+    }
+
+    if (notification.buttonAction.type === 'link') {
+      window.open(notification.buttonAction.value, '_blank');
+      handleDismiss();
+    } else if (notification.buttonAction.type === 'page') {
+      if (onNavigate) {
+        onNavigate(notification.buttonAction.value);
+      }
+      handleDismiss();
+    }
+  };
+
   return (
-    <div className="absolute inset-0 z-[4001] flex items-end justify-center p-4">
+    <div className="fixed inset-0 z-[5000] flex items-end justify-center animate-fade-in">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleDismiss}></div>
+
       <div 
-        className={`w-full max-w-sm rounded-[45px] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 bg-[#0c1222] border border-white/10 ${isAnimatingOut ? 'translate-y-[120%] opacity-0' : 'translate-y-0 animate-slide-up'}`}
+        className={`w-full max-w-md h-[85vh] rounded-t-[40px] overflow-hidden relative shadow-2xl transition-all duration-500 bg-[#007aff] flex flex-col ${isAnimatingOut ? 'translate-y-full' : 'translate-y-0 animate-slide-up'}`}
       >
-        {/* Glow behind content */}
-        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
+        {/* Top Handle */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/30 rounded-full z-20"></div>
 
-        <div className="p-10 flex flex-col items-center text-center relative z-10">
+        {/* Close Button */}
+        <button 
+          onClick={handleDismiss}
+          className="absolute top-6 right-6 w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#007aff] z-20 shadow-lg active:scale-90 transition-transform"
+        >
+          <i className="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center relative z-10">
           
-          {/* Creative Icon/Visual */}
-          <div className="mb-8 relative">
-              <div className="w-20 h-20 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-lg rotate-12 animate-float">
-                  <i className="fa-solid fa-face-smile-beam text-4xl text-white"></i>
-              </div>
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-md animate-pulse">
-                  <i className="fa-solid fa-sparkles text-[10px] text-yellow-900"></i>
-              </div>
-          </div>
+          {/* Image Placeholder / Image */}
+          <div className="w-full flex-1 flex flex-col items-center justify-center space-y-6">
+            {notification.image ? (
+              <img 
+                src={notification.image} 
+                alt={notification.title} 
+                className="max-w-full max-h-[40vh] object-contain rounded-2xl shadow-xl"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
 
-          <div className="space-y-4 mb-10">
-            <h1 className="text-3xl font-black text-white leading-tight">
-              {notification.title}
-            </h1>
-            <p className="text-sm text-gray-400 px-2 leading-relaxed font-medium">
-              {notification.description}
-            </p>
+            <div className="space-y-3">
+              <h1 className="text-3xl font-black text-white leading-tight uppercase tracking-tighter">
+                {notification.title}
+              </h1>
+              <p className="text-white/80 text-sm font-bold leading-relaxed">
+                {notification.description}
+              </p>
+            </div>
           </div>
 
           {/* Action Button */}
-          <button 
-            onClick={handleDismiss}
-            className="w-full py-5 rounded-[25px] bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all mb-4"
-          >
-            {notification.buttonText}
-          </button>
-
-          {/* Dismiss button */}
-          <button 
-            onClick={handleDismiss}
-            className="text-gray-600 font-bold text-[10px] uppercase tracking-[0.2em] hover:text-gray-400 transition py-2"
-          >
-            Keyinroq
-          </button>
+          <div className="w-full pt-10 pb-6">
+            <button 
+              onClick={handleAction}
+              className="w-full py-5 rounded-[28px] bg-[#cce5ff] text-[#007aff] font-black text-sm uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all"
+            >
+              {notification.buttonText || 'DAVOM ETISH'}
+            </button>
+          </div>
         </div>
-
-        {/* Top Decor Line */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/5 rounded-full"></div>
       </div>
-
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(12deg); }
-          50% { transform: translateY(-10px) rotate(8deg); }
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

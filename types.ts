@@ -18,6 +18,10 @@ export interface EntryNotification {
   title: string;
   description: string;
   buttonText: string;
+  buttonAction?: {
+    type: 'link' | 'page' | 'close';
+    value: string;
+  };
   target: 'all' | 'has_coins' | 'no_coins';
   isActive: boolean;
   createdAt: string;
@@ -27,7 +31,7 @@ export interface StarsTransaction {
   id: string;
   type: 'conversion' | 'purchase' | 'admin_bonus' | 'admin_deduction' | 'refund';
   amount: number;
-  costInHumo?: number;
+  costInRavona?: number;
   status: 'completed' | 'pending' | 'failed';
   timestamp: string;
 }
@@ -62,6 +66,7 @@ export interface UserProfile {
   joinedAt: string;
   isAdmin?: boolean;
   isPremium?: boolean; // Added for Stars Payment
+  isBlocked?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
   // Added settings property to UserProfile interface
@@ -116,4 +121,46 @@ export interface LeaderboardEntry {
   rank: number;
   isCurrentUser: boolean;
   trend: 'up' | 'down' | 'same';
+}
+
+export interface SubscriptionPackage {
+  id: string;
+  name: string;
+  price: number;
+  durationDays: number;
+  features: string[];
+  isActive: boolean;
+}
+
+export interface AdminLog {
+  id: string;
+  adminId: string;
+  action: string;
+  details: string;
+  timestamp: string;
+  ip?: string;
+}
+
+export interface Discount {
+  id: string;
+  code: string;
+  percentage: number;
+  expiryDate: string;
+  isActive: boolean;
+}
+
+export interface DictionaryItem {
+  id: string;
+  term: string;
+  translation: string;
+  definition: string;
+  example: string;
+  category: string;
+}
+
+export interface PlatformAnalytics {
+  dailyActiveUsers: number;
+  totalRevenue: number;
+  aiRequestsCount: number;
+  errorCount: number;
 }

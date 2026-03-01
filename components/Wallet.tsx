@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { convertHumoToStars, saveUser } from '../services/storageService';
+import { convertRavonaToStars, saveUser } from '../services/storageService';
 import { playTapSound } from '../services/audioService';
 
 interface WalletProps {
@@ -17,49 +17,19 @@ const STAR_VARIANTS = [
 ];
 
 const Wallet: React.FC<WalletProps> = ({ user }) => {
-  const [confirmModal, setConfirmModal] = useState<typeof STAR_VARIANTS[0] | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleConvertClick = (variant: typeof STAR_VARIANTS[0]) => {
-    playTapSound();
-    setConfirmModal(variant);
-  };
-
-  const executeConversion = () => {
-    if (!confirmModal) return;
-    setIsProcessing(true);
-    
-    setTimeout(() => {
-      const updatedUser = convertHumoToStars(confirmModal.stars);
-      if (updatedUser) {
-        window.location.reload(); 
-      } else {
-        alert("HC yetarli emas!");
-      }
-      setIsProcessing(false);
-      setConfirmModal(null);
-    }, 1200);
-  };
+  const [premiumStep, setPremiumStep] = useState<0 | 1 | 2>(0); // 0: Benefits, 1: Plan, 2: Confirm Modal
 
   const handleBuyPremium = () => {
     playTapSound();
     
     const tg = (window as any).Telegram?.WebApp;
-    
-    // Backenddan invoice link yaratish kerak. 
-    // Hozircha statik yoki placeholder link ishlatamiz.
-    // Haqiqiy loyihada: const link = await api.createInvoice(200);
     const mockInvoiceLink = "https://t.me/$..."; 
 
     if (tg && tg.initData) {
-        // Agar haqiqiy link bo'lmasa, test rejimida ishlaymiz
         if (mockInvoiceLink === "https://t.me/$...") {
-             const confirmTest = window.confirm("Backend ulanmagan. Test rejimida Premium sotib olinsinmi? (Simulyatsiya)");
-             if (confirmTest) {
-                 const updatedUser = { ...user, isPremium: true };
-                 saveUser(updatedUser);
-                 window.location.reload();
-             }
+             const updatedUser = { ...user, isPremium: true };
+             saveUser(updatedUser);
+             window.location.reload();
              return;
         }
 
@@ -78,172 +48,217 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
             }
         });
     } else {
-        alert("Bu funksiya faqat Telegram ichida ishlaydi.");
+        const updatedUser = { ...user, isPremium: true };
+        saveUser(updatedUser);
+        window.location.reload();
     }
   };
 
-  return (
-    <div className="p-4 pb-24 space-y-6 animate-fade-in h-full overflow-y-auto no-scrollbar relative">
-      {/* Balances Display */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-yellow-500/20 to-transparent border border-yellow-500/30 shadow-[0_10px_30px_rgba(234,179,8,0.1)]">
-           <div className="flex items-center space-x-2 mb-1">
-              <i className="fa-solid fa-coins text-yellow-400 text-xs"></i>
-              <p className="text-[10px] text-yellow-400 font-black uppercase tracking-[0.2em]">Humo Coins</p>
-           </div>
-           <h1 className="text-3xl font-black text-white">{(user.coins ?? 0).toLocaleString()}</h1>
-           <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">O'yin ichidagi valyuta</p>
+  const renderPremiumBenefits = () => (
+    <div className="flex flex-col animate-fade-in overflow-y-auto no-scrollbar pb-24 h-full">
+      <div className="relative p-6 flex flex-col items-center">
+        {/* Header Section */}
+        <div className="w-full mb-8 text-center pt-10">
+          <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-2">Ravona Premium</h2>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Barcha imkoniyatlarni oching</p>
         </div>
-        <div className="glass-card p-5 rounded-[32px] bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 shadow-[0_10px_30px_rgba(59,130,246,0.1)]">
-           <div className="flex items-center space-x-2 mb-1">
-              <i className="fa-solid fa-star text-blue-400 text-xs"></i>
-              <p className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">TG Stars</p>
-           </div>
-           <h1 className="text-3xl font-black text-white">{(user.telegramStars ?? 0).toLocaleString()}</h1>
-           <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Real platform valyutasi</p>
+
+        {/* 2x XP Card */}
+        <div className="w-full glass-card rounded-[32px] p-6 bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/20 mb-6 relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black text-white italic tracking-tighter">2x XP Multiplikator</h3>
+            <p className="text-yellow-500/70 text-[10px] font-black uppercase tracking-widest mt-1">Tezroq daraja oshiring</p>
+          </div>
+          <div className="absolute right-6 top-1/2 -translate-y-1/2">
+            <i className="fa-solid fa-bolt text-yellow-500 text-5xl drop-shadow-[0_0_15px_rgba(234,179,8,0.5)] animate-pulse"></i>
+          </div>
         </div>
-      </div>
 
-      {/* Premium Banner */}
-      {!user.isPremium ? (
-          <div className="w-full relative overflow-hidden rounded-[40px] p-1 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 shadow-[0_10px_40px_rgba(234,179,8,0.3)] animate-slide-up">
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
-              <div className="bg-[#0c1222] rounded-[38px] p-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/20 blur-[60px] rounded-full"></div>
-                  
-                  <div className="flex justify-between items-start mb-6">
-                      <div>
-                          <h2 className="text-2xl font-black italic tracking-tighter uppercase text-white">
-                              Premium <span className="text-yellow-500">Status</span>
-                          </h2>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Cheksiz imkoniyatlar</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-500/40 animate-pulse">
-                          <i className="fa-solid fa-crown text-white text-xl"></i>
-                      </div>
-                  </div>
-
-                  <div className="space-y-3 mb-8">
-                      <div className="flex items-center space-x-3">
-                          <i className="fa-solid fa-bolt text-yellow-500"></i>
-                          <span className="text-sm font-bold text-gray-300">2x XP Multiplikator</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                          <i className="fa-solid fa-infinity text-blue-400"></i>
-                          <span className="text-sm font-bold text-gray-300">Cheksiz Speaking vaqt</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                          <i className="fa-solid fa-check-double text-green-400"></i>
-                          <span className="text-sm font-bold text-gray-300">Reklamasiz tajriba</span>
-                      </div>
-                  </div>
-
-                  <button 
-                    onClick={handleBuyPremium}
-                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl font-black text-white uppercase tracking-widest shadow-lg active:scale-95 transition flex items-center justify-center"
-                  >
-                      <span>Sotib olish</span>
-                      <div className="w-px h-4 bg-white/30 mx-3"></div>
-                      <i className="fa-solid fa-star mr-1.5"></i> 200
-                  </button>
+        {/* Benefits Grid */}
+        <div className="grid grid-cols-2 gap-4 w-full mb-10">
+          {[
+            { title: "Cheksiz Speaking vaqt", icon: "fa-hourglass-half", color: "text-blue-400", bgColor: "bg-blue-500/10" },
+            { title: "Reklamasiz tajriba", icon: "fa-eye-slash", color: "text-red-400", bgColor: "bg-red-500/10" },
+            { title: "O'zingizni jangda sinang", icon: "fa-shield-halved", color: "text-slate-400", bgColor: "bg-slate-500/10" },
+            { title: "Suniy intelekt bilan organing", icon: "fa-wand-magic-sparkles", color: "text-yellow-400", bgColor: "bg-yellow-500/10" },
+            { title: "O'z faoliyatingizni kuzatib boring", icon: "fa-chart-line", color: "text-blue-500", bgColor: "bg-blue-500/10" },
+            { title: "Aqli lug'at bilan o'rganing", icon: "fa-book-open-reader", color: "text-purple-400", bgColor: "bg-purple-500/10" }
+          ].map((benefit, i) => (
+            <div key={i} className="glass-card p-5 rounded-[32px] bg-white/5 border border-white/10 flex flex-col items-center text-center space-y-3">
+              <div className={`w-12 h-12 rounded-2xl ${benefit.bgColor} flex items-center justify-center border border-white/5`}>
+                <i className={`fa-solid ${benefit.icon} ${benefit.color} text-xl`}></i>
               </div>
-          </div>
-      ) : (
-          <div className="w-full rounded-[40px] p-6 bg-gradient-to-br from-slate-800 to-slate-900 border border-yellow-500/30 flex items-center justify-between shadow-xl">
-              <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/50">
-                      <i className="fa-solid fa-crown text-2xl text-yellow-500"></i>
-                  </div>
-                  <div>
-                      <h3 className="text-lg font-black text-white italic">SIZ PREMIUMSIZ!</h3>
-                      <p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">Barcha imkoniyatlar ochiq</p>
-                  </div>
-              </div>
-              <i className="fa-solid fa-check-circle text-green-500 text-2xl"></i>
-          </div>
-      )}
-
-      {/* Main Container */}
-      <div className="glass-panel p-6 rounded-[40px] border border-white/5 bg-slate-800/20 backdrop-blur-2xl">
-          <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-black italic tracking-tighter uppercase text-white">Humo Birjasi</h2>
-              <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">Kurs: 10 HC = 1 XTR</div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             {STAR_VARIANTS.map(v => (
-               <button 
-                 key={v.stars}
-                 onClick={() => handleConvertClick(v)}
-                 className="glass-card p-5 rounded-3xl flex flex-col items-center justify-center space-y-2 active:scale-95 transition-all border border-white/5 hover:border-yellow-500/30 group bg-slate-900/40"
-               >
-                 <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                    <i className="fa-solid fa-star text-yellow-500 text-xl drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]"></i>
-                 </div>
-                 <span className="text-xl font-black text-white">{v.stars} XTR</span>
-                 <div className="flex items-center space-x-1.5 opacity-60">
-                    <i className="fa-solid fa-coins text-[10px] text-yellow-500"></i>
-                    <span className="text-[11px] font-black text-slate-300">-{v.cost} HC</span>
-                 </div>
-               </button>
-             ))}
-          </div>
-      </div>
-
-      {/* History */}
-      <div className="space-y-4">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 px-2">Amaliyotlar tarixi</h3>
-        <div className="space-y-3">
-          {(user.starsHistory || []).map(tx => (
-            <div key={tx.id} className="glass-card p-4 rounded-3xl flex items-center justify-between border border-white/5 bg-slate-900/20">
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                  <i className="fa-solid fa-arrow-right-arrow-left text-blue-400 text-sm"></i>
-                </div>
-                <div>
-                  <p className="text-xs font-black text-white uppercase tracking-tighter">{"Humo -> Stars"}</p>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(tx.timestamp).toLocaleDateString('uz-UZ')}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-black text-green-400">+{tx.amount} XTR</p>
-                <p className="text-[9px] text-slate-500 font-bold">-{tx.costInHumo} HC</p>
-              </div>
+              <p className="text-[10px] font-black text-white leading-tight uppercase tracking-tighter">{benefit.title}</p>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Confirmation Overlay */}
-      {confirmModal && (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 bg-[#0c1222]/90 backdrop-blur-xl animate-fade-in">
-           <div className="glass-card w-full max-w-sm rounded-[45px] p-8 border border-white/20 shadow-2xl animate-slide-up text-center bg-slate-900">
-              <div className="w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/20">
-                 <i className="fa-solid fa-shuffle text-4xl text-yellow-500 animate-pulse"></i>
-              </div>
-              <h2 className="text-2xl font-black mb-3 italic tracking-tighter">ALMASHTIRISHNI TASDIQLANG</h2>
-              <p className="text-slate-400 text-sm mb-10 leading-relaxed px-4">
-                Sizning balansingizdan <span className="text-white font-black underline">{confirmModal.cost} HC</span> yechiladi va evaziga <span className="text-blue-400 font-black">{confirmModal.stars} Telegram Stars</span> olasiz.
-              </p>
-
-              <div className="flex space-x-3">
-                <button 
-                  onClick={() => setConfirmModal(null)}
-                  disabled={isProcessing}
-                  className="flex-1 py-5 rounded-[25px] bg-white/5 text-slate-500 font-black text-xs uppercase tracking-widest active:scale-95 transition"
-                >
-                  Bekor qilish
-                </button>
-                <button 
-                  onClick={executeConversion}
-                  disabled={isProcessing}
-                  className="flex-1 py-5 rounded-[25px] liquid-button text-white font-black text-xs uppercase tracking-widest active:scale-95 transition shadow-xl shadow-blue-500/30 flex items-center justify-center"
-                >
-                  {isProcessing ? <i className="fa-solid fa-circle-notch animate-spin text-lg"></i> : 'TASDIQLASH'}
-                </button>
-              </div>
-           </div>
+        {/* Payment Info */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="flex items-center space-x-2 mb-2">
+            <i className="fa-brands fa-telegram text-blue-400 text-xl"></i>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">telegram payment orqali to'lov</p>
+          </div>
         </div>
+
+        {/* Subscribe Button */}
+        <button 
+          onClick={() => setPremiumStep(1)}
+          className="w-full py-5 liquid-button rounded-[28px] font-black text-white uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all text-sm"
+        >
+          hoziroq obuna bo'lish
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderPlanSelection = () => (
+    <div className="flex flex-col animate-fade-in overflow-y-auto no-scrollbar pb-10 min-h-full">
+      <div className="relative p-6 flex flex-col items-center">
+        <button 
+          onClick={() => setPremiumStep(0)}
+          className="absolute top-6 left-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+        >
+          <i className="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <div className="w-full mb-10 text-center pt-10">
+          <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-2">Rejani tanlang</h2>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Siz uchun eng ma'qulini tanlang</p>
+        </div>
+
+        <div className="w-full glass-card rounded-[40px] p-8 bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 mb-10 relative">
+          <div className="absolute -top-3 right-6 bg-blue-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest flex items-center shadow-lg">
+            <i className="fa-solid fa-fire mr-1.5 text-[10px]"></i>
+            eng yaxshi taklif
+          </div>
+          
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-black text-white italic">Oylik Obuna</h3>
+            <div className="flex items-center space-x-1">
+              <i className="fa-solid fa-star text-yellow-500 text-sm"></i>
+              <i className="fa-solid fa-star text-yellow-500 text-sm"></i>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-400 font-medium leading-relaxed mb-8">
+            Ravona AI Premium bu oddiy AI emas, balki real ishlatadiganlar uchun mo'ljallangan kengaytirilgan imkoniyatlar to'plami.
+          </p>
+
+          <div className="flex items-end space-x-3 mb-2">
+            <h4 className="text-4xl font-black text-white">36 444/oy</h4>
+            <div className="bg-blue-500/20 px-3 py-1 rounded-xl text-[10px] font-black text-blue-400 mb-1 border border-blue-500/20">231 stars</div>
+          </div>
+          <p className="text-xs font-black text-slate-500 uppercase tracking-widest">3$ USD</p>
+        </div>
+
+        <div className="flex flex-col items-center mb-10 space-y-4">
+           <div className="flex items-center space-x-4 opacity-50 grayscale">
+              <i className="fa-brands fa-cc-visa text-3xl"></i>
+              <i className="fa-brands fa-cc-mastercard text-3xl"></i>
+              <i className="fa-brands fa-cc-apple-pay text-3xl"></i>
+           </div>
+           <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Barcha to'lov turlari mavjud</p>
+        </div>
+
+        <button 
+          onClick={() => setPremiumStep(2)}
+          className="w-full py-5 liquid-button rounded-[28px] font-black text-white uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all text-sm"
+        >
+          hoziroq sotib olish
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderConfirmModal = () => (
+    <div className="fixed inset-0 z-[6000] flex items-end justify-center p-6 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div className="w-full max-w-sm glass-card rounded-[45px] p-8 border border-white/10 shadow-2xl animate-slide-up bg-[#0f172a] relative">
+        <button 
+          onClick={() => setPremiumStep(1)}
+          className="absolute top-8 left-8 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white border border-white/10"
+        >
+          <i className="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div className="flex flex-col items-center text-center pt-4">
+          <div className="w-24 h-24 rounded-3xl bg-blue-500/10 flex items-center justify-center mb-6 border border-blue-500/20 shadow-inner">
+             <i className="fa-solid fa-gem text-4xl text-blue-500"></i>
+          </div>
+          
+          <div className="bg-blue-500/20 px-4 py-1.5 rounded-full text-[10px] font-black text-blue-400 mb-6 border border-blue-500/30">3$ USD</div>
+          
+          <h2 className="text-2xl font-black text-white italic tracking-tighter mb-3 uppercase">Xaridingizni tasdiqlang</h2>
+          
+          <div className="flex items-center space-x-2 mb-8 bg-white/5 px-4 py-2 rounded-2xl border border-white/5">
+            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+              <i className="fa-solid fa-check text-[10px] text-white"></i>
+            </div>
+            <p className="text-[11px] font-black text-slate-300 uppercase tracking-wider">Ravona AI - Smart App</p>
+          </div>
+
+          <p className="text-sm font-medium text-slate-400 mb-10 leading-relaxed">
+            Ravona AI Premium obunasini <span className="text-white font-bold">3$</span> evaziga faollashtirishni xohlaysizmi?
+          </p>
+
+          <button 
+            onClick={handleBuyPremium}
+            className="w-full py-5 liquid-button rounded-[28px] font-black text-white text-sm uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all mb-6"
+          >
+            Tasdiqlash va to'lash
+          </button>
+
+          <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest leading-relaxed">
+            xarid qilish orqali siz <br/> <span className="text-slate-500 underline">xizmat shartlariga</span> rozilik bildirasiz
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPremiumActive = () => (
+    <div className="flex flex-col items-center justify-center min-h-full p-6 animate-fade-in text-center">
+        <div className="w-32 h-32 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/30 mb-8 shadow-[0_0_50px_rgba(234,179,8,0.2)]">
+            <i className="fa-solid fa-crown text-6xl text-yellow-500 animate-bounce"></i>
+        </div>
+        <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-4">SIZ PREMIUMSIZ!</h2>
+        <div className="bg-yellow-500/20 px-4 py-1.5 rounded-full border border-yellow-500/30 mb-8">
+            <p className="text-xs font-black text-yellow-500 uppercase tracking-widest">Barcha imkoniyatlar ochiq</p>
+        </div>
+        
+        <div className="w-full glass-card rounded-[35px] p-6 border border-white/10 bg-white/5 space-y-4 text-left">
+            <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                    <i className="fa-solid fa-check text-green-400"></i>
+                </div>
+                <p className="text-sm font-bold text-slate-300">2x XP Multiplikator faol</p>
+            </div>
+            <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                    <i className="fa-solid fa-check text-blue-400"></i>
+                </div>
+                <p className="text-sm font-bold text-slate-300">Cheksiz Speaking vaqti</p>
+            </div>
+            <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <i className="fa-solid fa-check text-purple-400"></i>
+                </div>
+                <p className="text-sm font-bold text-slate-300">Reklamasiz interfeys</p>
+            </div>
+        </div>
+    </div>
+  );
+
+  return (
+    <div className="h-full w-full bg-[#0c1222] relative overflow-hidden">
+      {user.isPremium ? (
+          renderPremiumActive()
+      ) : (
+          <>
+            {premiumStep === 0 && renderPremiumBenefits()}
+            {premiumStep === 1 && renderPlanSelection()}
+            {premiumStep === 2 && renderConfirmModal()}
+          </>
       )}
     </div>
   );
