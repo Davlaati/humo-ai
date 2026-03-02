@@ -22,3 +22,8 @@
   from = "/api/create-invoice"
   to = "/.netlify/functions/create_invoice"
   status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
