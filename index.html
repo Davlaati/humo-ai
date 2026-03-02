@@ -8,9 +8,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-      window.process = window.process || { env: {} };
-    </script>
     <style>
       :root {
         --tg-safe-area-inset-top: env(safe-area-inset-top, 0px);
@@ -19,6 +16,7 @@
       body {
         font-family: 'Inter', sans-serif;
         /* Deep Blue Gradient Background */
+        background: #0f172a;
         background: linear-gradient(180deg, #0f172a 0%, #172554 40%, #1e1b4b 100%);
         background-attachment: fixed;
         color: white;
@@ -92,21 +90,9 @@
       .animate-slide-up { animation: slideUpPop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
       .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
     </style>
-    <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-        "react": "https://esm.sh/react@^19.2.4",
-        "react/": "https://esm.sh/react@^19.2.4/",
-        "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
-      }
-    }
-    </script>
-  <link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body class="text-white selection:bg-blue-500 selection:text-white">
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

@@ -19,6 +19,7 @@ import Translator from './components/Translator';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [streakReward, setStreakReward] = useState<{days: number, coins: number} | null>(null);
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [showEntryNotif, setShowEntryNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
+  const [logoError, setLogoError] = useState(false);
 
   const activityIntervalRef = useRef<any>(null);
 
@@ -43,60 +45,67 @@ const App: React.FC = () => {
 
     // Foydalanuvchini yuklash
     const initUser = async () => {
-      const tg = (window as any).Telegram?.WebApp;
-      const tgUser = tg?.initDataUnsafe?.user;
-      
-      if (tgUser) {
-        const tgId = String(tgUser.id);
-        const { fetchUserFromSupabase, syncUserToSupabase } = await import("./services/supabaseService");
+      setIsLoadingUser(true);
+      try {
+        const tg = (window as any).Telegram?.WebApp;
+        const tgUser = tg?.initDataUnsafe?.user;
         
-        // 1. Supabase'dan tekshirish
-        const remoteUser = await fetchUserFromSupabase(tgId);
-        
-        if (remoteUser) {
-          // Mavjud foydalanuvchi
-          const fullUser = { 
-            ...remoteUser, 
-            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
-            username: tgUser.username || remoteUser.username,
-            avatarUrl: tgUser.photo_url || remoteUser.avatarUrl,
-            activeSecondsToday: 0
-          } as UserProfile;
-          setUser(fullUser);
-          saveUser(fullUser);
+        if (tgUser) {
+          const tgId = String(tgUser.id);
+          const { fetchUserFromSupabase, syncUserToSupabase } = await import("./services/supabaseService");
+          
+          // 1. Supabase'dan tekshirish
+          const remoteUser = await fetchUserFromSupabase(tgId);
+          
+          if (remoteUser) {
+            // Mavjud foydalanuvchi
+            const fullUser = { 
+              ...remoteUser, 
+              name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
+              username: tgUser.username || remoteUser.username,
+              avatarUrl: tgUser.photo_url || remoteUser.avatarUrl,
+              activeSecondsToday: 0
+            } as UserProfile;
+            setUser(fullUser);
+            saveUser(fullUser);
+          } else {
+            // Yangi foydalanuvchi yaratish
+            const newUser: UserProfile = {
+              id: tgId,
+              name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
+              username: tgUser.username || `user_${tgId.slice(-4)}`,
+              avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgId}`,
+              age: '18+',
+              level: EnglishLevel.Beginner,
+              goal: 'General Learning',
+              personalities: ['Kind'],
+              studyMinutes: 0,
+              practiceFrequency: 'daily',
+              interests: [],
+              coins: 500, // Bonus for new users
+              xp: 0,
+              streak: 0,
+              lastActiveDate: new Date().toISOString(),
+              joinedAt: new Date().toISOString(),
+              isPremium: false,
+              telegramStars: 0,
+              starsHistory: [],
+              settings: { language: 'Uz', theme: 'dark' },
+              activeSecondsToday: 0
+            };
+            setUser(newUser);
+            saveUser(newUser);
+            await syncUserToSupabase(newUser);
+          }
         } else {
-          // Yangi foydalanuvchi yaratish
-          const newUser: UserProfile = {
-            id: tgId,
-            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
-            username: tgUser.username || `user_${tgId.slice(-4)}`,
-            avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgId}`,
-            age: '18+',
-            level: EnglishLevel.Beginner,
-            goal: 'General Learning',
-            personalities: ['Kind'],
-            studyMinutes: 0,
-            practiceFrequency: 'daily',
-            interests: [],
-            coins: 500, // Bonus for new users
-            xp: 0,
-            streak: 0,
-            lastActiveDate: new Date().toISOString(),
-            joinedAt: new Date().toISOString(),
-            isPremium: false,
-            telegramStars: 0,
-            starsHistory: [],
-            settings: { language: 'Uz', theme: 'dark' },
-            activeSecondsToday: 0
-          };
-          setUser(newUser);
-          saveUser(newUser);
-          await syncUserToSupabase(newUser);
+          // Local storage fallback for development
+          const storedUser = getUser();
+          if (storedUser) setUser(storedUser);
         }
-      } else {
-        // Local storage fallback for development
-        const storedUser = getUser();
-        if (storedUser) setUser(storedUser);
+      } catch (error) {
+        console.error("User initialization failed:", error);
+      } finally {
+        setIsLoadingUser(false);
       }
     };
     initUser();
@@ -158,32 +167,35 @@ const App: React.FC = () => {
       setUser(updatedUser);
   };
 
-  if (!user && !isInitialSplash) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
-
-  if (isInitialSplash) {
+  if (isInitialSplash || isLoadingUser) {
       return (
           <div className="fixed inset-0 bg-[#0f172a] z-[5000] flex flex-col items-center justify-center">
               <div className="relative flex flex-col items-center">
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500 rounded-full blur-[80px] opacity-30 animate-pulse"></div>
                   {/* LOGO INTEGRATION */}
-                  <img 
-                    src="./logo.png" 
-                    alt="Ravona AI" 
-                    className="w-56 h-auto relative z-10 drop-shadow-[0_0_25px_rgba(59,130,246,0.6)] animate-pulse" 
-                    onError={(e) => {
-                      // Fallback if image not found
-                      e.currentTarget.style.display = 'none';
-                      const fallback = document.getElementById('splash-fallback');
-                      if(fallback) fallback.style.display = 'block';
-                    }}
-                  />
-                  {/* Fallback Text just in case */}
-                  <h1 id="splash-fallback" className="hidden mt-4 text-4xl font-black italic tracking-tighter text-white opacity-80 uppercase">Ravona AI</h1>
+                  {!logoError ? (
+                    <img 
+                      src="./logo.png" 
+                      alt="Ravona AI" 
+                      className="w-56 h-auto relative z-10 drop-shadow-[0_0_25px_rgba(59,130,246,0.6)] animate-pulse" 
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    <h1 className="mt-4 text-4xl font-black italic tracking-tighter text-white opacity-80 uppercase">Ravona AI</h1>
+                  )}
               </div>
+              {isLoadingUser && !isInitialSplash && (
+                <div className="mt-8 flex flex-col items-center">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ma'lumotlar yuklanmoqda...</p>
+                </div>
+              )}
           </div>
       );
+  }
+
+  if (!user && !isInitialSplash && !isLoadingUser) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
   if (isAdminMode) {

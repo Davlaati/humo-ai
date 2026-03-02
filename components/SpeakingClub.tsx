@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserProfile, SpeakingStatus, PartnerType } from '../types';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { saveUser } from '../services/storageService';
+import { getAIClient } from '../services/geminiService';
 
 interface SpeakingClubProps {
   user: UserProfile;
@@ -156,8 +157,12 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const apiKey = process['env']['API_KEY'];
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = getAIClient();
+      if (!ai) {
+        setStatus('idle');
+        setError("API kaliti topilmadi. Iltimos, sozlamalarni tekshiring.");
+        return;
+      }
       inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
@@ -253,14 +258,28 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     // Xatolarni analiz qilish
     setIsAnalyzing(true);
     try {
-        const apiKey = process['env']['API_KEY'];
-        const ai = new GoogleGenAI({ apiKey });
+        const ai = getAIClient();
+        if (!ai) {
+            setAnalysis({
+                grammarErrors: [],
+                vocabularySuggestions: ["API kaliti topilmadi."],
+                pronunciationFeedback: [],
+                fluencyFeedback: "API kaliti topilmadi.",
+                scores: { grammar: 0, vocabulary: 0, fluency: 0, pronunciation: 0 },
+                overallLevel: "N/A"
+            });
+            setIsAnalyzing(false);
+            return;
+        }
         const conversationText = transcript.map(t => `${t.sender}: ${t.text}`).join('\n');
         
         if (transcript.length < 2) {
             setAnalysis({
                 grammarErrors: [],
                 vocabularySuggestions: ["Suhbat juda qisqa bo'ldi."],
+                pronunciationFeedback: [],
+                fluencyFeedback: "Suhbat juda qisqa bo'ldi.",
+                scores: { grammar: 0, vocabulary: 0, fluency: 0, pronunciation: 0 },
                 overallLevel: "N/A"
             });
             setIsAnalyzing(false);

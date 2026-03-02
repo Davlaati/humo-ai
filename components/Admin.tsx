@@ -106,19 +106,21 @@ const Admin: React.FC = () => {
       alert("Kirish xabarnomasi yangilandi!");
   };
 
-  const handleToggleBlock = (userId: string, isBlocked: boolean) => {
-    updateOtherUser(userId, { isBlocked: !isBlocked });
+  const handleToggleBlock = async (userId: string, isBlocked: boolean) => {
+    await updateOtherUser(userId, { isBlocked: !isBlocked });
     addAdminLog('User Status Update', `${!isBlocked ? 'Blocked' : 'Unblocked'} user ${userId}`);
-    setUsers(getAllUsers());
+    const allUsers = await getAllUsers();
+    setUsers(allUsers);
   };
 
-  const handleTogglePremium = (userId: string, isPremium: boolean) => {
-    updateOtherUser(userId, { isPremium: !isPremium });
+  const handleTogglePremium = async (userId: string, isPremium: boolean) => {
+    await updateOtherUser(userId, { isPremium: !isPremium });
     addAdminLog('User Premium Update', `${!isPremium ? 'Granted' : 'Revoked'} premium for user ${userId}`);
-    setUsers(getAllUsers());
+    const allUsers = await getAllUsers();
+    setUsers(allUsers);
   };
 
-  const handleAddWord = () => {
+  const handleAddWord = async () => {
     if (!newWord.term || !newWord.translation) return;
     const item: DictionaryItem = {
       id: `word_${Date.now()}`,
@@ -130,11 +132,12 @@ const Admin: React.FC = () => {
     };
     saveDictionaryItem(item);
     addAdminLog('Dictionary Update', `Added word: ${item.term}`);
-    setDictItems(getDictionaryItems());
+    const items = await getDictionaryItems();
+    setDictItems(items);
     setNewWord({ term: '', translation: '', definition: '', example: '', category: 'General' });
   };
 
-  const handleAddDiscount = () => {
+  const handleAddDiscount = async () => {
     if (!newDiscount.code) return;
     const discount: Discount = {
       id: `disc_${Date.now()}`,
@@ -145,7 +148,8 @@ const Admin: React.FC = () => {
     };
     saveDiscount(discount);
     addAdminLog('Discount Update', `Created discount: ${discount.code}`);
-    setDiscounts(getDiscounts());
+    const allDiscounts = await getDiscounts();
+    setDiscounts(allDiscounts);
     setNewDiscount({ code: '', percentage: 10, expiryDate: '', isActive: true });
   };
 

@@ -7,11 +7,18 @@ import { DICTIONARY } from "../data/dictionary";
  * Lazy initializer for the Gemini AI client.
  * This prevents the app from crashing during boot if the API_KEY is not yet available.
  */
-const getAIClient = () => {
-  // Use bracket notation to access the environment variable
-  const apiKey = process['env']['API_KEY'];
+export const getAIClient = () => {
+  // Try multiple common locations for the API key
+  const apiKey = 
+    (import.meta.env && import.meta.env.VITE_GEMINI_KEY) || 
+    (import.meta.env && import.meta.env.VITE_API_KEY) ||
+    (typeof process !== 'undefined' && process.env && (process.env.API_KEY || process.env.GEMINI_API_KEY)) ||
+    (window as any).GEMINI_API_KEY;
+
   if (!apiKey) {
-    throw new Error("API_KEY is not configured in the environment.");
+    console.warn("Gemini API_KEY is not configured. AI features will be disabled.");
+    // We don't throw here to prevent the whole app from crashing if AI is not critical
+    return null;
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -129,9 +136,31 @@ export const playTextToSpeech = async (text: string) => {
   }
 };
 
+export const translateText = async (text: string, sourceLang: string, targetLang: string) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) return null;
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Translate the following text from ${sourceLang} to ${targetLang}: "${text}"`,
+      config: {
+        systemInstruction: "You are a professional translator. Provide only the translated text without any explanations or extra characters.",
+      }
+    });
+    
+    return response.text;
+  } catch (error) {
+    console.error("Translation error:", error);
+    return null;
+  }
+};
+
 export const generateConversationResponse = async (userText: string, userLevel: string) => {
   try {
     const ai = getAIClient();
+    if (!ai) return "That's very interesting! Can you tell me more about it?";
+    
     const prompt = `You are Ravona AI, a friendly English tutor. User level: ${userLevel}. Response < 30 words. Encourage and ask a question. User: "${userText}"`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',

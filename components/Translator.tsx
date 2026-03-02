@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import React, { useState } from 'react';
 import { playTapSound } from '../services/audioService';
+import { translateText } from '../services/geminiService';
 
 interface TranslatorProps {
   onNavigate?: (tab: string) => void;
@@ -26,16 +26,8 @@ const Translator: React.FC<TranslatorProps> = ({ onNavigate }) => {
     setIsLoading(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Translate the following text from ${sourceLang} to ${targetLang}: "${inputText}"`,
-        config: {
-          systemInstruction: "You are a professional translator. Provide only the translated text without any explanations or extra characters.",
-        }
-      });
-      
-      setTranslatedText(response.text || 'Tarjima qilishda xatolik yuz berdi.');
+      const result = await translateText(inputText, sourceLang, targetLang);
+      setTranslatedText(result || 'Tarjima qilishda xatolik yuz berdi. API kalitini tekshiring.');
     } catch (error) {
       console.error("Translation error:", error);
       setTranslatedText('Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.');
