@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { UserProfile } from '../types';
 import { saveUser } from '../services/storageService';
 import { playTapSound } from '../services/audioService';
@@ -18,17 +18,17 @@ const STAR_VARIANTS = [
 
 const Wallet: React.FC<WalletProps> = ({ user }) => {
   const [premiumStep, setPremiumStep] = useState<0 | 1 | 2>(0); // 0: Benefits, 1: Plan, 2: Confirm Modal
+  const [isPremiumActive, setIsPremiumActive] = useState<boolean>(Boolean(user.isPremium));
+
+  const premiumUser = useMemo(() => ({ ...user, isPremium: true }), [user]);
 
   const handleBuyPremium = async () => {
     playTapSound();
 
     const tg = (window as any).Telegram?.WebApp;
-    const telegramUserId = tg?.initDataUnsafe?.user?.id || user.id;
 
     if (!tg?.openInvoice) {
-      const updatedUser = { ...user, isPremium: true };
-      saveUser(updatedUser);
-      window.location.reload();
+      window.alert("Telegram Mini App ichida to'lov oynasini oching.");
       return;
     }
 
@@ -38,7 +38,6 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'create_invoice_link',
-          userId: String(telegramUserId),
         }),
       });
 
@@ -60,9 +59,9 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
             message: "Siz Premium statusini muvaffaqiyatli sotib oldingiz!",
             buttons: [{ type: 'ok' }],
           });
-          const updatedUser = { ...user, isPremium: true };
-          saveUser(updatedUser);
-          window.location.reload();
+          saveUser(premiumUser);
+          setIsPremiumActive(true);
+          setPremiumStep(0);
         } else if (status === 'failed') {
           tg.showPopup({ title: 'Xatolik', message: "To'lov amalga oshmadi." });
         } else if (status === 'cancelled') {
@@ -72,7 +71,7 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
     } catch (error) {
       tg.showPopup({
         title: 'Xatolik',
-        message: "Invoice yaratishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring.",
+        message: "To'lov uchun invoice yaratilmadi. Iltimos, qayta urinib ko'ring.",
       });
       console.error('Buy premium failed:', error);
     }
@@ -158,7 +157,7 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
           </div>
           
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-black text-white italic">Oylik Obuna</h3>
+            <h3 className="text-2xl font-black text-white italic">Ravona AI Premium</h3>
             <div className="flex items-center space-x-1">
               <i className="fa-solid fa-star text-yellow-500 text-sm"></i>
               <i className="fa-solid fa-star text-yellow-500 text-sm"></i>
@@ -166,12 +165,12 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
           </div>
 
           <p className="text-xs text-slate-400 font-medium leading-relaxed mb-8">
-            Ravona AI Premium bu oddiy AI emas, balki real ishlatadiganlar uchun mo'ljallangan kengaytirilgan imkoniyatlar to'plami.
+            Ravona AI Premium - Unlock Speaking Club & Word Battle. 1 oylik to'liq kirish huquqi.
           </p>
 
           <div className="flex items-end space-x-3 mb-2">
-            <h4 className="text-4xl font-black text-white">36 444/oy</h4>
-            <div className="bg-blue-500/20 px-3 py-1 rounded-xl text-[10px] font-black text-blue-400 mb-1 border border-blue-500/20">231 stars</div>
+            <h4 className="text-4xl font-black text-white">150 ⭐️</h4>
+            <div className="bg-blue-500/20 px-3 py-1 rounded-xl text-[10px] font-black text-blue-400 mb-1 border border-blue-500/20">1 Month Premium</div>
           </div>
           <p className="text-xs font-black text-slate-500 uppercase tracking-widest">3$ USD</p>
         </div>
@@ -222,14 +221,14 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
           </div>
 
           <p className="text-sm font-medium text-slate-400 mb-10 leading-relaxed">
-            Ravona AI Premium obunasini <span className="text-white font-bold">3$</span> evaziga faollashtirishni xohlaysizmi?
+Ravona AI Premium obunasini <span className="text-white font-bold">150 ⭐️</span> evaziga faollashtirishni xohlaysizmi?
           </p>
 
           <button 
             onClick={handleBuyPremium}
             className="w-full py-5 liquid-button rounded-[28px] font-black text-white text-sm uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all mb-6"
           >
-            Tasdiqlash va to'lash
+Unlock for 150 ⭐️
           </button>
 
           <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest leading-relaxed">
@@ -275,7 +274,7 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
 
   return (
     <div className="h-full w-full bg-[#0c1222] relative overflow-hidden">
-      {user.isPremium ? (
+      {isPremiumActive ? (
           renderPremiumActive()
       ) : (
           <>
