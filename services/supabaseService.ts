@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { UserProfile, Transaction, DictionaryItem, AdminLog, Discount, SubscriptionPackage } from '../types';
+import { UserProfile, DictionaryItem, AdminLog, LeaderboardPeriod, LeaderboardEntry, PlatformAnalytics, EnglishLevel } from '../types';
 
 export const syncUserToSupabase = async (user: UserProfile) => {
   try {
@@ -117,16 +117,27 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
     
     return (data || []).map(d => ({
       id: d.id,
-      name: d.name,
-      username: d.username,
-      avatarUrl: d.avatar_url,
-      coins: d.coins,
-      xp: d.xp,
-      streak: d.streak,
-      isPremium: d.is_premium,
-      isBlocked: d.is_blocked,
-      telegramStars: d.telegram_stars,
-      settings: d.settings,
+      name: d.name || 'Noma\'lum',
+      username: d.username || undefined,
+      age: d.age || '',
+      level: d.level || EnglishLevel.Beginner,
+      goal: d.goal || '',
+      personalities: d.personalities || [],
+      studyMinutes: d.study_minutes || 0,
+      practiceFrequency: d.practice_frequency || '',
+      interests: d.interests || [],
+      coins: d.coins || 0,
+      xp: d.xp || 0,
+      wins: d.wins || 0,
+      streak: d.streak || 0,
+      lastActiveDate: d.last_active || new Date().toISOString(),
+      joinedAt: d.joined_at || new Date().toISOString(),
+      avatarUrl: d.avatar_url || undefined,
+      isPremium: d.is_premium || false,
+      isBlocked: d.is_blocked || false,
+      telegramStars: d.telegram_stars || 0,
+      starsHistory: d.stars_history || [],
+      settings: d.settings || { language: 'Uz', theme: 'dark' },
       activeSecondsToday: 0 // Local only
     }));
   } catch (e) {

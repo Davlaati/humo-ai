@@ -167,8 +167,8 @@ export const saveAllUsers = (users: UserProfile[]) => {
   localStorage.setItem(USERS_LIST_KEY, JSON.stringify(users));
 };
 
-export const updateOtherUser = (userId: string, updates: Partial<UserProfile>) => {
-  const users = getAllUsers();
+export const updateOtherUser = async (userId: string, updates: Partial<UserProfile>) => {
+  const users = await getAllUsers();
   const index = users.findIndex(u => u.id === userId);
   if (index !== -1) {
     users[index] = { ...users[index], ...updates };
