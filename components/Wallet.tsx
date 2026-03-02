@@ -19,27 +19,36 @@ const STAR_VARIANTS = [
 const Wallet: React.FC<WalletProps> = ({ user }) => {
   const [premiumStep, setPremiumStep] = useState<0 | 1 | 2>(0); // 0: Benefits, 1: Plan, 2: Confirm Modal
 
-  const handleBuyPremium = () => {
+  const handleBuyPremium = async () => {
     playTapSound();
     
     const tg = (window as any).Telegram?.WebApp;
-    const mockInvoiceLink = "https://t.me/$..."; 
+    if (!tg || !tg.initDataUnsafe?.user) {
+        // Fallback for development
+        const updatedUser = { ...user, isPremium: true };
+        saveUser(updatedUser);
+        window.location.reload();
+        return;
+    }
 
-    if (tg && tg.initData) {
-        if (mockInvoiceLink === "https://t.me/$...") {
-             const updatedUser = { ...user, isPremium: true };
-             saveUser(updatedUser);
-             window.location.reload();
-             return;
-        }
+    try {
+        const response = await fetch('/api/create-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: tg.initDataUnsafe.user.id })
+        });
 
-        tg.openInvoice(mockInvoiceLink, (status: string) => {
+        if (!response.ok) throw new Error('Failed to create invoice link');
+        const { url } = await response.json();
+
+        tg.openInvoice(url, (status: string) => {
             if (status === 'paid') {
                 tg.showPopup({
                     title: 'Tabriklaymiz!',
                     message: "Siz Premium statusini muvaffaqiyatli sotib oldingiz!",
                     buttons: [{type: 'ok'}]
                 });
+                // Note: The backend will update the database, but we update locally for immediate feedback
                 const updatedUser = { ...user, isPremium: true };
                 saveUser(updatedUser);
                 window.location.reload();
@@ -47,10 +56,9 @@ const Wallet: React.FC<WalletProps> = ({ user }) => {
                 tg.showPopup({ title: 'Xatolik', message: "To'lov amalga oshmadi." });
             }
         });
-    } else {
-        const updatedUser = { ...user, isPremium: true };
-        saveUser(updatedUser);
-        window.location.reload();
+    } catch (error) {
+        console.error('Premium purchase error:', error);
+        tg.showPopup({ title: 'Xatolik', message: "Invoice linkini olishda xatolik yuz berdi." });
     }
   };
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, EntryNotification as EntryNotifType } from './types';
+import { UserProfile, EntryNotification as EntryNotifType, EnglishLevel } from './types';
 import { getUser, saveUser, incrementActiveTime, getEntryNotification } from './services/storageService';
 import Onboarding from './components/Onboarding';
 import Layout from './components/Layout';
@@ -71,10 +71,18 @@ const App: React.FC = () => {
             name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
             username: tgUser.username || `user_${tgId.slice(-4)}`,
             avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgId}`,
+            age: '18+',
+            level: EnglishLevel.Beginner,
+            goal: 'General Learning',
+            personalities: ['Kind'],
+            studyMinutes: 0,
+            practiceFrequency: 'daily',
+            interests: [],
             coins: 500, // Bonus for new users
             xp: 0,
             streak: 0,
-            level: 1,
+            lastActiveDate: new Date().toISOString(),
+            joinedAt: new Date().toISOString(),
             isPremium: false,
             telegramStars: 0,
             starsHistory: [],

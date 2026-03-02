@@ -5,16 +5,18 @@ import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import LabeledPrice, PreCheckoutQuery, Message
+from supabase import create_client, Client
 
 # --- SOZLAMALAR ---
 # Tokenni Netlify Environment Variables orqali olamiz
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+SUPABASE_URL = os.environ.get("VITE_SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("VITE_SUPABASE_ANON_KEY")
 
 # Bot va Dispatcher obyektlarini yaratish
-# Serverless muhitda har bir so'rov yangi bo'lishi mumkin, shuning uchun global obyektlar
-# faqat bir so'rov davomida ishlatiladi.
 bot = Bot(token=TOKEN) if TOKEN else None
 dp = Dispatcher()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 # --- HANDLERLAR (Stars va Buyruqlar) ---
 
@@ -62,9 +64,18 @@ async def success_payment_handler(message: Message):
     """
     payment_info = message.successful_payment
     amount = payment_info.total_amount
+    payload = payment_info.invoice_payload
     
-    # Bu yerda bazaga yozish kerak (masalan, foydalanuvchini premium qilish)
-    # Hozircha faqat xabar yuboramiz.
+    # Payload dan user_id ni olamiz (premium_123456)
+    user_id = payload.split("_")[1] if "_" in payload else str(message.from_user.id)
+    
+    # Bazada premium statusni faollashtirish
+    if supabase:
+        try:
+            supabase.table("profiles").update({"is_premium": True}).eq("id", user_id).execute()
+            print(f"User {user_id} is now Premium")
+        except Exception as e:
+            print(f"Error updating premium status for user {user_id}: {e}")
     
     await message.answer(
         f"🎉 To'lov muvaffaqiyatli amalga oshirildi!\n"
