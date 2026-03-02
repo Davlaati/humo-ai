@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { convertRavonaToStars, saveUser } from '../services/storageService';
+import { saveUser } from '../services/storageService';
 import { playTapSound } from '../services/audioService';
 
 interface WalletProps {
@@ -19,38 +19,62 @@ const STAR_VARIANTS = [
 const Wallet: React.FC<WalletProps> = ({ user }) => {
   const [premiumStep, setPremiumStep] = useState<0 | 1 | 2>(0); // 0: Benefits, 1: Plan, 2: Confirm Modal
 
-  const handleBuyPremium = () => {
+  const handleBuyPremium = async () => {
     playTapSound();
-    
+
     const tg = (window as any).Telegram?.WebApp;
-    const mockInvoiceLink = "https://t.me/$..."; 
+    const telegramUserId = tg?.initDataUnsafe?.user?.id || user.id;
 
-    if (tg && tg.initData) {
-        if (mockInvoiceLink === "https://t.me/$...") {
-             const updatedUser = { ...user, isPremium: true };
-             saveUser(updatedUser);
-             window.location.reload();
-             return;
+    if (!tg?.openInvoice) {
+      const updatedUser = { ...user, isPremium: true };
+      saveUser(updatedUser);
+      window.location.reload();
+      return;
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/bot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_invoice_link',
+          userId: String(telegramUserId),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Invoice request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const invoiceLink = data?.invoiceLink;
+
+      if (!invoiceLink) {
+        throw new Error('Invoice link not returned by backend');
+      }
+
+      tg.openInvoice(invoiceLink, (status: string) => {
+        if (status === 'paid') {
+          tg.showPopup({
+            title: 'Tabriklaymiz!',
+            message: "Siz Premium statusini muvaffaqiyatli sotib oldingiz!",
+            buttons: [{ type: 'ok' }],
+          });
+          const updatedUser = { ...user, isPremium: true };
+          saveUser(updatedUser);
+          window.location.reload();
+        } else if (status === 'failed') {
+          tg.showPopup({ title: 'Xatolik', message: "To'lov amalga oshmadi." });
+        } else if (status === 'cancelled') {
+          tg.showPopup({ title: 'Bekor qilindi', message: "To'lov foydalanuvchi tomonidan bekor qilindi." });
         }
-
-        tg.openInvoice(mockInvoiceLink, (status: string) => {
-            if (status === 'paid') {
-                tg.showPopup({
-                    title: 'Tabriklaymiz!',
-                    message: "Siz Premium statusini muvaffaqiyatli sotib oldingiz!",
-                    buttons: [{type: 'ok'}]
-                });
-                const updatedUser = { ...user, isPremium: true };
-                saveUser(updatedUser);
-                window.location.reload();
-            } else if (status === 'failed') {
-                tg.showPopup({ title: 'Xatolik', message: "To'lov amalga oshmadi." });
-            }
-        });
-    } else {
-        const updatedUser = { ...user, isPremium: true };
-        saveUser(updatedUser);
-        window.location.reload();
+      });
+    } catch (error) {
+      tg.showPopup({
+        title: 'Xatolik',
+        message: "Invoice yaratishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring.",
+      });
+      console.error('Buy premium failed:', error);
     }
   };
 
