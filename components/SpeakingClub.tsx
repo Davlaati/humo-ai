@@ -4,6 +4,7 @@ import { UserProfile, SpeakingStatus, PartnerType } from '../types';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { saveUser } from '../services/storageService';
 import { getAIClient } from '../services/geminiService';
+import { awardXP, awardCoins } from '../services/gamificationService';
 
 interface SpeakingClubProps {
   user: UserProfile;
@@ -318,7 +319,9 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     }
 
     const xpEarned = Math.max(15, Math.floor(elapsedTime / 60) * 15);
-    onUpdateUser({ ...user, xp: user.xp + xpEarned, coins: user.coins + 10 });
+    const updatedUser = awardXP(user, xpEarned);
+    const fullyUpdatedUser = awardCoins(updatedUser, 10);
+    onUpdateUser(fullyUpdatedUser);
   };
 
   if (status === 'idle') {

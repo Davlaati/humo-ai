@@ -71,6 +71,24 @@ export interface UserProfile {
   starsHistory: StarsTransaction[];
   // Added settings property to UserProfile interface
   settings?: UserSettings;
+  badges?: Achievement[];
+  level_progress?: number; // 0-100% to next level
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: 'streak' | 'learning' | 'social' | 'special';
+  requirement: number;
+  color?: string;
+  type?: 'shield' | 'hex';
+}
+
+export interface Achievement {
+  badgeId: string;
+  unlockedAt: string;
 }
 
 export interface Transaction {
@@ -118,6 +136,7 @@ export interface LeaderboardEntry {
   avatarUrl?: string;
   xp: number;
   wins: number;
+  badges?: Achievement[];
   rank: number;
   isCurrentUser: boolean;
   trend: 'up' | 'down' | 'same';

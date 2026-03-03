@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { UserProfile } from '../types';
 import UserBadges from './UserBadges';
+import { calculateLevel } from '../services/gamificationService';
 
 interface ProfileProps {
   user: UserProfile;
@@ -12,6 +13,7 @@ interface ProfileProps {
 const INTERESTS_OPTIONS = ['Technology', 'Business', 'Travel', 'Movies', 'Music', 'Sports', 'Gaming', 'Food', 'Fashion', 'Art', 'Science', 'History'];
 
 const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin }) => {
+  const { level, progress } = calculateLevel(user.xp);
   const [isEditingInterests, setIsEditingInterests] = useState(false);
   const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
 
@@ -63,8 +65,23 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin }) =>
          <h2 className="text-2xl font-black">{user.name}</h2>
          <p className="text-gray-400 font-medium">@{user.username || 'user'}</p>
          <div className="flex space-x-2 mt-2">
-            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">{user.level}</span>
+            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">Level {level}</span>
+            <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-500/30">{user.level}</span>
          </div>
+      </div>
+
+      {/* Level Progress Bar */}
+      <div className="glass-card rounded-2xl p-4 border border-white/5">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Level {level} Progress</span>
+          <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{Math.round(progress)}%</span>
+        </div>
+        <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-1000" 
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

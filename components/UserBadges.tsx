@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { UserProfile } from '../types';
-import { BADGE_DEFINITIONS } from '../services/achievementSystem';
+import { UserProfile, Achievement } from '../types';
+import { BADGE_DEFINITIONS } from '../services/gamificationService';
 
 interface UserBadgesProps {
   user: UserProfile;
@@ -9,7 +9,8 @@ interface UserBadgesProps {
 }
 
 const UserBadges: React.FC<UserBadgesProps> = ({ user, compact = false }) => {
-  const badgeIds = (user as any).badges || [];
+  const achievements = user.badges || [];
+  const badgeIds = achievements.map(a => a.badgeId);
 
   if (compact) {
     const mainBadge = badgeIds.length > 0 ? BADGE_DEFINITIONS[badgeIds[badgeIds.length - 1]] : null;

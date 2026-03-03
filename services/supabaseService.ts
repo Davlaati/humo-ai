@@ -18,6 +18,8 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         is_blocked: user.isBlocked,
         telegram_stars: user.telegramStars,
         settings: user.settings,
+        badges: user.badges,
+        level_progress: user.level_progress,
         last_active: new Date().toISOString()
       });
     if (error) console.error('Error syncing user to Supabase:', error);
@@ -47,7 +49,9 @@ export const fetchUserFromSupabase = async (userId: string): Promise<Partial<Use
       isPremium: data.is_premium,
       isBlocked: data.is_blocked,
       telegramStars: data.telegram_stars,
-      settings: data.settings
+      settings: data.settings,
+      badges: data.badges,
+      level_progress: data.level_progress
     };
   } catch (e) {
     return null;
@@ -85,7 +89,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
     // For now, we'll just sort by total XP
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, xp, wins')
+      .select('id, name, xp, wins, badges')
       .order('xp', { ascending: false })
       .limit(50);
     
@@ -96,6 +100,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
       name: u.name || 'Noma\'lum',
       xp: u.xp || 0,
       wins: u.wins || 0,
+      badges: u.badges || [],
       rank: index + 1,
       isCurrentUser: false, // Will be set in the component
       trend: 'same'
@@ -136,6 +141,8 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       isBlocked: d.is_blocked,
       telegramStars: d.telegram_stars,
       settings: d.settings,
+      badges: d.badges,
+      level_progress: d.level_progress,
       starsHistory: d.stars_history || [],
       activeSecondsToday: 0 // Local only
     } as UserProfile));

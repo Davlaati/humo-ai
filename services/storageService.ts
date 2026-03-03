@@ -47,6 +47,7 @@ export const getUser = (): UserProfile | null => {
     if (user.xp === undefined) user.xp = 0;
     if (user.coins === undefined) user.coins = 0;
     if (user.streak === undefined) user.streak = 0;
+    if (!user.badges) user.badges = [];
     
     return user as UserProfile;
   } catch (e) {

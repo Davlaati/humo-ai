@@ -4,7 +4,7 @@ import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
 import DailyStreakCard from './DailyStreakCard';
 import { validateAndUpdateStreak } from '../services/streakSystem';
-import { checkAchievements } from '../services/achievementSystem';
+import { checkAchievements, calculateLevel } from '../services/gamificationService';
 
 interface HomeProps {
   user: UserProfile;
@@ -15,6 +15,7 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakReward, onClearStreakReward }) => {
+  const { level, progress } = calculateLevel(user.xp);
   const prevStats = useRef({ xp: user.xp, wins: user.wins || 0 });
 
   // Initialize Gamification Logic
@@ -22,11 +23,11 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
     const updatedUser = validateAndUpdateStreak(user);
     const badgeUpdates = checkAchievements(updatedUser);
     
-    if (updatedUser.streak !== user.streak || badgeUpdates.length !== ((user as any).badges?.length || 0)) {
+    if (updatedUser.streak !== user.streak || badgeUpdates.length !== (user.badges?.length || 0)) {
       onUpdateUser({
         ...updatedUser,
         badges: badgeUpdates
-      } as any);
+      });
     }
   }, []);
 
@@ -63,6 +64,12 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
         </div>
 
         <div onClick={() => onNavigate('wallet')} className="bg-white/5 backdrop-blur-md rounded-2xl px-4 py-2 flex items-center space-x-2 border border-white/10 shadow-lg active:scale-95 transition-transform cursor-pointer">
+           <div className="flex flex-col items-end mr-1">
+              <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Level {level}</span>
+              <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
+                 <div className="h-full bg-blue-500" style={{ width: `${progress}%` }}></div>
+              </div>
+           </div>
            <div className="w-6 h-6 bg-yellow-500/20 rounded-full flex items-center justify-center">
               <i className="fa-solid fa-coins text-yellow-400 text-xs"></i>
            </div>
