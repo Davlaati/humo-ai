@@ -155,6 +155,10 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
   const connectToLiveAPI = async (systemInstruction: string, voice: string = 'Zephyr') => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Sizning brauzeringiz mikrofondan foydalanishni qo'llab-quvvatlamaydi.");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -237,10 +241,17 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
       });
 
       sessionRef.current = await sessionPromise;
-    } catch (err) {
-      console.error("Microphone Access Denied:", err);
+    } catch (err: any) {
+      console.error("Microphone Access Error:", err);
       setStatus('idle');
-      setError("Mikrofonga ruxsat berilmagan yoki mikrofon topilmadi.");
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError("Mikrofonga ruxsat berilmadi. Iltimos, brauzer sozlamalaridan ruxsat bering va sahifani yangilang.");
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError("Mikrofon topilmadi. Qurilmangizni tekshiring.");
+      } else {
+        setError(err.message || "Mikrofonga ulanishda xatolik yuz berdi.");
+      }
     }
   };
 
@@ -355,7 +366,22 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             </button>
           </div>
           
-          {error && <p className="mt-4 text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">{error}</p>}
+          {error && (
+            <div className="mt-6 w-full animate-slide-up">
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-3xl flex flex-col items-center">
+                <i className="fa-solid fa-triangle-exclamation text-red-400 text-xl mb-2"></i>
+                <p className="text-red-400 text-[10px] font-black uppercase tracking-widest text-center leading-relaxed">
+                  {error}
+                </p>
+                <button 
+                  onClick={() => startSession()} 
+                  className="mt-4 px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-full text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Qayta urinish
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Personality Picker Modal */}

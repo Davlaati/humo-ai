@@ -66,17 +66,17 @@ export interface UserProfile {
   joinedAt: string;
   isAdmin?: boolean;
   isPremium?: boolean; 
-  premiumExpiryDate?: string;
+  premiumExpiryDate?: string; // This is premium_until
   isTrialUsed?: boolean;
-  trialExpiryDate?: string;
+  trialExpiryDate?: string; // This is trial_expires_at
   pendingPremium?: boolean;
   isBlocked?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
-  // Added settings property to UserProfile interface
   settings?: UserSettings;
   badges?: Achievement[];
-  level_progress?: number; // 0-100% to next level
+  level_progress?: number; 
+  aiInteractionsCount?: number; // For FOMO stats
 }
 
 export interface Badge {
@@ -98,13 +98,15 @@ export interface Achievement {
 export interface Transaction {
   id: string;
   userId: string;
-  username: string;
+  userName?: string;
+  userEmail?: string;
   amount: number; 
-  cost: number; 
+  planId: string;
+  planName: string;
   status: 'pending' | 'approved' | 'rejected';
-  proofUrl?: string; 
+  receiptImageUrl?: string; // receipt_image_url
   createdAt: string;
-  expiresAt?: string;
+  processedAt?: string;
   rejectionReason?: string;
 }
 

@@ -3,12 +3,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { consultWithMentor, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
+import { awardXP } from '../services/gamificationService';
 
 interface SmartDictionaryProps {
   user: UserProfile;
+  onUpdateUser: (user: UserProfile) => void;
 }
 
-const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user }) => {
+const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser }) => {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +27,10 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user }) => {
       const result = await consultWithMentor(user, query, 'lookup');
       setResponse(result || "Ma'lumot topilmadi.");
       setHistory(prev => [query, ...prev].slice(0, 5));
+      
+      // Award XP for search
+      const updatedUser = awardXP(user, 3);
+      onUpdateUser(updatedUser);
     } catch (e) {
       setResponse("Xatolik yuz berdi.");
     } finally {
@@ -41,6 +47,10 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user }) => {
     try {
       const result = await consultWithMentor(user, '', 'daily');
       setResponse(result || "Bugungi so'zlar tayyorlanmadi.");
+      
+      // Award XP for daily words
+      const updatedUser = awardXP(user, 10);
+      onUpdateUser(updatedUser);
     } catch (e) {
       setResponse("Xatolik yuz berdi.");
     } finally {

@@ -17,6 +17,7 @@ import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
 import Translator from './components/Translator';
 import Premium from './components/Premium';
+import AITutor from './components/AITutor';
 import { getPremiumStatus, isPremiumActive } from './services/storageService';
 
 const App: React.FC = () => {
@@ -219,7 +220,7 @@ const App: React.FC = () => {
       const isPremium = isPremiumActive(user);
 
       // Restricted tabs if not premium
-      const restrictedTabs = ['speaking-club', 'game', 'translator', 'dictionary'];
+      const restrictedTabs = ['speaking-club', 'game', 'translator', 'dictionary', 'tutor'];
       if (!isPremium && restrictedTabs.includes(activeTab)) {
           return (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
@@ -246,8 +247,9 @@ const App: React.FC = () => {
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setShowPremium(true)} />;
-          case 'dictionary': return <SmartDictionary user={user} />;
-          case 'translator': return <Translator onNavigate={setActiveTab} />;
+          case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
+          case 'tutor': return <AITutor user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
+          case 'translator': return <Translator user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
           default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
       }
   };

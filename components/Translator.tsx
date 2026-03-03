@@ -2,12 +2,16 @@
 import React, { useState } from 'react';
 import { playTapSound } from '../services/audioService';
 import { translateText } from '../services/geminiService';
+import { awardXP } from '../services/gamificationService';
+import { UserProfile } from '../types';
 
 interface TranslatorProps {
+  user: UserProfile;
   onNavigate?: (tab: string) => void;
+  onUpdateUser: (user: UserProfile) => void;
 }
 
-const Translator: React.FC<TranslatorProps> = ({ onNavigate }) => {
+const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onUpdateUser }) => {
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +32,10 @@ const Translator: React.FC<TranslatorProps> = ({ onNavigate }) => {
     try {
       const result = await translateText(inputText, sourceLang, targetLang);
       setTranslatedText(result || 'Tarjima qilishda xatolik yuz berdi. API kalitini tekshiring.');
+      
+      // Award XP for translation
+      const updatedUser = awardXP(user, 2);
+      onUpdateUser(updatedUser);
     } catch (error) {
       console.error("Translation error:", error);
       setTranslatedText('Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.');
