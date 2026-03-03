@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Word } from '../types';
 import { generateLessonContent, generateFallbackLesson, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
-import { awardXP, awardCoins } from '../services/gamificationService';
 
 interface LessonProps {
   user: UserProfile;
@@ -84,9 +83,12 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
     setSessionXP(prev => prev + xp);
     setSessionCoins(prev => prev + coins);
     if (onUpdateUser) {
-      const updatedUser = awardXP(user, xp);
-      const fullyUpdatedUser = awardCoins(updatedUser, coins);
-      onUpdateUser(fullyUpdatedUser);
+      const updatedUser = {
+        ...user,
+        coins: user.coins + coins,
+        xp: user.xp + xp
+      };
+      onUpdateUser(updatedUser);
       setRewardMessage(`+${coins} HC & +${xp} XP: ${reason}`);
       setTimeout(() => setRewardMessage(null), 2000);
     }

@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserProfile, SpeakingStatus, PartnerType } from '../types';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { saveUser } from '../services/storageService';
-import { getAIClient } from '../services/geminiService';
-import { awardXP, awardCoins } from '../services/gamificationService';
 
 interface SpeakingClubProps {
   user: UserProfile;
@@ -155,19 +153,11 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
   const connectToLiveAPI = async (systemInstruction: string, voice: string = 'Zephyr') => {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Sizning brauzeringiz mikrofondan foydalanishni qo'llab-quvvatlamaydi.");
-      }
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const ai = getAIClient();
-      if (!ai) {
-        setStatus('idle');
-        setError("API kaliti topilmadi. Iltimos, sozlamalarni tekshiring.");
-        return;
-      }
+      const apiKey = process['env']['API_KEY'];
+      const ai = new GoogleGenAI({ apiKey });
       inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
@@ -241,17 +231,10 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
       });
 
       sessionRef.current = await sessionPromise;
-    } catch (err: any) {
-      console.error("Microphone Access Error:", err);
+    } catch (err) {
+      console.error("Microphone Access Denied:", err);
       setStatus('idle');
-      
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError("Mikrofonga ruxsat berilmadi. Iltimos, brauzer sozlamalaridan ruxsat bering va sahifani yangilang.");
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setError("Mikrofon topilmadi. Qurilmangizni tekshiring.");
-      } else {
-        setError(err.message || "Mikrofonga ulanishda xatolik yuz berdi.");
-      }
+      setError("Mikrofonga ruxsat berilmagan yoki mikrofon topilmadi.");
     }
   };
 
@@ -270,28 +253,14 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     // Xatolarni analiz qilish
     setIsAnalyzing(true);
     try {
-        const ai = getAIClient();
-        if (!ai) {
-            setAnalysis({
-                grammarErrors: [],
-                vocabularySuggestions: ["API kaliti topilmadi."],
-                pronunciationFeedback: [],
-                fluencyFeedback: "API kaliti topilmadi.",
-                scores: { grammar: 0, vocabulary: 0, fluency: 0, pronunciation: 0 },
-                overallLevel: "N/A"
-            });
-            setIsAnalyzing(false);
-            return;
-        }
+        const apiKey = process['env']['API_KEY'];
+        const ai = new GoogleGenAI({ apiKey });
         const conversationText = transcript.map(t => `${t.sender}: ${t.text}`).join('\n');
         
         if (transcript.length < 2) {
             setAnalysis({
                 grammarErrors: [],
                 vocabularySuggestions: ["Suhbat juda qisqa bo'ldi."],
-                pronunciationFeedback: [],
-                fluencyFeedback: "Suhbat juda qisqa bo'ldi.",
-                scores: { grammar: 0, vocabulary: 0, fluency: 0, pronunciation: 0 },
                 overallLevel: "N/A"
             });
             setIsAnalyzing(false);
@@ -330,9 +299,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     }
 
     const xpEarned = Math.max(15, Math.floor(elapsedTime / 60) * 15);
-    const updatedUser = awardXP(user, xpEarned);
-    const fullyUpdatedUser = awardCoins(updatedUser, 10);
-    onUpdateUser(fullyUpdatedUser);
+    onUpdateUser({ ...user, xp: user.xp + xpEarned, coins: user.coins + 10 });
   };
 
   if (status === 'idle') {
@@ -366,22 +333,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             </button>
           </div>
           
-          {error && (
-            <div className="mt-6 w-full animate-slide-up">
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-3xl flex flex-col items-center">
-                <i className="fa-solid fa-triangle-exclamation text-red-400 text-xl mb-2"></i>
-                <p className="text-red-400 text-[10px] font-black uppercase tracking-widest text-center leading-relaxed">
-                  {error}
-                </p>
-                <button 
-                  onClick={() => startSession()} 
-                  className="mt-4 px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-full text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-                >
-                  Qayta urinish
-                </button>
-              </div>
-            </div>
-          )}
+          {error && <p className="mt-4 text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">{error}</p>}
         </div>
 
         {/* Personality Picker Modal */}

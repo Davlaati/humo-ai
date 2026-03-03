@@ -34,10 +34,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, showN
                >
                   <i className="fa-solid fa-gamepad text-2xl group-hover:rotate-12 transition-transform drop-shadow-md"></i>
                </button>
-               <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest text-slate-400 opacity-50">O'yinlar</span>
             </div>
             
-            <NavButton icon="fa-robot" label="Tutor" active={activeTab === 'tutor'} onClick={() => onTabChange('tutor')} />
+            <NavButton icon="fa-book-journal-whills" label="Lug'at" active={activeTab === 'dictionary'} onClick={() => onTabChange('dictionary')} />
             <NavButton icon="fa-user" label="Profil" active={activeTab === 'profile'} onClick={() => onTabChange('profile')} />
           </div>
         </div>

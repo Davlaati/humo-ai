@@ -65,56 +65,23 @@ export interface UserProfile {
   avatarUrl?: string;
   joinedAt: string;
   isAdmin?: boolean;
-  isPremium?: boolean; 
-  premiumExpiryDate?: string; // This is premium_until
-  isTrialUsed?: boolean;
-  trialExpiryDate?: string; // This is trial_expires_at
-  pendingPremium?: boolean;
+  isPremium?: boolean; // Added for Stars Payment
   isBlocked?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
+  // Added settings property to UserProfile interface
   settings?: UserSettings;
-  badges?: Achievement[];
-  level_progress?: number; 
-  aiInteractionsCount?: number; // For FOMO stats
-}
-
-export interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  category: 'streak' | 'learning' | 'social' | 'special';
-  requirement: number;
-  color?: string;
-  type?: 'shield' | 'hex';
-}
-
-export interface Achievement {
-  badgeId: string;
-  unlockedAt: string;
 }
 
 export interface Transaction {
   id: string;
   userId: string;
-  userName?: string;
-  userEmail?: string;
+  username: string;
   amount: number; 
-  planId: string;
-  planName: string;
+  cost: number; 
   status: 'pending' | 'approved' | 'rejected';
-  receiptImageUrl?: string; // receipt_image_url
+  proofUrl?: string; 
   createdAt: string;
-  processedAt?: string;
-  rejectionReason?: string;
-}
-
-export interface AdminConfig {
-  cardNumber: string;
-  cardHolder: string;
-  premiumPriceUZS: number;
-  premiumPriceUSD: number;
 }
 
 export interface Word {
@@ -151,7 +118,6 @@ export interface LeaderboardEntry {
   avatarUrl?: string;
   xp: number;
   wins: number;
-  badges?: Achievement[];
   rank: number;
   isCurrentUser: boolean;
   trend: 'up' | 'down' | 'same';

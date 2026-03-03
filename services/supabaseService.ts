@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { UserProfile, Transaction, DictionaryItem, AdminLog, Discount, SubscriptionPackage, LeaderboardPeriod, LeaderboardEntry, PlatformAnalytics, EnglishLevel } from '../types';
+import { UserProfile, Transaction, DictionaryItem, AdminLog, Discount, SubscriptionPackage } from '../types';
 
 export const syncUserToSupabase = async (user: UserProfile) => {
   try {
@@ -18,8 +18,6 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         is_blocked: user.isBlocked,
         telegram_stars: user.telegramStars,
         settings: user.settings,
-        badges: user.badges,
-        level_progress: user.level_progress,
         last_active: new Date().toISOString()
       });
     if (error) console.error('Error syncing user to Supabase:', error);
@@ -49,9 +47,7 @@ export const fetchUserFromSupabase = async (userId: string): Promise<Partial<Use
       isPremium: data.is_premium,
       isBlocked: data.is_blocked,
       telegramStars: data.telegram_stars,
-      settings: data.settings,
-      badges: data.badges,
-      level_progress: data.level_progress
+      settings: data.settings
     };
   } catch (e) {
     return null;
@@ -89,7 +85,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
     // For now, we'll just sort by total XP
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, xp, wins, badges')
+      .select('id, name, xp, wins')
       .order('xp', { ascending: false })
       .limit(50);
     
@@ -100,7 +96,6 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
       name: u.name || 'Noma\'lum',
       xp: u.xp || 0,
       wins: u.wins || 0,
-      badges: u.badges || [],
       rank: index + 1,
       isCurrentUser: false, // Will be set in the component
       trend: 'same'
@@ -125,27 +120,15 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       name: d.name,
       username: d.username,
       avatarUrl: d.avatar_url,
-      age: d.age || '18+',
-      level: d.level || EnglishLevel.Beginner,
-      goal: d.goal || 'General Learning',
-      personalities: d.personalities || ['Kind'],
-      studyMinutes: d.study_minutes || 0,
-      practiceFrequency: d.practice_frequency || 'daily',
-      interests: d.interests || [],
       coins: d.coins,
       xp: d.xp,
       streak: d.streak,
-      lastActiveDate: d.last_active || new Date().toISOString(),
-      joinedAt: d.joined_at || new Date().toISOString(),
       isPremium: d.is_premium,
       isBlocked: d.is_blocked,
       telegramStars: d.telegram_stars,
       settings: d.settings,
-      badges: d.badges,
-      level_progress: d.level_progress,
-      starsHistory: d.stars_history || [],
       activeSecondsToday: 0 // Local only
-    } as UserProfile));
+    }));
   } catch (e) {
     return [];
   }

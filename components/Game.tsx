@@ -3,7 +3,6 @@ import { UserProfile } from '../types';
 import { saveUser } from '../services/storageService';
 import { DICTIONARY } from '../data/dictionary';
 import { playTapSound } from '../services/audioService';
-import { awardXP, awardCoins } from '../services/gamificationService';
 
 interface GameProps {
   user: UserProfile;
@@ -109,12 +108,13 @@ const Game: React.FC<GameProps> = ({ user }) => {
        const bonusCoins = difficulty === 'easy' ? 25 : difficulty === 'medium' ? 50 : 100;
        const bonusXP = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 20 : 40;
 
-       const updatedUser = awardXP(user, bonusXP);
-       const fullyUpdatedUser = awardCoins(updatedUser, bonusCoins);
-       
-       // Update wins manually as it's not in gamificationService yet
-       fullyUpdatedUser.wins = (fullyUpdatedUser.wins || 0) + 1;
-       saveUser(fullyUpdatedUser);
+       const newUser = { 
+           ...user, 
+           coins: user.coins + bonusCoins, 
+           xp: user.xp + bonusXP,
+           wins: (user.wins || 0) + 1 
+       };
+       saveUser(newUser);
     }
   };
 

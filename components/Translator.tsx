@@ -1,17 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { playTapSound } from '../services/audioService';
-import { translateText } from '../services/geminiService';
-import { awardXP } from '../services/gamificationService';
-import { UserProfile } from '../types';
 
 interface TranslatorProps {
-  user: UserProfile;
   onNavigate?: (tab: string) => void;
-  onUpdateUser: (user: UserProfile) => void;
 }
 
-const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onUpdateUser }) => {
+const Translator: React.FC<TranslatorProps> = ({ onNavigate }) => {
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,12 +26,16 @@ const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onUpdateUser 
     setIsLoading(true);
     
     try {
-      const result = await translateText(inputText, sourceLang, targetLang);
-      setTranslatedText(result || 'Tarjima qilishda xatolik yuz berdi. API kalitini tekshiring.');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Translate the following text from ${sourceLang} to ${targetLang}: "${inputText}"`,
+        config: {
+          systemInstruction: "You are a professional translator. Provide only the translated text without any explanations or extra characters.",
+        }
+      });
       
-      // Award XP for translation
-      const updatedUser = awardXP(user, 2);
-      onUpdateUser(updatedUser);
+      setTranslatedText(response.text || 'Tarjima qilishda xatolik yuz berdi.');
     } catch (error) {
       console.error("Translation error:", error);
       setTranslatedText('Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.');
