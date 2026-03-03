@@ -16,6 +16,8 @@ import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
 import Translator from './components/Translator';
+import Premium from './components/Premium';
+import { getPremiumStatus, isPremiumActive } from './services/storageService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -26,6 +28,8 @@ const App: React.FC = () => {
 
   const [entryNotif, setEntryNotif] = useState<EntryNotifType | null>(null);
   const [showEntryNotif, setShowEntryNotif] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
+  const [trialNotif, setTrialNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
   const [logoError, setLogoError] = useState(false);
@@ -96,6 +100,7 @@ const App: React.FC = () => {
             setUser(newUser);
             saveUser(newUser);
             await syncUserToSupabase(newUser);
+            setTrialNotif(true);
           }
         } else {
           // Local storage fallback for development
@@ -209,6 +214,30 @@ const App: React.FC = () => {
 
   const renderContent = () => {
       if (!user) return null;
+      
+      const premiumStatus = getPremiumStatus(user);
+      const isPremium = isPremiumActive(user);
+
+      // Restricted tabs if not premium
+      const restrictedTabs = ['speaking-club', 'game', 'translator', 'dictionary'];
+      if (!isPremium && restrictedTabs.includes(activeTab)) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                <div className="w-20 h-20 bg-yellow-500/10 rounded-3xl flex items-center justify-center mb-6 border border-yellow-500/20">
+                    <i className="fa-solid fa-lock text-4xl text-yellow-500"></i>
+                </div>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Premium Kerak</h2>
+                <p className="text-slate-400 text-sm mb-8">Ushbu funksiyadan foydalanish uchun Premium obunani faollashtiring yoki 3 kunlik bepul sinov muddatini kuting.</p>
+                <button 
+                  onClick={() => setShowPremium(true)}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl font-black text-lg uppercase tracking-wider shadow-lg"
+                >
+                  Premiumga O'tish
+                </button>
+            </div>
+          );
+      }
+
       switch (activeTab) {
           case 'home': return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} streakReward={streakReward} onClearStreakReward={() => setStreakReward(null)} />;
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
@@ -216,7 +245,7 @@ const App: React.FC = () => {
           case 'game': return <Game user={user} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
-          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
+          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setShowPremium(true)} />;
           case 'dictionary': return <SmartDictionary user={user} />;
           case 'translator': return <Translator onNavigate={setActiveTab} />;
           default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
@@ -225,6 +254,34 @@ const App: React.FC = () => {
 
   return (
     <>
+       {showPremium && user && (
+           <div className="fixed inset-0 z-[6000] bg-slate-950">
+               <Premium 
+                 user={user} 
+                 onUpdateUser={handleUpdateUser} 
+                 onClose={() => setShowPremium(false)} 
+               />
+           </div>
+       )}
+
+       {trialNotif && (
+           <div className="fixed inset-0 z-[7000] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+               <div className="glass-card w-full max-w-sm p-8 rounded-3xl border border-blue-500/30 text-center shadow-2xl shadow-blue-500/20">
+                   <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-lg">
+                       <i className="fa-solid fa-gift text-3xl text-white"></i>
+                   </div>
+                   <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Xush Kelibsiz!</h2>
+                   <p className="text-slate-400 text-sm mb-8">Sizga 3 kunlik bepul Premium taqdim etildi. Barcha funksiyalardan cheklovlarsiz foydalanishingiz mumkin!</p>
+                   <button 
+                     onClick={() => setTrialNotif(false)}
+                     className="w-full py-4 bg-blue-600 rounded-2xl font-black text-lg uppercase tracking-wider"
+                   >
+                     Rahmat!
+                   </button>
+               </div>
+           </div>
+       )}
+
        {showEntryNotif && entryNotif && (
            <div className="fixed inset-0 z-[4000] bg-blue-900/50 backdrop-blur-sm animate-fade-in">
                 <EntryNotification 
@@ -241,7 +298,7 @@ const App: React.FC = () => {
        <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-xl pointer-events-none'}`}>
            {activeTab === 'wallet' ? (
                <Layout activeTab="home" onTabChange={setActiveTab} showNav={false}>
-                   <Wallet user={user!} />
+                   <Wallet user={user!} onUpdateUser={handleUpdateUser} />
                </Layout>
            ) : (
                <Layout activeTab={activeTab} onTabChange={(tab) => {

@@ -65,7 +65,11 @@ export interface UserProfile {
   avatarUrl?: string;
   joinedAt: string;
   isAdmin?: boolean;
-  isPremium?: boolean; // Added for Stars Payment
+  isPremium?: boolean; 
+  premiumExpiryDate?: string;
+  isTrialUsed?: boolean;
+  trialExpiryDate?: string;
+  pendingPremium?: boolean;
   isBlocked?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
@@ -100,6 +104,15 @@ export interface Transaction {
   status: 'pending' | 'approved' | 'rejected';
   proofUrl?: string; 
   createdAt: string;
+  expiresAt?: string;
+  rejectionReason?: string;
+}
+
+export interface AdminConfig {
+  cardNumber: string;
+  cardHolder: string;
+  premiumPriceUZS: number;
+  premiumPriceUSD: number;
 }
 
 export interface Word {
