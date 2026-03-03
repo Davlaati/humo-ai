@@ -12,7 +12,7 @@ export const getAIClient = () => {
   const apiKey = 
     (import.meta.env && import.meta.env.VITE_GEMINI_KEY) || 
     (import.meta.env && import.meta.env.VITE_API_KEY) ||
-    (typeof process !== 'undefined' && process.env && (process.env.API_KEY || process.env.GEMINI_API_KEY)) ||
+    (typeof process !== 'undefined' && process && process.env && (process.env.API_KEY || process.env.GEMINI_API_KEY)) ||
     (window as any).GEMINI_API_KEY;
 
   if (!apiKey) {

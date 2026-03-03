@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Transaction, AdminConfig } from '../types';
 import { getAdminConfig, addTransaction, isPremiumActive, getPremiumStatus } from '../services/storageService';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface PremiumProps {
   user: UserProfile;
