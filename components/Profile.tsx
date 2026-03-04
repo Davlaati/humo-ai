@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { UserProfile } from '../types';
 import UserBadges from './UserBadges';
@@ -15,16 +14,28 @@ interface ProfileProps {
 const INTERESTS_OPTIONS = ['Technology', 'Business', 'Travel', 'Movies', 'Music', 'Sports', 'Gaming', 'Food', 'Fashion', 'Art', 'Science', 'History'];
 
 const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onShowPremium }) => {
-  const { level, progress } = calculateLevel(user.xp);
-  const isPremium = isPremiumActive(user);
+  // Xavfsiz hisob-kitoblar (user bo'lmasa ham xato bermaydi)
+  const { level, progress } = calculateLevel(user?.xp || 0);
+  const isPremium = user ? isPremiumActive(user) : false;
+  
   const [isEditingInterests, setIsEditingInterests] = useState(false);
-  const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
+  // User interests bo'sh bo'lsa xato bermasligi uchun default [] berdik
+  const [editedInterests, setEditedInterests] = useState<string[]>(user?.interests || []);
 
   // Admin Login States
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [adminLogin, setAdminLogin] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+
+  // Agar foydalanuvchi ma'lumotlari hali kelmagan bo'lsa, yuklanish ekranini ko'rsatamiz
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-screen text-white font-bold uppercase tracking-widest text-[10px]">
+        Yuklanmoqda...
+      </div>
+    );
+  }
 
   const toggleInterest = (interest: string) => {
     if (editedInterests.includes(interest)) {
@@ -62,18 +73,17 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
       <div className="flex flex-col items-center pt-8">
          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 p-1 mb-4 shadow-xl">
              <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                 <span className="text-3xl font-bold">{user.name.charAt(0)}</span>
+                 <span className="text-3xl font-bold">{user?.name?.charAt(0) || 'U'}</span>
              </div>
          </div>
-         <h2 className="text-2xl font-black">{user.name}</h2>
-         <p className="text-gray-400 font-medium">@{user.username || 'user'}</p>
+         <h2 className="text-2xl font-black">{user?.name || 'Foydalanuvchi'}</h2>
+         <p className="text-gray-400 font-medium">@{user?.username || 'user'}</p>
          <div className="flex space-x-2 mt-2">
             <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">Level {level}</span>
-            <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-500/30">{user.level}</span>
+            <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-500/30">{user?.level || 'Beginner'}</span>
          </div>
       </div>
 
-      {/* Premium Banner if not premium */}
       {!isPremium && (
         <div className="glass-card rounded-3xl p-6 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/30 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-20">
@@ -90,7 +100,6 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
         </div>
       )}
 
-      {/* Level Progress Bar */}
       <div className="glass-card rounded-2xl p-4 border border-white/5">
         <div className="flex justify-between items-center mb-2">
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Level {level} Progress</span>
@@ -105,16 +114,14 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-         <StatCard label="Jami XP" value={user.xp} icon="fa-bolt" color="text-yellow-400" />
-         <StatCard label="Streak" value={`${user.streak} kun`} icon="fa-fire" color="text-orange-500" />
-         <StatCard label="O'rganildi" value={`${(user.learnedWords || []).length} so'z`} icon="fa-brain" color="text-pink-400" />
-         <StatCard label="G'alaba" value={`${user.wins || 0} marta`} icon="fa-chart-line" color="text-green-400" />
+         <StatCard label="Jami XP" value={user?.xp || 0} icon="fa-bolt" color="text-yellow-400" />
+         <StatCard label="Streak" value={`${user?.streak || 0} kun`} icon="fa-fire" color="text-orange-500" />
+         <StatCard label="O'rganildi" value={`${(user?.learnedWords || []).length} so'z`} icon="fa-brain" color="text-pink-400" />
+         <StatCard label="G'alaba" value={`${user?.wins || 0} marta`} icon="fa-chart-line" color="text-green-400" />
       </div>
 
-      {/* Gamification: Achievements Grid */}
       <UserBadges user={user} />
 
-      {/* Activity Heatmap Section */}
       <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/5">
         <div className="flex justify-between items-center mb-6">
             <div>
@@ -132,7 +139,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
         </div>
         
         <div className="overflow-x-auto pb-2 no-scrollbar">
-           <ActivityHeatmap activityLog={user.activityLog || []} />
+           <ActivityHeatmap activityLog={user?.activityLog || []} />
         </div>
         
         <div className="flex justify-between mt-4 text-[9px] font-black text-gray-500 uppercase tracking-widest">
@@ -144,10 +151,10 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
        <div className="glass-card rounded-2xl p-6 relative">
          <div className="flex justify-between items-center mb-4">
              <h3 className="font-bold">Qiziqishlar</h3>
-             <button onClick={() => { setIsEditingInterests(true); setEditedInterests(user.interests); }} className="text-blue-400 text-sm font-bold">Tahrirlash</button>
+             <button onClick={() => { setIsEditingInterests(true); setEditedInterests(user?.interests || []); }} className="text-blue-400 text-sm font-bold">Tahrirlash</button>
          </div>
          <div className="flex flex-wrap gap-2">
-             {user.interests.map(i => (
+             {(user?.interests || []).map(i => (
                  <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs border border-white/5">{i}</span>
              ))}
          </div>
@@ -181,7 +188,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
                </button>
                <button 
                  onClick={handleSaveInterests} 
-                 className="flex-1 py-3 rounded-xl liquid-button text-white font-bold text-sm"
+                 className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm"
                >
                  Saqlash
                </button>
@@ -247,30 +254,28 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
             </div>
          </div>
        )}
-
     </div>
   );
 };
 
+// ActivityHeatmap uchun xavfsiz Memoization
 const ActivityHeatmap: React.FC<{ activityLog: string[] }> = ({ activityLog }) => {
-    // Generate dates for the last 91 days (13 weeks)
     const heatmapData = useMemo(() => {
         const result = [];
         const today = new Date();
-        // Set to midnight
         today.setHours(0, 0, 0, 0);
 
         for (let i = 90; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            const isActive = activityLog.includes(dateStr);
+            // activityLog massiv bo'lishini ta'minlash
+            const isActive = (activityLog || []).includes(dateStr);
             result.push({ dateStr, isActive, date });
         }
         return result;
     }, [activityLog]);
 
-    // Group by weeks for the grid
     const weeks = useMemo(() => {
         const res = [];
         for (let i = 0; i < heatmapData.length; i += 7) {
@@ -283,7 +288,7 @@ const ActivityHeatmap: React.FC<{ activityLog: string[] }> = ({ activityLog }) =
         <div className="flex space-x-1.5 min-w-max">
             {weeks.map((week, wIdx) => (
                 <div key={wIdx} className="flex flex-col space-y-1.5">
-                    {week.map((day, dIdx) => (
+                    {week.map((day) => (
                         <div 
                             key={day.dateStr}
                             className={`
