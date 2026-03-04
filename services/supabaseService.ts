@@ -17,8 +17,9 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         avatar_url: user.avatarUrl,
         coins: user.coins,
         xp: user.xp,
+        wins: user.wins || 0,
         streak: user.streak,
-        premium_status: user.isPremium,
+        is_premium: user.isPremium,
         interests: user.interests,
         last_active_date: new Date().toISOString(),
         telegram_stars: user.telegramStars,
@@ -48,8 +49,9 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       avatarUrl: data.avatar_url,
       coins: data.coins,
       xp: data.xp,
+      wins: data.wins || 0,
       streak: data.streak,
-      isPremium: data.premium_status,
+      isPremium: data.is_premium,
       interests: data.interests || [],
       lastActiveDate: data.last_active_date,
       telegramStars: data.telegram_stars,
@@ -111,7 +113,26 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
       .order('xp', { ascending: false })
       .limit(50);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Leaderboard query error:', error);
+      // Fallback: try without wins if it doesn't exist
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('profiles')
+        .select('id, name, xp')
+        .order('xp', { ascending: false })
+        .limit(50);
+      
+      if (fallbackError) throw fallbackError;
+      return (fallbackData || []).map((u, index) => ({
+        userId: u.id,
+        name: u.name || 'Noma\'lum',
+        xp: u.xp || 0,
+        wins: 0,
+        rank: index + 1,
+        isCurrentUser: false,
+        trend: 'same'
+      }));
+    }
     
     return (data || []).map((u, index) => ({
       userId: u.id,
@@ -119,7 +140,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
       xp: u.xp || 0,
       wins: u.wins || 0,
       rank: index + 1,
-      isCurrentUser: false, // Will be set in the component
+      isCurrentUser: false,
       trend: 'same'
     }));
   } catch (e) {
@@ -133,7 +154,7 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .order('last_active', { ascending: false });
+      .order('xp', { ascending: false });
     
     if (error) throw error;
     
@@ -151,6 +172,7 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       avatarUrl: d.avatar_url,
       coins: d.coins,
       xp: d.xp,
+      wins: d.wins || 0,
       streak: d.streak,
       isPremium: d.is_premium,
       isTemporaryPremium: d.is_temporary_premium,
@@ -161,10 +183,11 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       starsHistory: d.stars_history || [],
       settings: d.settings,
       joinedAt: d.joined_at || new Date().toISOString(),
-      lastActiveDate: d.last_active || new Date().toISOString(),
+      lastActiveDate: d.last_active_date || new Date().toISOString(),
       activeSecondsToday: 0
     }));
   } catch (e) {
+    console.error('Fetch all users failed:', e);
     return [];
   }
 };

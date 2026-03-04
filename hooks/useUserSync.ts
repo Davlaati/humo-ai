@@ -79,7 +79,7 @@ export const useUserSync = () => {
             if (!prev) return null;
             return {
               ...prev,
-              isPremium: payload.new.premium_status,
+              isPremium: payload.new.is_premium,
               coins: payload.new.coins,
               xp: payload.new.xp,
               streak: payload.new.streak,

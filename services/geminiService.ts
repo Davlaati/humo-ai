@@ -156,15 +156,36 @@ export const translateText = async (text: string, sourceLang: string, targetLang
   }
 };
 
-export const generateConversationResponse = async (userText: string, userLevel: string) => {
+export const generateConversationResponse = async (userText: string, userLevel: string, personality: string = 'Humo AI', topic: string = 'General') => {
   try {
     const ai = getAIClient();
     if (!ai) return "That's very interesting! Can you tell me more about it?";
     
-    const prompt = `You are Ravona AI, a friendly English tutor. User level: ${userLevel}. Response < 30 words. Encourage and ask a question. User: "${userText}"`;
+    const systemInstruction = `
+      You are ${personality}, an English tutor in the Ravona AI app.
+      User Level: ${userLevel}.
+      Current Topic: ${topic}.
+      
+      PERSONALITY ROLES:
+      - Coach Mike: Business English expert, professional, uses corporate jargon.
+      - Dr. Aris: Academic/IELTS expert, formal, uses complex vocabulary.
+      - Alex: NYC local, uses slang, energetic, "cool" vibe.
+      - Sarah: Londoner, focuses on grammar and "proper" British English.
+      - Humo AI: Friendly, balanced, encouraging.
+
+      RULES:
+      1. Keep response < 40 words.
+      2. Always encourage the user.
+      3. End with a relevant question to keep the conversation going.
+      4. Adapt your vocabulary to the user's level (${userLevel}).
+    `;
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: userText,
+      config: {
+        systemInstruction: systemInstruction,
+      }
     });
     return response.text;
   } catch (e) {
