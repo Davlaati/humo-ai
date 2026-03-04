@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, EntryNotification as EntryNotifType } from './types';
+import { UserProfile, EntryNotification as EntryNotifType, EnglishLevel } from './types';
 import { getUser, saveUser, incrementActiveTime, getEntryNotification } from './services/storageService';
 import Onboarding from './components/Onboarding';
 import Layout from './components/Layout';
@@ -16,6 +16,10 @@ import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
 import Translator from './components/Translator';
+
+const Pricing = React.lazy(() => import('./components/Pricing'));
+const Checkout = React.lazy(() => import('./components/Checkout'));
+const Paywall = React.lazy(() => import('./components/Paywall'));
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -97,7 +101,13 @@ const App: React.FC = () => {
             coins: 500, // Bonus for new users
             xp: 0,
             streak: 0,
-            level: 1,
+            level: EnglishLevel.Beginner,
+            age: '18',
+            goal: 'General',
+            personalities: ['Kind'],
+            studyMinutes: 0,
+            practiceFrequency: 'Daily',
+            interests: [],
             isPremium: true, // Start with trial as premium
             trialExpiresAt: trialExpiresAt,
             telegramStars: 0,
@@ -222,11 +232,10 @@ const App: React.FC = () => {
           case 'game': return <Game user={user} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} onShowPaywall={() => setShowPaywall(true)} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
-          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
-          case 'dictionary': return <SmartDictionary user={user} />;
+          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setActiveTab('pricing')} />;
+          case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
           case 'translator': return <Translator user={user} onNavigate={setActiveTab} onShowPaywall={() => setShowPaywall(true)} />;
           case 'pricing': {
-            const Pricing = React.lazy(() => import('./components/Pricing'));
             return (
               <React.Suspense fallback={<div>Loading...</div>}>
                 <Pricing onSelectPlan={(plan) => {
@@ -237,7 +246,6 @@ const App: React.FC = () => {
             );
           }
           case 'checkout': {
-            const Checkout = React.lazy(() => import('./components/Checkout'));
             return (
               <React.Suspense fallback={<div>Loading...</div>}>
                 <Checkout 
@@ -274,22 +282,19 @@ const App: React.FC = () => {
        <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-xl pointer-events-none'}`}>
            {showPaywall && (
              <React.Suspense fallback={null}>
-               {(() => {
-                 const Paywall = React.lazy(() => import('./components/Paywall'));
-                 return <Paywall 
-                   user={user!} 
-                   onActivate={() => {
-                     setShowPaywall(false);
-                     setActiveTab('pricing');
-                   }} 
-                   onClose={() => setShowPaywall(false)} 
-                 />;
-               })()}
+               <Paywall 
+                 user={user!} 
+                 onActivate={() => {
+                   setShowPaywall(false);
+                   setActiveTab('pricing');
+                 }} 
+                 onClose={() => setShowPaywall(false)} 
+               />
              </React.Suspense>
            )}
            {activeTab === 'wallet' ? (
                <Layout activeTab="home" onTabChange={setActiveTab} showNav={false}>
-                   <Wallet user={user!} />
+                   <Wallet user={user!} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />
                </Layout>
            ) : (
                <Layout activeTab={activeTab} onTabChange={(tab) => {

@@ -1,54 +1,51 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { UserProfile, AdminSettings } from '../types';
-import { fetchAdminSettingsFromSupabase, createPaymentInSupabase, syncUserToSupabase } from '../services/supabaseService';
+import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
+import { fetchAdminSettingsFromSupabase, createPaymentInSupabase } from '../services/supabaseService';
 
 interface CheckoutProps {
   user: UserProfile;
-  plan: { id: string, name: string, price: number, durationMonths: number };
-  onSuccess: (updatedUser: UserProfile) => void;
+  plan: any;
+  onSuccess: (user: UserProfile) => void;
   onBack: () => void;
 }
 
 const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) => {
-  const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
-  const [countdown, setCountdown] = useState(30 * 60); // 30 minutes
+  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes
+  const [cardNumber, setCardNumber] = useState('8600 0000 0000 0000');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const loadSettings = async () => {
-      const settings = await fetchAdminSettingsFromSupabase();
-      setAdminSettings(settings);
-    };
-    loadSettings();
-
     const timer = setInterval(() => {
-      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
+    
+    const fetchSettings = async () => {
+      const settings = await fetchAdminSettingsFromSupabase();
+      if (settings) setCardNumber(settings.paymentCardNumber);
+    };
+    fetchSettings();
 
     return () => clearInterval(timer);
   }, []);
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleCopyCard = () => {
-    if (adminSettings?.paymentCardNumber) {
-      navigator.clipboard.writeText(adminSettings.paymentCardNumber.replace(/\s/g, ''));
-      playTapSound();
-      alert("Karta raqami nusxalandi!");
-    }
+  const handleCopy = () => {
+    playTapSound();
+    navigator.clipboard.writeText(cardNumber.replace(/\s/g, ''));
+    alert("Karta raqami nusxalandi!");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setIsUploading(true);
@@ -61,44 +58,44 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
     }
   };
 
-  const handlePaid = async () => {
+  const handleSubmit = async () => {
     if (!receiptImage || isSubmitting) return;
     
     playTapSound();
     setIsSubmitting(true);
-
+    
     try {
-      // 1. Create payment record
-      await createPaymentInSupabase({
+      const paymentData = {
         userId: user.id,
         userName: user.name,
-        userEmail: user.username, // Using username as email fallback
+        userEmail: user.username,
         amount: plan.price,
-        planSelected: plan.name,
+        planSelected: plan.bonusMonth ? '13 OY (12+1)' : plan.name,
         receiptImageUrl: receiptImage,
-        status: 'pending'
-      });
+        status: 'pending' as const
+      };
 
-      // 2. Set temporary premium status
+      await createPaymentInSupabase(paymentData);
+      
+      // Instant activation (Temporary Premium)
       const updatedUser = {
         ...user,
         isPremium: true,
         isTemporaryPremium: true
       };
       
-      await syncUserToSupabase(updatedUser);
       onSuccess(updatedUser);
       alert("To'lov qabul qilindi! Hisobingiz vaqtinchalik faollashtirildi. Admin tasdiqlashini kuting.");
     } catch (error) {
       console.error("Payment submission error:", error);
-      alert("Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.");
+      alert("Xatolik yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="p-6 pb-32 min-h-full bg-[#0c1222] animate-fade-in overflow-y-auto no-scrollbar">
+    <div className="min-h-full bg-[#0c1222] p-6 pb-32 overflow-y-auto no-scrollbar animate-fade-in">
       <div className="flex items-center mb-8">
         <button onClick={onBack} className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center mr-4 border border-white/10 active:scale-90 transition">
           <i className="fa-solid fa-arrow-left text-lg"></i>
@@ -106,83 +103,97 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
         <h1 className="text-2xl font-black italic uppercase tracking-tighter">To'lov</h1>
       </div>
 
-      {/* Countdown */}
-      <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-4 mb-8 text-center">
-        <p className="text-red-400 text-[10px] font-black uppercase tracking-widest mb-1">
+      <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-6 mb-8 text-center">
+        <p className="text-red-400 text-xs font-black uppercase tracking-widest mb-2">
           Hisobni faollashtirish uchun belgilangan vaqt ichida to'lovni amalga oshiring
         </p>
-        <div className="text-2xl font-black text-red-500">{formatTime(countdown)}</div>
-      </div>
-
-      {/* Plan Details */}
-      <div className="glass-card rounded-[35px] p-6 mb-8 border border-white/5">
-        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Tanlangan Tarif</h3>
-        <div className="flex justify-between items-center">
-          <span className="text-xl font-black text-white uppercase italic">{plan.name}</span>
-          <span className="text-xl font-black text-blue-400">{plan.price.toLocaleString()} UZS</span>
+        <div className="text-3xl font-black text-red-500 font-mono">
+          {formatTime(timeLeft)}
         </div>
       </div>
 
-      {/* Card Details */}
-      <div className="glass-card rounded-[35px] p-8 mb-8 border border-white/10 relative overflow-hidden bg-gradient-to-br from-blue-600/20 to-purple-600/20">
-        <div className="relative z-10">
-          <h3 className="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-6">To'lov uchun karta</h3>
-          <div className="text-2xl font-black text-white tracking-[0.2em] mb-8">
-            {adminSettings?.paymentCardNumber || '8600 .... .... ....'}
-          </div>
-          <button 
-            onClick={handleCopyCard}
-            className="w-full py-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 font-black text-xs uppercase tracking-widest text-white active:scale-95 transition-all flex items-center justify-center space-x-2"
-          >
-            <i className="fa-solid fa-copy"></i>
-            <span>Nusxa olish</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Receipt Upload */}
-      <div className="space-y-4 mb-8">
-        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest pl-2">Chekni yuklang</h3>
-        <div 
-          onClick={() => fileInputRef.current?.click()}
-          className={`w-full aspect-video rounded-[35px] border-2 border-dashed flex flex-col items-center justify-center p-6 transition-all cursor-pointer ${
-            receiptImage ? 'border-green-500 bg-green-500/5' : 'border-white/10 bg-white/5 hover:bg-white/10'
-          }`}
-        >
-          {isUploading ? (
-            <i className="fa-solid fa-circle-notch animate-spin text-3xl text-blue-400"></i>
-          ) : receiptImage ? (
-            <div className="relative w-full h-full flex flex-col items-center">
-              <img src={receiptImage} alt="Receipt" className="h-full object-contain rounded-xl mb-2" />
-              <span className="text-green-400 text-[10px] font-black uppercase">Yuklandi ✅</span>
+      <div className="glass-card rounded-[40px] p-8 border border-white/5 mb-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 rounded-full blur-[60px]"></div>
+        
+        <div className="relative z-10 space-y-6">
+          <div className="flex justify-between items-center pb-6 border-b border-white/5">
+            <div>
+              <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">Tanlangan Tarif</h3>
+              <p className="text-xl font-black text-white uppercase italic tracking-tighter">
+                {plan.bonusMonth ? '13 OY (12+1)' : plan.name}
+              </p>
             </div>
-          ) : (
-            <>
-              <i className="fa-solid fa-cloud-arrow-up text-4xl text-slate-600 mb-4"></i>
-              <p className="text-slate-500 text-xs font-bold text-center">Rasm yoki PDF yuklang</p>
-            </>
-          )}
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            accept="image/*" 
-            className="hidden" 
-          />
+            <div className="text-right">
+              <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">To'lov miqdori</h3>
+              <p className="text-xl font-black text-blue-400">
+                {plan.price.toLocaleString()} UZS
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">Karta raqami</h3>
+            <div className="bg-white/5 rounded-3xl p-6 border border-white/5 flex items-center justify-between">
+              <span className="text-xl font-black text-white font-mono tracking-wider">{cardNumber}</span>
+              <button 
+                onClick={handleCopy}
+                className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30 active:scale-90 transition-all"
+              >
+                <i className="fa-solid fa-copy text-blue-400"></i>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">Chekni yuklang</h3>
+            <div className="relative">
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileUpload}
+                className="absolute inset-0 opacity-0 cursor-pointer z-20"
+              />
+              <div className={`w-full h-40 border-2 border-dashed rounded-[35px] flex flex-col items-center justify-center p-6 transition-all ${
+                receiptImage ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-white/5'
+              }`}>
+                {receiptImage ? (
+                  <div className="flex flex-col items-center">
+                    <i className="fa-solid fa-circle-check text-emerald-500 text-3xl mb-2"></i>
+                    <p className="text-emerald-400 text-xs font-black uppercase tracking-widest">Chek yuklandi</p>
+                  </div>
+                ) : isUploading ? (
+                  <i className="fa-solid fa-circle-notch animate-spin text-blue-400 text-3xl"></i>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-cloud-arrow-up text-slate-600 text-3xl mb-2"></i>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest text-center">
+                      Rasm yoki faylni shu yerga tashlang yoki tanlang
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Submit Button */}
       <button 
-        onClick={handlePaid}
+        onClick={handleSubmit}
         disabled={!receiptImage || isSubmitting}
-        className={`w-full py-6 rounded-[30px] font-black text-xl uppercase tracking-[0.2em] transition-all shadow-2xl ${
+        className={`w-full py-6 rounded-[30px] font-black text-xl shadow-xl uppercase tracking-[0.2em] transition-all flex items-center justify-center space-x-3 ${
           !receiptImage || isSubmitting
           ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-          : 'liquid-button text-white active:scale-95'
+          : 'bg-white text-slate-950 active:scale-95 shadow-[0_15px_40px_rgba(255,255,255,0.1)]'
         }`}
       >
-        {isSubmitting ? 'Yuborilmoqda...' : "To'lov qildim"}
+        {isSubmitting ? (
+          <i className="fa-solid fa-circle-notch animate-spin"></i>
+        ) : (
+          <>
+            <span>To'lov qildim</span>
+            <i className="fa-solid fa-check-double"></i>
+          </>
+        )}
       </button>
     </div>
   );

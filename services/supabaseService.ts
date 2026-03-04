@@ -1,6 +1,10 @@
 
 import { supabase } from './supabaseClient';
-import { UserProfile, Transaction, DictionaryItem, AdminLog, Discount, SubscriptionPackage } from '../types';
+import { 
+  UserProfile, Transaction, DictionaryItem, AdminLog, Discount, 
+  SubscriptionPackage, LeaderboardPeriod, LeaderboardEntry, 
+  PlatformAnalytics, Payment, AdminSettings 
+} from '../types';
 
 export const syncUserToSupabase = async (user: UserProfile) => {
   try {
@@ -125,15 +129,28 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       id: d.id,
       name: d.name,
       username: d.username,
+      age: d.age || '18',
+      level: d.level || 'Beginner',
+      goal: d.goal || 'General',
+      personalities: d.personalities || ['Kind'],
+      studyMinutes: d.study_minutes || 0,
+      practiceFrequency: d.practice_frequency || 'Daily',
+      interests: d.interests || [],
       avatarUrl: d.avatar_url,
       coins: d.coins,
       xp: d.xp,
       streak: d.streak,
       isPremium: d.is_premium,
+      isTemporaryPremium: d.is_temporary_premium,
+      trialExpiresAt: d.trial_expires_at,
+      premiumUntil: d.premium_until,
       isBlocked: d.is_blocked,
       telegramStars: d.telegram_stars,
+      starsHistory: d.stars_history || [],
       settings: d.settings,
-      activeSecondsToday: 0 // Local only
+      joinedAt: d.joined_at || new Date().toISOString(),
+      lastActiveDate: d.last_active || new Date().toISOString(),
+      activeSecondsToday: 0
     }));
   } catch (e) {
     return [];

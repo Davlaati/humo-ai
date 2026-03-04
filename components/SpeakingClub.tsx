@@ -85,7 +85,7 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
   return buffer;
 }
 
-const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateUser }) => {
+const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateUser, onShowPaywall }) => {
   const [status, setStatus] = useState<SpeakingStatus>('idle');
   const [partnerInfo, setPartnerInfo] = useState<{name: string, type: PartnerType, level: string}>({ name: 'Ravona AI', type: 'ai', level: 'Native' });
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -267,6 +267,9 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             setAnalysis({
                 grammarErrors: [],
                 vocabularySuggestions: ["Suhbat juda qisqa bo'ldi."],
+                pronunciationFeedback: [],
+                fluencyFeedback: "Suhbat juda qisqa bo'ldi.",
+                scores: { grammar: 0, vocabulary: 0, fluency: 0, pronunciation: 0 },
                 overallLevel: "N/A"
             });
             setIsAnalyzing(false);

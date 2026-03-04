@@ -1,20 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { UserProfile } from '../types';
 import { isPremiumActive } from '../services/storageService';
-import Premium from './Premium';
 
 interface WalletProps {
   user: UserProfile;
   onUpdateUser: (user: UserProfile) => void;
+  onNavigate: (tab: string) => void;
 }
 
-const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser }) => {
-  const [showPremium, setShowPremium] = useState(false);
+const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate }) => {
   const isPremium = isPremiumActive(user);
-
-  if (showPremium) {
-    return <Premium user={user} onUpdateUser={onUpdateUser} onClose={() => setShowPremium(false)} />;
-  }
 
   return (
     <div className="h-full w-full bg-[#0c1222] p-6 flex flex-col animate-fade-in overflow-y-auto pb-24">
@@ -56,7 +51,7 @@ const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser }) => {
           </div>
         ) : (
           <button 
-            onClick={() => setShowPremium(true)}
+            onClick={() => onNavigate('pricing')}
             className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
           >
             Faollashtirish

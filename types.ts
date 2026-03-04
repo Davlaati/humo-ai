@@ -42,6 +42,22 @@ export interface UserSettings {
   theme: 'light' | 'dark';
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  requirement: number;
+  color: string;
+  type: 'shield' | 'hex';
+}
+
+export interface Achievement {
+  badgeId: string;
+  unlockedAt: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -69,9 +85,14 @@ export interface UserProfile {
   isTemporaryPremium?: boolean;
   trialExpiresAt?: string;
   premiumUntil?: string;
+  premiumExpiryDate?: string; // Legacy support
+  pendingPremium?: boolean; // Legacy support
+  isTrialUsed?: boolean;
   isBlocked?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
+  badges?: Achievement[];
+  level_progress?: number;
   // Added settings property to UserProfile interface
   settings?: UserSettings;
 }
@@ -85,6 +106,8 @@ export interface Transaction {
   status: 'pending' | 'approved' | 'rejected';
   proofUrl?: string; 
   createdAt: string;
+  expiresAt?: string;
+  rejectionReason?: string;
 }
 
 export interface Word {
@@ -124,6 +147,7 @@ export interface LeaderboardEntry {
   rank: number;
   isCurrentUser: boolean;
   trend: 'up' | 'down' | 'same';
+  badges?: Achievement[];
 }
 
 export interface SubscriptionPackage {
@@ -150,6 +174,15 @@ export interface Discount {
   percentage: number;
   expiryDate: string;
   isActive: boolean;
+}
+
+export interface AdminConfig {
+  cardNumber: string;
+  cardHolder: string;
+  minWithdrawal: number;
+  starRate: number;
+  premiumPriceUZS: number;
+  premiumPriceUSD: number;
 }
 
 export interface Payment {

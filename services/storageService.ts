@@ -317,14 +317,18 @@ export const getAdminConfig = (): AdminConfig => {
       cardNumber: '8600 0000 0000 0000',
       cardHolder: 'ADMIN NAME',
       premiumPriceUZS: 36000,
-      premiumPriceUSD: 3
+      premiumPriceUSD: 3,
+      minWithdrawal: 10,
+      starRate: 10
     };
   } catch (e) {
     return {
       cardNumber: '8600 0000 0000 0000',
       cardHolder: 'ADMIN NAME',
       premiumPriceUZS: 36000,
-      premiumPriceUSD: 3
+      premiumPriceUSD: 3,
+      minWithdrawal: 10,
+      starRate: 10
     };
   }
 };

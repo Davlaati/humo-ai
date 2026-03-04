@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { UserProfile } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { playTapSound } from '../services/audioService';
 

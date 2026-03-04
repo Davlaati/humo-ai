@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Transaction, UserProfile, EntryNotification, 
   SubscriptionPackage, Discount, DictionaryItem, 
-  AdminLog, PlatformAnalytics, AdminConfig
+  AdminLog, PlatformAnalytics, AdminConfig, Payment, AdminSettings
 } from '../types';
 import { 
   getTransactions, getUser, adminUpdateBalance, 
@@ -14,12 +14,20 @@ import {
   getAdminLogs, addAdminLog, getPlatformAnalytics,
   getAdminConfig, saveAdminConfig, updateTransaction
 } from '../services/storageService';
+import { 
+  fetchPendingPaymentsFromSupabase, 
+  updatePaymentStatusInSupabase, 
+  fetchAdminSettingsFromSupabase, 
+  updateAdminSettingsInSupabase,
+  updatePremiumStatusInSupabase
+} from '../services/supabaseService';
 
 type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [analytics, setAnalytics] = useState<PlatformAnalytics | null>(null);
@@ -46,6 +54,7 @@ const Admin: React.FC = () => {
   // Subscription states
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
   const [adminConfig, setAdminConfig] = useState<AdminConfig>(getAdminConfig());
+  const [newCardNumber, setNewCardNumber] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -59,7 +68,9 @@ const Admin: React.FC = () => {
           adminLogs,
           dictionaryItems,
           allDiscounts,
-          subPackages
+          subPackages,
+          payments,
+          settings
         ] = await Promise.all([
           getTransactions(),
           getAllUsers(),
@@ -67,11 +78,14 @@ const Admin: React.FC = () => {
           getAdminLogs(),
           getDictionaryItems(),
           getDiscounts(),
-          getSubscriptionPackages()
+          getSubscriptionPackages(),
+          fetchPendingPaymentsFromSupabase(),
+          fetchAdminSettingsFromSupabase()
         ]);
 
         if (isMounted) {
           setTxs(transactions.reverse());
+          setPendingPayments(payments);
           setCurrentUser(getUser());
           setUsers(allUsers);
           setAnalytics(platformAnalytics);
@@ -79,6 +93,7 @@ const Admin: React.FC = () => {
           setDictItems(dictionaryItems);
           setDiscounts(allDiscounts);
           setPackages(subPackages);
+          if (settings) setNewCardNumber(settings.paymentCardNumber);
         }
       } catch (err) {
         console.error("Admin data refresh failed:", err);
@@ -122,36 +137,45 @@ const Admin: React.FC = () => {
     setUsers(allUsers);
   };
 
-  const handleSaveAdminConfig = () => {
-    saveAdminConfig(adminConfig);
-    addAdminLog('Admin Config Update', `Updated card number: ${adminConfig.cardNumber}`);
+  const handleSaveAdminConfig = async () => {
+    await updateAdminSettingsInSupabase({ paymentCardNumber: newCardNumber });
+    addAdminLog('Admin Config Update', `Updated card number: ${newCardNumber}`);
     alert("Karta ma'lumotlari saqlandi!");
   };
 
-  const handleApproveTransaction = async (tx: Transaction) => {
-    updateTransaction(tx.id, { status: 'approved' });
-    await updateOtherUser(tx.userId, { 
+  const handleApprovePayment = async (payment: Payment) => {
+    const months = payment.planSelected.includes('13') ? 13 : 
+                   payment.planSelected.includes('12') ? 12 :
+                   payment.planSelected.includes('6') ? 6 :
+                   payment.planSelected.includes('3') ? 3 : 1;
+    
+    const premiumUntil = new Date();
+    premiumUntil.setMonth(premiumUntil.getMonth() + months);
+
+    await updatePaymentStatusInSupabase(payment.id, 'approved');
+    await updateOtherUser(payment.userId, { 
       isPremium: true, 
-      pendingPremium: false,
-      premiumExpiryDate: tx.expiresAt 
+      isTemporaryPremium: false,
+      premiumUntil: premiumUntil.toISOString() 
     });
-    addAdminLog('Transaction Approved', `Approved premium for user ${tx.userId}`);
-    setTxs(getTransactions());
+    
+    addAdminLog('Payment Approved', `Approved ${months} months for user ${payment.userId}`);
+    setPendingPayments(await fetchPendingPaymentsFromSupabase());
     setUsers(await getAllUsers());
   };
 
-  const handleRejectTransaction = async (tx: Transaction) => {
-    const reason = "Sizning to'lovingiz soxta deb topildi.";
-    updateTransaction(tx.id, { status: 'rejected', rejectionReason: reason });
-    await updateOtherUser(tx.userId, { 
+  const handleRejectPayment = async (payment: Payment) => {
+    await updatePaymentStatusInSupabase(payment.id, 'rejected');
+    await updateOtherUser(payment.userId, { 
       isPremium: false, 
-      pendingPremium: false,
-      premiumExpiryDate: undefined 
+      isTemporaryPremium: false,
+      premiumUntil: undefined 
     });
-    addAdminLog('Transaction Rejected', `Rejected premium for user ${tx.userId}. Reason: ${reason}`);
-    setTxs(getTransactions());
+    
+    addAdminLog('Payment Rejected', `Rejected payment for user ${payment.userId}`);
+    setPendingPayments(await fetchPendingPaymentsFromSupabase());
     setUsers(await getAllUsers());
-    alert(`Foydalanuvchi rad etildi: ${reason}`);
+    alert(`Foydalanuvchi rad etildi: Sizning to'lovingiz soxta deb topildi.`);
   };
 
   const handleAddWord = async () => {
@@ -263,17 +287,8 @@ const Admin: React.FC = () => {
             <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Karta Raqami</label>
             <input 
               type="text" 
-              value={adminConfig.cardNumber} 
-              onChange={(e) => setAdminConfig({...adminConfig, cardNumber: e.target.value})} 
-              className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl font-bold" 
-            />
-          </div>
-          <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Karta Egasi</label>
-            <input 
-              type="text" 
-              value={adminConfig.cardHolder} 
-              onChange={(e) => setAdminConfig({...adminConfig, cardHolder: e.target.value})} 
+              value={newCardNumber} 
+              onChange={(e) => setNewCardNumber(e.target.value)} 
               className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl font-bold" 
             />
           </div>
@@ -283,34 +298,36 @@ const Admin: React.FC = () => {
 
       <h3 className="font-black text-sm uppercase tracking-widest">Kutilayotgan To'lovlar</h3>
       <div className="space-y-4">
-        {txs.filter(t => t.status === 'pending').length === 0 && (
+        {pendingPayments.length === 0 && (
           <p className="text-xs text-slate-500 italic text-center py-8">Hozircha kutilayotgan to'lovlar yo'q.</p>
         )}
-        {txs.filter(t => t.status === 'pending').map(tx => (
-          <div key={tx.id} className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
+        {pendingPayments.map(payment => (
+          <div key={payment.id} className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="font-black text-white">{tx.username}</p>
-                <p className="text-[10px] text-slate-500">ID: {tx.userId.slice(-6)} | {new Date(tx.createdAt).toLocaleString()}</p>
+                <p className="font-black text-white">{payment.userName}</p>
+                <p className="text-[10px] text-slate-500">ID: {payment.userId.slice(-6)} | {new Date(payment.createdAt).toLocaleString()}</p>
+                <p className="text-[10px] text-blue-400 font-bold uppercase mt-1">{payment.planSelected}</p>
               </div>
-              <p className="text-emerald-400 font-black">{tx.amount.toLocaleString()} UZS</p>
+              <p className="text-emerald-400 font-black">{payment.amount.toLocaleString()} UZS</p>
             </div>
             
-            {tx.proofUrl && (
-              <div className="mb-4 rounded-2xl overflow-hidden border border-white/10">
-                <img src={tx.proofUrl} alt="Receipt" className="w-full h-auto max-h-64 object-contain bg-black" />
+            {payment.receiptImageUrl && (
+              <div className="mb-4 rounded-2xl overflow-hidden border border-white/10 cursor-pointer" onClick={() => window.open(payment.receiptImageUrl, '_blank')}>
+                <img src={payment.receiptImageUrl} alt="Receipt" className="w-full h-auto max-h-64 object-contain bg-black" />
+                <p className="text-[8px] text-center text-slate-500 py-1 uppercase font-bold">To'liq ko'rish uchun bosing</p>
               </div>
             )}
 
             <div className="flex gap-3">
               <button 
-                onClick={() => handleApproveTransaction(tx)}
+                onClick={() => handleApprovePayment(payment)}
                 className="flex-1 py-3 bg-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest"
               >
                 Tasdiqlash
               </button>
               <button 
-                onClick={() => handleRejectTransaction(tx)}
+                onClick={() => handleRejectPayment(payment)}
                 className="flex-1 py-3 bg-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest"
               >
                 Rad Etish
