@@ -23,6 +23,7 @@ interface AnalysisReport {
     pronunciation: number;
   };
   overallLevel: string;
+  wordOfTheSession?: { word: string; definition: string; example: string };
 }
 
 const AI_PERSONALITIES = [
@@ -32,7 +33,7 @@ const AI_PERSONALITIES = [
     role: 'Supportive Tutor',
     voice: 'Zephyr',
     description: 'Friendly and encouraging, perfect for beginners.',
-    prompt: (user: UserProfile) => `You are Ravona AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}. Respond like a native speaker with a warm and encouraging tone.`
+    prompt: (user: UserProfile) => `You are Ravona AI, a supportive English tutor. Correct the user politely if they make big mistakes. Current User: ${user.name}, Level: ${user.level}, Interests: ${user.interests.join(', ')}. Respond like a native speaker with a warm and encouraging tone. Keep responses concise but engaging.`
   },
   {
     id: 'sarah',
@@ -40,7 +41,7 @@ const AI_PERSONALITIES = [
     role: 'Grammar Expert',
     voice: 'Kore',
     description: 'Focuses on precision and British English elegance.',
-    prompt: (user: UserProfile) => `You are Sarah, a strict but fair English grammar expert from London. Focus on correcting the user's grammar and pronunciation. Use British English. Current User: ${user.name}, Level: ${user.level}.`
+    prompt: (user: UserProfile) => `You are Sarah, a strict but fair English grammar expert from London. Focus on correcting the user's grammar and pronunciation. Use British English. Current User: ${user.name}, Level: ${user.level}, Goal: ${user.goal}. Be professional and precise.`
   },
   {
     id: 'alex',
@@ -48,7 +49,7 @@ const AI_PERSONALITIES = [
     role: 'Casual Friend',
     voice: 'Puck',
     description: 'Cool, uses slang and idioms. Great for natural flow.',
-    prompt: (user: UserProfile) => `You are Alex, a casual friend from New York City. Use American slang and idioms naturally. Don't be too formal. Just have a cool conversation. Current User: ${user.name}, Level: ${user.level}.`
+    prompt: (user: UserProfile) => `You are Alex, a casual friend from New York City. Use American slang and idioms naturally. Don't be too formal. Just have a cool conversation. Current User: ${user.name}, Level: ${user.level}. Talk about ${user.interests[0] || 'life'} and hobbies.`
   },
   {
     id: 'dr_aris',
@@ -56,8 +57,26 @@ const AI_PERSONALITIES = [
     role: 'Academic Professor',
     voice: 'Charon',
     description: 'Advanced vocabulary and formal structures for IELTS/TOEFL.',
-    prompt: (user: UserProfile) => `You are Dr. Aris, an academic professor. Use sophisticated vocabulary and formal structures. Challenge the user to use more advanced English. Current User: ${user.name}, Level: ${user.level}.`
+    prompt: (user: UserProfile) => `You are Dr. Aris, an academic professor. Use sophisticated vocabulary and formal structures. Challenge the user to use more advanced English. Focus on academic topics related to ${user.interests.join(' or ')}. Current User: ${user.name}, Level: ${user.level}.`
+  },
+  {
+    id: 'coach_mike',
+    name: 'Coach Mike',
+    role: 'Business English Coach',
+    voice: 'Fenrir',
+    description: 'Focuses on professional communication and workplace English.',
+    prompt: (user: UserProfile) => `You are Coach Mike, a Business English expert. Focus on professional vocabulary, meeting etiquette, and presentation skills. Current User: ${user.name}, Level: ${user.level}, Goal: ${user.goal}. Help the user sound more professional in a corporate environment.`
   }
+];
+
+const SUGGESTED_TOPICS = [
+  "Talking about my day",
+  "My future goals",
+  "Travel experiences",
+  "Favorite movies & books",
+  "Work and career",
+  "Technology and AI",
+  "Hobbies and interests"
 ];
 
 // Audio Helpers
@@ -96,6 +115,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
 
   const [selectedPersonality, setSelectedPersonality] = useState(AI_PERSONALITIES[0]);
   const [showPersonalityPicker, setShowPersonalityPicker] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [showTopicPicker, setShowTopicPicker] = useState(false);
 
   // Audio Contexts & Refs
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
@@ -121,7 +142,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     sourcesRef.current.clear();
   };
 
-  const startSession = async (personalityOverride?: typeof AI_PERSONALITIES[0]) => {
+  const startSession = async (personalityOverride?: typeof AI_PERSONALITIES[0], topicOverride?: string) => {
     if (!user.isPremium && onShowPaywall) {
       onShowPaywall();
       return;
@@ -130,9 +151,10 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
     setError(null);
     setStatus('searching');
     setShowPersonalityPicker(false);
+    setShowTopicPicker(false);
     
     // Simulyatsiya qilingan matching (70% AI, 30% Real User)
-    const isRealUser = personalityOverride ? false : Math.random() > 0.7;
+    const isRealUser = (personalityOverride || topicOverride) ? false : Math.random() > 0.7;
     const searchDelay = 2000 + Math.random() * 3000;
 
     setTimeout(async () => {
@@ -149,7 +171,12 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             const personality = personalityOverride || AI_PERSONALITIES[Math.floor(Math.random() * AI_PERSONALITIES.length)];
             setSelectedPersonality(personality);
             setPartnerInfo({ name: personality.name, type: 'ai', level: 'Native' });
-            systemPrompt = personality.prompt(user);
+            
+            let basePrompt = personality.prompt(user);
+            if (topicOverride) {
+              basePrompt += ` The specific topic for this conversation is: "${topicOverride}". Start by introducing the topic.`;
+            }
+            systemPrompt = basePrompt;
             voice = personality.voice;
         }
         
@@ -293,7 +320,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                     "fluency": 1-10,
                     "pronunciation": 1-10
                 },
-                "overallLevel": "A1-C2" 
+                "overallLevel": "A1-C2",
+                "wordOfTheSession": { "word": "...", "definition": "...", "example": "..." }
             }`,
             config: { responseMimeType: 'application/json' }
         });
@@ -337,13 +365,42 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
             <button onClick={() => startSession()} className="w-full liquid-button py-5 rounded-[25px] font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition">
               Tasodifiy Suhbatdosh
             </button>
-            <button onClick={() => setShowPersonalityPicker(true)} className="w-full glass-card py-5 rounded-[25px] font-black text-lg uppercase tracking-widest active:scale-95 transition border border-white/10">
-              AI Tutor Tanlash
-            </button>
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => setShowPersonalityPicker(true)} className="w-full glass-card py-5 rounded-[25px] font-black text-xs uppercase tracking-widest active:scale-95 transition border border-white/10">
+                AI Tutor Tanlash
+              </button>
+              <button onClick={() => setShowTopicPicker(true)} className="w-full glass-card py-5 rounded-[25px] font-black text-xs uppercase tracking-widest active:scale-95 transition border border-white/10">
+                Mavzu Tanlash
+              </button>
+            </div>
           </div>
           
           {error && <p className="mt-4 text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">{error}</p>}
         </div>
+
+        {/* Topic Picker Modal */}
+        {showTopicPicker && (
+            <div className="fixed inset-0 z-[5000] bg-[#0c1222]/90 backdrop-blur-xl p-6 flex flex-col animate-fade-in">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black italic uppercase tracking-tighter">Mavzu Tanlash</h3>
+                    <button onClick={() => setShowTopicPicker(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                        <i className="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-10">
+                    {SUGGESTED_TOPICS.map((topic, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => startSession(undefined, topic)} 
+                          className="w-full glass-card p-5 rounded-[25px] border border-white/5 active:scale-95 transition flex items-center justify-between group"
+                        >
+                            <span className="font-bold text-sm text-slate-300 group-hover:text-blue-400 transition-colors">{topic}</span>
+                            <i className="fa-solid fa-chevron-right text-slate-700"></i>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        )}
 
         {/* Personality Picker Modal */}
         {showPersonalityPicker && (
@@ -358,7 +415,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                     {AI_PERSONALITIES.map((p) => (
                         <div key={p.id} onClick={() => startSession(p)} className="glass-card p-5 rounded-[30px] border border-white/5 active:scale-95 transition flex items-center">
                             <div className="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center mr-4">
-                                <i className={`fa-solid ${p.id === 'ravona' ? 'fa-robot' : p.id === 'sarah' ? 'fa-user-tie' : p.id === 'alex' ? 'fa-user-ninja' : 'fa-user-graduate'} text-2xl text-blue-400`}></i>
+                                <i className={`fa-solid ${p.id === 'ravona' ? 'fa-robot' : p.id === 'sarah' ? 'fa-user-tie' : p.id === 'alex' ? 'fa-user-ninja' : p.id === 'dr_aris' ? 'fa-user-graduate' : 'fa-briefcase'} text-2xl text-blue-400`}></i>
                             </div>
                             <div className="flex-1">
                                 <h4 className="font-black text-sm uppercase tracking-tight">{p.name}</h4>
@@ -482,6 +539,24 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
                         </div>
                     ))}
                 </div>
+
+                {analysis.wordOfTheSession && (
+                  <div className="glass-card rounded-[35px] p-6 border-2 border-blue-500/30 bg-blue-500/5">
+                      <div className="flex items-center mb-4">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center mr-3">
+                              <i className="fa-solid fa-star text-white text-xs"></i>
+                          </div>
+                          <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Suhbat So'zi (Word of the Session)</h3>
+                      </div>
+                      <div className="space-y-2">
+                          <p className="text-2xl font-black text-white italic">{analysis.wordOfTheSession.word}</p>
+                          <p className="text-xs text-slate-400 leading-relaxed">{analysis.wordOfTheSession.definition}</p>
+                          <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                              <p className="text-[10px] text-blue-400 font-bold italic">"{analysis.wordOfTheSession.example}"</p>
+                          </div>
+                      </div>
+                  </div>
+                )}
 
                 <div className="glass-card rounded-[35px] p-6 border border-white/5">
                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Grammatik Xatolar</h3>

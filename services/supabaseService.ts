@@ -18,14 +18,12 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         coins: user.coins,
         xp: user.xp,
         streak: user.streak,
-        is_premium: user.isPremium,
-        is_temporary_premium: user.isTemporaryPremium,
-        trial_expires_at: user.trialExpiresAt,
-        premium_until: user.premiumUntil,
-        is_blocked: user.isBlocked,
+        premium_status: user.isPremium,
+        interests: user.interests,
+        last_active_date: new Date().toISOString(),
         telegram_stars: user.telegramStars,
         settings: user.settings,
-        last_active: new Date().toISOString()
+        is_blocked: user.isBlocked
       });
     if (error) console.error('Error syncing user to Supabase:', error);
   } catch (e) {
@@ -33,7 +31,7 @@ export const syncUserToSupabase = async (user: UserProfile) => {
   }
 };
 
-export const fetchUserFromSupabase = async (userId: string): Promise<Partial<UserProfile> | null> => {
+export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile | null> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -51,17 +49,31 @@ export const fetchUserFromSupabase = async (userId: string): Promise<Partial<Use
       coins: data.coins,
       xp: data.xp,
       streak: data.streak,
-      isPremium: data.is_premium,
-      isTemporaryPremium: data.is_temporary_premium,
-      trialExpiresAt: data.trial_expires_at,
-      premiumUntil: data.premium_until,
-      isBlocked: data.is_blocked,
+      isPremium: data.premium_status,
+      interests: data.interests || [],
+      lastActiveDate: data.last_active_date,
       telegramStars: data.telegram_stars,
-      settings: data.settings
-    };
+      settings: data.settings,
+      isBlocked: data.is_blocked,
+      age: data.age || '18',
+      level: data.level || 'Beginner',
+      goal: data.goal || 'General',
+      personalities: data.personalities || ['Kind'],
+      studyMinutes: data.study_minutes || 0,
+      practiceFrequency: data.practice_frequency || 'Daily',
+      joinedAt: data.joined_at || new Date().toISOString(),
+      activeSecondsToday: 0
+    } as UserProfile;
   } catch (e) {
     return null;
   }
+};
+
+export const subscribeToUserChanges = (userId: string, callback: (payload: any) => void) => {
+  return supabase
+    .channel(`public:profiles:id=eq.${userId}`)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` }, callback)
+    .subscribe();
 };
 
 export const logAdminActionToSupabase = async (log: AdminLog) => {

@@ -12,6 +12,7 @@ interface LessonProps {
 
 const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [content, setContent] = useState<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -37,12 +38,13 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   useEffect(() => {
     const fetchLesson = async () => {
       setLoading(true);
+      setError(null);
       
       const apiPromise = generateLessonContent(user, user.interests[0] || 'General');
       const timeoutPromise = new Promise<{fallback: boolean, data: any}>((resolve) => {
           setTimeout(() => {
               resolve({ fallback: true, data: generateFallbackLesson() });
-          }, 4000);
+          }, 8000); // Increased to 8s for slower connections
       });
 
       const wrappedApiPromise = apiPromise.then(data => ({ fallback: false, data }));
@@ -51,10 +53,18 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
       try {
           result = await Promise.race([wrappedApiPromise, timeoutPromise]);
       } catch (e) {
+          console.error("Lesson API failed:", e);
           result = { fallback: true, data: generateFallbackLesson() };
       }
 
       const data = result.data || generateFallbackLesson();
+      
+      if (!data || !data.vocab || data.vocab.length === 0) {
+        setError("Hozircha darslar mavjud emas. Iltimos, keyinroq urinib ko'ring.");
+        setLoading(false);
+        return;
+      }
+
       setContent(data);
       setLoading(false);
       
@@ -177,6 +187,24 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
       <div className="flex flex-col items-center justify-center h-full">
          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
          <p className="text-gray-400 animate-pulse font-medium uppercase text-[10px] tracking-widest">Dars tayyorlanmoqda...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+            <i className="fa-solid fa-circle-exclamation text-3xl text-red-500"></i>
+         </div>
+         <h2 className="text-xl font-black text-white mb-2 uppercase italic tracking-tighter">Xatolik yuz berdi</h2>
+         <p className="text-slate-400 text-sm mb-8">{error}</p>
+         <button 
+           onClick={() => window.location.reload()}
+           className="px-8 py-4 bg-blue-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition"
+         >
+           Qayta urinish
+         </button>
       </div>
     );
   }

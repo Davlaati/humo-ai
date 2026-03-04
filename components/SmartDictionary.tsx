@@ -1,9 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { UserProfile } from '../types';
+import Markdown from 'react-markdown';
+import { UserProfile, Word } from '../types';
 import { consultWithMentor, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
 import { awardXP } from '../services/gamificationService';
+import { syncUserToSupabase } from '../services/supabaseService';
 
 interface SmartDictionaryProps {
   user: UserProfile;
@@ -56,6 +58,25 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSaveToWordBank = async (word: string, definition: string) => {
+    playTapSound();
+    const newWord: Word = {
+      term: word,
+      definition: definition,
+      example: '',
+      translation: '',
+      mastered: false
+    };
+
+    const updatedUser = {
+      ...user,
+      learnedWords: [...(user.learnedWords || []), newWord]
+    };
+    
+    onUpdateUser(updatedUser);
+    await syncUserToSupabase(updatedUser);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -156,8 +177,8 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
                 </button>
              </div>
              
-             <div className="prose prose-invert prose-sm leading-relaxed text-slate-200">
-                {formatResponse(response)}
+             <div className="markdown-body prose prose-invert prose-sm leading-relaxed text-slate-200">
+                <Markdown>{response}</Markdown>
              </div>
 
              <div className="mt-6 pt-4 border-t border-white/5 flex justify-center">

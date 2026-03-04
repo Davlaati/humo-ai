@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, EntryNotification as EntryNotifType, EnglishLevel } from './types';
-import { getUser, saveUser, incrementActiveTime, getEntryNotification } from './services/storageService';
+import { incrementActiveTime, getEntryNotification } from './services/storageService';
+import { useUserSync } from './hooks/useUserSync';
 import Onboarding from './components/Onboarding';
 import Layout from './components/Layout';
 import Home from './components/Home';
@@ -22,7 +23,7 @@ const Checkout = React.lazy(() => import('./components/Checkout'));
 const Paywall = React.lazy(() => import('./components/Paywall'));
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const { user, loading: userLoading, updateUser } = useUserSync();
   const [activeTab, setActiveTab] = useState('home');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -47,100 +48,17 @@ const App: React.FC = () => {
       tg.enableClosingConfirmation();
     }
 
-    // Foydalanuvchini yuklash
-    const initUser = async () => {
-      const tg = (window as any).Telegram?.WebApp;
-      const tgUser = tg?.initDataUnsafe?.user;
-      
-      if (tgUser) {
-        const tgId = String(tgUser.id);
-        const { fetchUserFromSupabase, syncUserToSupabase } = await import("./services/supabaseService");
-        
-        // 1. Supabase'dan tekshirish
-        const remoteUser = await fetchUserFromSupabase(tgId);
-        
-        if (remoteUser) {
-          // Mavjud foydalanuvchi
-          const fullUser = { 
-            ...remoteUser, 
-            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
-            username: tgUser.username || remoteUser.username,
-            avatarUrl: tgUser.photo_url || remoteUser.avatarUrl,
-            activeSecondsToday: 0
-          } as UserProfile;
-
-          // Check for trial/premium expiry
-          const now = new Date();
-          const trialExpiry = fullUser.trialExpiresAt ? new Date(fullUser.trialExpiresAt) : null;
-          const premiumExpiry = fullUser.premiumUntil ? new Date(fullUser.premiumUntil) : null;
-
-          let isPremium = fullUser.isPremium || false;
-          if (premiumExpiry && premiumExpiry < now) {
-            isPremium = false;
-          } else if (trialExpiry && trialExpiry < now && !fullUser.premiumUntil) {
-            isPremium = false;
-          }
-
-          if (isPremium !== fullUser.isPremium) {
-            fullUser.isPremium = isPremium;
-            syncUserToSupabase(fullUser);
-          }
-
-          setUser(fullUser);
-          saveUser(fullUser);
-        } else {
-          // Yangi foydalanuvchi yaratish
-          const now = new Date();
-          const trialExpiresAt = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
-          
-          const newUser: UserProfile = {
-            id: tgId,
-            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
-            username: tgUser.username || `user_${tgId.slice(-4)}`,
-            avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgId}`,
-            coins: 500, // Bonus for new users
-            xp: 0,
-            streak: 0,
-            level: EnglishLevel.Beginner,
-            age: '18',
-            goal: 'General',
-            personalities: ['Kind'],
-            studyMinutes: 0,
-            practiceFrequency: 'Daily',
-            interests: [],
-            isPremium: true, // Start with trial as premium
-            trialExpiresAt: trialExpiresAt,
-            telegramStars: 0,
-            starsHistory: [],
-            settings: { language: 'Uz', theme: 'dark' },
-            activeSecondsToday: 0,
-            joinedAt: now.toISOString(),
-            lastActiveDate: now.toISOString()
-          };
-          setUser(newUser);
-          saveUser(newUser);
-          await syncUserToSupabase(newUser);
-        }
-      } else {
-        // Local storage fallback for development
-        const storedUser = getUser();
-        if (storedUser) setUser(storedUser);
-      }
-    };
-    initUser();
-
     // Initial Splashdan chiqish va xabarnomani ko'rsatish
+    // Faqat bir marta ishga tushiramiz yoki user yuklangandan keyin
     const timer = setTimeout(() => {
-      const activeNotif = getEntryNotification();
-      const currentUser = getUser();
-      
       setIsInitialSplash(false); 
-
-      if (activeNotif && activeNotif.isActive && currentUser) {
+      
+      const activeNotif = getEntryNotification();
+      if (activeNotif && activeNotif.isActive && user) {
           let shouldShow = false;
           if (activeNotif.target === 'all') shouldShow = true;
-          else if (activeNotif.target === 'has_coins' && (currentUser.coins || 0) > 0) shouldShow = true;
-          else if (activeNotif.target === 'no_coins' && (currentUser.coins || 0) === 0) shouldShow = true;
+          else if (activeNotif.target === 'has_coins' && (user.coins || 0) > 0) shouldShow = true;
+          else if (activeNotif.target === 'no_coins' && (user.coins || 0) === 0) shouldShow = true;
 
           if (shouldShow) {
             setEntryNotif(activeNotif);
@@ -154,14 +72,14 @@ const App: React.FC = () => {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [user === null]); // Only re-run if user goes from null to something or vice versa
 
   useEffect(() => {
     if (!user) return;
     activityIntervalRef.current = setInterval(() => {
       const updatedUser = incrementActiveTime(1);
       if (updatedUser) {
-        setUser(prev => prev ? { ...prev, activeSecondsToday: updatedUser.activeSecondsToday } : null);
+        // Local update
       }
     }, 1000);
     return () => {
@@ -172,22 +90,28 @@ const App: React.FC = () => {
   const handleOnboardingComplete = (profile: UserProfile) => {
     const newUser = { 
       ...profile, 
-      id: Date.now().toString(),
       streak: 1,
       coins: (profile.coins || 0) + 20 
     };
-    saveUser(newUser);
-    setUser(newUser);
+    updateUser(newUser);
     setIsAppRevealed(true);
   };
 
   const handleUpdateUser = (updatedUser: UserProfile) => {
-      saveUser(updatedUser);
-      setUser(updatedUser);
+      updateUser(updatedUser);
   };
 
-  if (!user && !isInitialSplash) {
+  if (!user && !isInitialSplash && !userLoading) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  if (userLoading && !isInitialSplash) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-[#0c1222]">
+         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+         <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Ma'lumotlar yuklanmoqda...</p>
+      </div>
+    );
   }
 
   if (isInitialSplash) {
