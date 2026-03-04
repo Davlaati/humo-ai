@@ -7,6 +7,7 @@ import { isPremiumActive } from '../services/storageService';
 
 interface ProfileProps {
   user: UserProfile;
+  isLoading?: boolean;
   onUpdateUser: (user: UserProfile) => void;
   onShowAdmin?: () => void;
   onShowPremium?: () => void;
@@ -14,11 +15,13 @@ interface ProfileProps {
 
 const INTERESTS_OPTIONS = ['Technology', 'Business', 'Travel', 'Movies', 'Music', 'Sports', 'Gaming', 'Food', 'Fashion', 'Art', 'Science', 'History'];
 
-const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onShowPremium }) => {
+const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser, onShowAdmin, onShowPremium }) => {
   const { level, progress } = calculateLevel(user.xp);
   const isPremium = isPremiumActive(user);
   const [isEditingInterests, setIsEditingInterests] = useState(false);
-  const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
+  const [editedInterests, setEditedInterests] = useState<string[]>(user.interests || []);
+
+  const userInterests = user.interests || [];
 
   // Admin Login States
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -56,6 +59,24 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
         setLoginError("Login yoki parol noto'g'ri!");
     }
   };
+
+
+  if (isLoading) {
+    return (
+      <div className="p-4 pb-24 space-y-4 animate-fade-in">
+        <div className="glass-card rounded-3xl p-6 border border-white/10">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 rounded-full border-2 border-blue-400/30 border-t-blue-400 animate-spin"></div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Profil yuklanmoqda...</p>
+          </div>
+        </div>
+        <div className="glass-card rounded-2xl p-4 border border-white/5 animate-pulse">
+          <div className="h-3 w-1/3 bg-white/10 rounded mb-3"></div>
+          <div className="h-2 w-full bg-white/10 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 pb-24 space-y-6 animate-slide-up relative">
@@ -144,12 +165,14 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
        <div className="glass-card rounded-2xl p-6 relative">
          <div className="flex justify-between items-center mb-4">
              <h3 className="font-bold">Qiziqishlar</h3>
-             <button onClick={() => { setIsEditingInterests(true); setEditedInterests(user.interests); }} className="text-blue-400 text-sm font-bold">Tahrirlash</button>
+             <button onClick={() => { setIsEditingInterests(true); setEditedInterests(userInterests); }} className="text-blue-400 text-sm font-bold">Tahrirlash</button>
          </div>
          <div className="flex flex-wrap gap-2">
-             {user.interests.map(i => (
+             {userInterests?.length ? userInterests?.map(i => (
                  <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs border border-white/5">{i}</span>
-             ))}
+             )) : (
+                 <p className="text-xs text-slate-400">Qiziqishlar hali tanlanmagan.</p>
+             )}
          </div>
        </div>
 
