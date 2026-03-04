@@ -17,6 +17,35 @@ import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
 import Translator from './components/Translator';
 
+
+type TelegramUser = {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+};
+
+const getTelegramUser = (): TelegramUser | null => {
+  const tg = (window as any).Telegram?.WebApp;
+  const unsafeUser = tg?.initDataUnsafe?.user;
+
+  if (unsafeUser?.id) return unsafeUser as TelegramUser;
+
+  const initData = tg?.initData;
+  if (!initData) return null;
+
+  try {
+    const params = new URLSearchParams(initData);
+    const userParam = params.get('user');
+    if (!userParam) return null;
+    const parsed = JSON.parse(userParam);
+    return parsed?.id ? (parsed as TelegramUser) : null;
+  } catch {
+    return null;
+  }
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('home');
@@ -29,6 +58,7 @@ const App: React.FC = () => {
   const [showEntryNotif, setShowEntryNotif] = useState(false);
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   const activityIntervalRef = useRef<any>(null);
 
@@ -45,10 +75,10 @@ const App: React.FC = () => {
 
     // Foydalanuvchini yuklash
     const initUser = async () => {
-      const tg = (window as any).Telegram?.WebApp;
-      const tgUser = tg?.initDataUnsafe?.user;
+      try {
+        const tgUser = getTelegramUser();
       
-      if (tgUser) {
+        if (tgUser) {
         const tgId = String(tgUser.id);
         const { fetchUserFromSupabase, syncUserToSupabase } = await import("./services/supabaseService");
         
@@ -59,10 +89,15 @@ const App: React.FC = () => {
           // Mavjud foydalanuvchi
           const fullUser = { 
             ...remoteUser, 
-            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
+            name: (tgUser.first_name || 'User') + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
             username: tgUser.username || remoteUser.username,
             avatarUrl: tgUser.photo_url || remoteUser.avatarUrl,
-            activeSecondsToday: 0
+            activeSecondsToday: 0,
+            interests: remoteUser.interests || [],
+            activityLog: remoteUser.activityLog || [],
+            learnedWords: remoteUser.learnedWords || [],
+            starsHistory: remoteUser.starsHistory || [],
+            telegramStars: remoteUser.telegramStars || 0
           } as UserProfile;
 
           // Check for trial/premium expiry
@@ -91,7 +126,7 @@ const App: React.FC = () => {
           
           const newUser: UserProfile = {
             id: tgId,
-            name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
+            name: (tgUser.first_name || 'User') + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
             username: tgUser.username || `user_${tgId.slice(-4)}`,
             avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgId}`,
             coins: 500, // Bonus for new users
@@ -115,6 +150,9 @@ const App: React.FC = () => {
         // Local storage fallback for development
         const storedUser = getUser();
         if (storedUser) setUser(storedUser);
+      }
+      } finally {
+        setIsProfileLoading(false);
       }
     };
     initUser();
@@ -222,7 +260,7 @@ const App: React.FC = () => {
           case 'game': return <Game user={user} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} onShowPaywall={() => setShowPaywall(true)} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
-          case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
+          case 'profile': return <Profile user={user} isLoading={isProfileLoading} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
           case 'dictionary': return <SmartDictionary user={user} />;
           case 'translator': return <Translator user={user} onNavigate={setActiveTab} onShowPaywall={() => setShowPaywall(true)} />;
           case 'pricing': {
