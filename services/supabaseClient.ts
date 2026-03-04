@@ -1,20 +1,17 @@
 /// <reference types="vite/client" />
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-if (!hasSupabaseConfig) {
+if (!isSupabaseConfigured) {
   console.warn(
-    'Supabase URL or Anon Key is missing from environment variables. Falling back to offline mode.'
+    'Supabase URL or Anon Key is missing from environment variables. Running without Supabase integration.'
   );
 }
 
-export const supabase = createClient(
-  hasSupabaseConfig ? supabaseUrl! : 'https://offline-project.supabase.co',
-  hasSupabaseConfig ? supabaseAnonKey! : 'offline-anon-key'
-);
-
-export const isSupabaseConfigured = hasSupabaseConfig;
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : null;

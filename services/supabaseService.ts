@@ -2,13 +2,18 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { UserProfile, Transaction, DictionaryItem, AdminLog, Discount, SubscriptionPackage } from '../types';
 
-const shouldUseSupabase = () => isSupabaseConfigured;
+const shouldUseSupabase = () => isSupabaseConfigured && Boolean(supabase);
+
+const getSupabaseClient = () => {
+  if (!supabase) throw new Error('Supabase client is not configured.');
+  return supabase;
+};
 
 export const syncUserToSupabase = async (user: UserProfile) => {
 
   if (!shouldUseSupabase()) return;
   try {
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('profiles')
       .upsert({
         id: user.id,
@@ -37,7 +42,7 @@ export const fetchUserFromSupabase = async (userId: string): Promise<Partial<Use
 
   if (!shouldUseSupabase()) return null;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -70,7 +75,7 @@ export const logAdminActionToSupabase = async (log: AdminLog) => {
 
   if (!shouldUseSupabase()) return;
   try {
-    await supabase.from('admin_logs').insert({
+    await getSupabaseClient().from('admin_logs').insert({
       admin_id: log.adminId,
       action: log.action,
       details: log.details,
@@ -84,7 +89,7 @@ export const saveDictionaryItemToSupabase = async (item: DictionaryItem) => {
 
   if (!shouldUseSupabase()) return;
   try {
-    await supabase.from('dictionary').upsert({
+    await getSupabaseClient().from('dictionary').upsert({
       id: item.id,
       term: item.term,
       translation: item.translation,
@@ -101,7 +106,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
   try {
     // In a real app, 'period' would filter by a 'created_at' or 'xp_this_week' column
     // For now, we'll just sort by total XP
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('profiles')
       .select('id, name, xp, wins')
       .order('xp', { ascending: false })
@@ -128,7 +133,7 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
 
   if (!shouldUseSupabase()) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('profiles')
       .select('*')
       .order('last_active', { ascending: false });
@@ -158,8 +163,8 @@ export const fetchAnalyticsFromSupabase = async (): Promise<PlatformAnalytics> =
 
   if (!shouldUseSupabase()) return { dailyActiveUsers: 0, totalRevenue: 0, aiRequestsCount: 0, errorCount: 0 };
   try {
-    const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-    const { count: premiumUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_premium', true);
+    const { count: totalUsers } = await getSupabaseClient().from('profiles').select('*', { count: 'exact', head: true });
+    const { count: premiumUsers } = await getSupabaseClient().from('profiles').select('*', { count: 'exact', head: true }).eq('is_premium', true);
     
     // Summing revenue from a hypothetical transactions table
     // For now, we'll calculate a mock revenue based on premium users
@@ -180,7 +185,7 @@ export const updatePremiumStatusInSupabase = async (userId: string, isPremium: b
 
   if (!shouldUseSupabase()) return;
   try {
-    await supabase.from('profiles').update({ is_premium: isPremium }).eq('id', userId);
+    await getSupabaseClient().from('profiles').update({ is_premium: isPremium }).eq('id', userId);
   } catch (e) {}
 };
 
@@ -189,7 +194,7 @@ export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'cre
 
   if (!shouldUseSupabase()) return null;
   try {
-    const { data, error } = await supabase.from('payments').insert({
+    const { data, error } = await getSupabaseClient().from('payments').insert({
       user_id: payment.userId,
       user_name: payment.userName,
       user_email: payment.userEmail,
@@ -210,7 +215,7 @@ export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => 
 
   if (!shouldUseSupabase()) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('payments')
       .select('*')
       .eq('status', 'pending')
@@ -238,7 +243,7 @@ export const updatePaymentStatusInSupabase = async (paymentId: string, status: '
 
   if (!shouldUseSupabase()) return;
   try {
-    await supabase.from('payments').update({ status }).eq('id', paymentId);
+    await getSupabaseClient().from('payments').update({ status }).eq('id', paymentId);
   } catch (e) {}
 };
 
@@ -247,7 +252,7 @@ export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | 
 
   if (!shouldUseSupabase()) return { paymentCardNumber: '8600 0000 0000 0000' };
   try {
-    const { data, error } = await supabase.from('admin_settings').select('*').single();
+    const { data, error } = await getSupabaseClient().from('admin_settings').select('*').single();
     if (error) return { paymentCardNumber: '8600 0000 0000 0000' }; // Default fallback
     return { paymentCardNumber: data.payment_card_number };
   } catch (e) {
@@ -259,6 +264,6 @@ export const updateAdminSettingsInSupabase = async (settings: AdminSettings) => 
 
   if (!shouldUseSupabase()) return;
   try {
-    await supabase.from('admin_settings').upsert({ id: 1, payment_card_number: settings.paymentCardNumber });
+    await getSupabaseClient().from('admin_settings').upsert({ id: 1, payment_card_number: settings.paymentCardNumber });
   } catch (e) {}
 };
