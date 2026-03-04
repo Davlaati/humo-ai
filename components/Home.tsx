@@ -4,7 +4,7 @@ import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
 import DailyStreakCard from './DailyStreakCard';
 import { validateAndUpdateStreak } from '../services/streakSystem';
-import { checkAchievements } from '../services/achievementSystem';
+import { checkAchievements, calculateLevel } from '../services/gamificationService';
 
 interface HomeProps {
   user: UserProfile;
@@ -15,6 +15,7 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakReward, onClearStreakReward }) => {
+  const { level, progress } = calculateLevel(user.xp);
   const prevStats = useRef({ xp: user.xp, wins: user.wins || 0 });
 
   // Initialize Gamification Logic
@@ -22,11 +23,11 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
     const updatedUser = validateAndUpdateStreak(user);
     const badgeUpdates = checkAchievements(updatedUser);
     
-    if (updatedUser.streak !== user.streak || badgeUpdates.length !== ((user as any).badges?.length || 0)) {
+    if (updatedUser.streak !== user.streak || badgeUpdates.length !== (user.badges?.length || 0)) {
       onUpdateUser({
         ...updatedUser,
         badges: badgeUpdates
-      } as any);
+      });
     }
   }, []);
 
@@ -63,6 +64,12 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
         </div>
 
         <div onClick={() => onNavigate('wallet')} className="bg-white/5 backdrop-blur-md rounded-2xl px-4 py-2 flex items-center space-x-2 border border-white/10 shadow-lg active:scale-95 transition-transform cursor-pointer">
+           <div className="flex flex-col items-end mr-1">
+              <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Level {level}</span>
+              <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
+                 <div className="h-full bg-blue-500" style={{ width: `${progress}%` }}></div>
+              </div>
+           </div>
            <div className="w-6 h-6 bg-yellow-500/20 rounded-full flex items-center justify-center">
               <i className="fa-solid fa-coins text-yellow-400 text-xs"></i>
            </div>
@@ -81,6 +88,26 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
          
          <div className="grid grid-cols-2 gap-3">
             
+            {/* AI Tutor (Full Width) */}
+            <div 
+              onClick={() => handleAction('tutor')}
+              className="col-span-2 glass-card bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-blue-500/30 rounded-[35px] p-6 relative min-h-[10rem] h-auto overflow-visible group active:scale-[0.98] transition-all shadow-xl cursor-pointer"
+            >
+                <div className="relative z-10 w-2/3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-3 border border-blue-500/30">
+                        <i className="fa-solid fa-robot text-blue-400"></i>
+                    </div>
+                    <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter mb-1">AI Tutor</h3>
+                    <p className="text-slate-400 text-xs font-bold leading-tight">Shaxsiy mentor bilan suhbatlashing</p>
+                    <div className="mt-4 bg-blue-600 w-fit px-4 py-1.5 rounded-full text-[10px] font-black uppercase border border-white/10 shadow-lg">Chatni Boshlash</div>
+                </div>
+                <div className="absolute -right-4 -top-6 w-40 h-40 filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.4)] transition-transform group-hover:scale-105 group-hover:-translate-y-2 duration-300 pointer-events-none">
+                    <div className="w-full h-full flex items-center justify-center text-[100px] transform rotate-12">
+                        🤖
+                    </div>
+                </div>
+            </div>
+
             {/* Darslar (Full Width) */}
             <div 
               onClick={() => handleAction('learn')}

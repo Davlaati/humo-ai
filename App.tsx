@@ -21,6 +21,8 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [streakReward, setStreakReward] = useState<{days: number, coins: number} | null>(null);
 
   const [entryNotif, setEntryNotif] = useState<EntryNotifType | null>(null);
@@ -62,10 +64,31 @@ const App: React.FC = () => {
             avatarUrl: tgUser.photo_url || remoteUser.avatarUrl,
             activeSecondsToday: 0
           } as UserProfile;
+
+          // Check for trial/premium expiry
+          const now = new Date();
+          const trialExpiry = fullUser.trialExpiresAt ? new Date(fullUser.trialExpiresAt) : null;
+          const premiumExpiry = fullUser.premiumUntil ? new Date(fullUser.premiumUntil) : null;
+
+          let isPremium = fullUser.isPremium || false;
+          if (premiumExpiry && premiumExpiry < now) {
+            isPremium = false;
+          } else if (trialExpiry && trialExpiry < now && !fullUser.premiumUntil) {
+            isPremium = false;
+          }
+
+          if (isPremium !== fullUser.isPremium) {
+            fullUser.isPremium = isPremium;
+            syncUserToSupabase(fullUser);
+          }
+
           setUser(fullUser);
           saveUser(fullUser);
         } else {
           // Yangi foydalanuvchi yaratish
+          const now = new Date();
+          const trialExpiresAt = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
+          
           const newUser: UserProfile = {
             id: tgId,
             name: tgUser.first_name + (tgUser.last_name ? ` ${tgUser.last_name}` : ''),
@@ -75,11 +98,14 @@ const App: React.FC = () => {
             xp: 0,
             streak: 0,
             level: 1,
-            isPremium: false,
+            isPremium: true, // Start with trial as premium
+            trialExpiresAt: trialExpiresAt,
             telegramStars: 0,
             starsHistory: [],
             settings: { language: 'Uz', theme: 'dark' },
-            activeSecondsToday: 0
+            activeSecondsToday: 0,
+            joinedAt: now.toISOString(),
+            lastActiveDate: now.toISOString()
           };
           setUser(newUser);
           saveUser(newUser);
@@ -194,11 +220,38 @@ const App: React.FC = () => {
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
           case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
           case 'game': return <Game user={user} />;
-          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} />;
+          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} onShowPaywall={() => setShowPaywall(true)} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} />;
           case 'dictionary': return <SmartDictionary user={user} />;
-          case 'translator': return <Translator onNavigate={setActiveTab} />;
+          case 'translator': return <Translator user={user} onNavigate={setActiveTab} onShowPaywall={() => setShowPaywall(true)} />;
+          case 'pricing': {
+            const Pricing = React.lazy(() => import('./components/Pricing'));
+            return (
+              <React.Suspense fallback={<div>Loading...</div>}>
+                <Pricing onSelectPlan={(plan) => {
+                  setSelectedPlan(plan);
+                  setActiveTab('checkout');
+                }} onBack={() => setActiveTab('home')} />
+              </React.Suspense>
+            );
+          }
+          case 'checkout': {
+            const Checkout = React.lazy(() => import('./components/Checkout'));
+            return (
+              <React.Suspense fallback={<div>Loading...</div>}>
+                <Checkout 
+                  user={user} 
+                  plan={selectedPlan} 
+                  onSuccess={(updatedUser) => {
+                    handleUpdateUser(updatedUser);
+                    setActiveTab('home');
+                  }} 
+                  onBack={() => setActiveTab('pricing')} 
+                />
+              </React.Suspense>
+            );
+          }
           default: return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
       }
   };
@@ -219,6 +272,21 @@ const App: React.FC = () => {
        )}
 
        <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-xl pointer-events-none'}`}>
+           {showPaywall && (
+             <React.Suspense fallback={null}>
+               {(() => {
+                 const Paywall = React.lazy(() => import('./components/Paywall'));
+                 return <Paywall 
+                   user={user!} 
+                   onActivate={() => {
+                     setShowPaywall(false);
+                     setActiveTab('pricing');
+                   }} 
+                   onClose={() => setShowPaywall(false)} 
+                 />;
+               })()}
+             </React.Suspense>
+           )}
            {activeTab === 'wallet' ? (
                <Layout activeTab="home" onTabChange={setActiveTab} showNav={false}>
                    <Wallet user={user!} />

@@ -66,6 +66,9 @@ export interface UserProfile {
   joinedAt: string;
   isAdmin?: boolean;
   isPremium?: boolean; // Added for Stars Payment
+  isTemporaryPremium?: boolean;
+  trialExpiresAt?: string;
+  premiumUntil?: string;
   isBlocked?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
@@ -147,6 +150,22 @@ export interface Discount {
   percentage: number;
   expiryDate: string;
   isActive: boolean;
+}
+
+export interface Payment {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  amount: number;
+  planSelected: string;
+  receiptImageUrl: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+}
+
+export interface AdminSettings {
+  paymentCardNumber: string;
 }
 
 export interface DictionaryItem {

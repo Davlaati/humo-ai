@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, LeaderboardEntry, LeaderboardPeriod } from '../types';
 import { getLeaderboardData } from '../services/storageService';
+import { calculateLevel } from '../services/gamificationService';
 import UserBadges from './UserBadges';
 
 interface LeaderboardProps {
@@ -87,6 +88,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
                 </div>
                 <p className="text-[10px] font-black text-yellow-500 uppercase truncate w-full text-center">{topThree[1]?.name}</p>
                 <p className="text-[9px] font-bold text-blue-400">{(topThree[1]?.xp ?? 0).toLocaleString()} XP</p>
+                <div className="flex items-center space-x-1 mt-1">
+                   <div className="px-2 py-0.5 bg-white/5 rounded-full text-[8px] font-black text-slate-400">LVL {calculateLevel(topThree[1]?.xp ?? 0).level}</div>
+                   <UserBadges user={{...user, badges: topThree[1]?.badges || []} as any} compact={true} />
+                </div>
              </div>
 
              {/* 1st Place */}
@@ -100,6 +105,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
                 </div>
                 <p className="text-xs font-black text-yellow-500 uppercase truncate w-full text-center">{topThree[0]?.name}</p>
                 <p className="text-[10px] font-bold text-white bg-white/10 px-2 py-0.5 rounded-full mt-1">{(topThree[0]?.xp ?? 0).toLocaleString()} XP</p>
+                <div className="flex items-center space-x-1 mt-1">
+                   <div className="px-3 py-1 bg-yellow-500/20 rounded-full text-[9px] font-black text-yellow-500 border border-yellow-500/30">LVL {calculateLevel(topThree[0]?.xp ?? 0).level}</div>
+                   <UserBadges user={{...user, badges: topThree[0]?.badges || []} as any} compact={true} />
+                </div>
              </div>
 
              {/* 3rd Place */}
@@ -112,6 +121,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
                 </div>
                 <p className="text-[10px] font-black text-yellow-500 uppercase truncate w-full text-center">{topThree[2]?.name}</p>
                 <p className="text-[9px] font-bold text-blue-400">{(topThree[2]?.xp ?? 0).toLocaleString()} XP</p>
+                <div className="flex items-center space-x-1 mt-1">
+                   <div className="px-2 py-0.5 bg-white/5 rounded-full text-[8px] font-black text-slate-400">LVL {calculateLevel(topThree[2]?.xp ?? 0).level}</div>
+                   <UserBadges user={{...user, badges: topThree[2]?.badges || []} as any} compact={true} />
+                </div>
              </div>
           </div>
 
@@ -129,8 +142,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
                 <div className="flex-1">
                   <div className="flex items-center">
                     <p className="text-xs font-black uppercase tracking-tight">{entry.name}</p>
-                    {/* Gamification: Compact badge integration */}
-                    <UserBadges user={{...user, badges: (entry as any).badges || []} as any} compact={true} />
+                    <span className="ml-2 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[8px] font-black rounded border border-blue-500/20">L{calculateLevel(entry.xp).level}</span>
+                    <UserBadges user={{...user, badges: entry.badges || []} as any} compact={true} />
                   </div>
                   <p className="text-[9px] font-bold text-slate-500 uppercase">{entry.wins} G'alaba {entry.trend === 'up' && <span className="text-green-500 ml-1">▲</span>}</p>
                 </div>

@@ -15,6 +15,9 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         xp: user.xp,
         streak: user.streak,
         is_premium: user.isPremium,
+        is_temporary_premium: user.isTemporaryPremium,
+        trial_expires_at: user.trialExpiresAt,
+        premium_until: user.premiumUntil,
         is_blocked: user.isBlocked,
         telegram_stars: user.telegramStars,
         settings: user.settings,
@@ -45,6 +48,9 @@ export const fetchUserFromSupabase = async (userId: string): Promise<Partial<Use
       xp: data.xp,
       streak: data.streak,
       isPremium: data.is_premium,
+      isTemporaryPremium: data.is_temporary_premium,
+      trialExpiresAt: data.trial_expires_at,
+      premiumUntil: data.premium_until,
       isBlocked: data.is_blocked,
       telegramStars: data.telegram_stars,
       settings: data.settings
@@ -157,5 +163,74 @@ export const fetchAnalyticsFromSupabase = async (): Promise<PlatformAnalytics> =
 export const updatePremiumStatusInSupabase = async (userId: string, isPremium: boolean) => {
   try {
     await supabase.from('profiles').update({ is_premium: isPremium }).eq('id', userId);
+  } catch (e) {}
+};
+
+// Payment functions
+export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'createdAt'>) => {
+  try {
+    const { data, error } = await supabase.from('payments').insert({
+      user_id: payment.userId,
+      user_name: payment.userName,
+      user_email: payment.userEmail,
+      amount: payment.amount,
+      plan_selected: payment.planSelected,
+      receipt_image_url: payment.receiptImageUrl,
+      status: payment.status
+    }).select().single();
+    if (error) throw error;
+    return data;
+  } catch (e) {
+    console.error('Error creating payment:', e);
+    return null;
+  }
+};
+
+export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(d => ({
+      id: d.id,
+      userId: d.user_id,
+      userName: d.user_name,
+      userEmail: d.user_email,
+      amount: d.amount,
+      planSelected: d.plan_selected,
+      receiptImageUrl: d.receipt_image_url,
+      status: d.status,
+      createdAt: d.created_at
+    }));
+  } catch (e) {
+    return [];
+  }
+};
+
+export const updatePaymentStatusInSupabase = async (paymentId: string, status: 'approved' | 'rejected') => {
+  try {
+    await supabase.from('payments').update({ status }).eq('id', paymentId);
+  } catch (e) {}
+};
+
+// Admin Settings functions
+export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | null> => {
+  try {
+    const { data, error } = await supabase.from('admin_settings').select('*').single();
+    if (error) return { paymentCardNumber: '8600 0000 0000 0000' }; // Default fallback
+    return { paymentCardNumber: data.payment_card_number };
+  } catch (e) {
+    return { paymentCardNumber: '8600 0000 0000 0000' };
+  }
+};
+
+export const updateAdminSettingsInSupabase = async (settings: AdminSettings) => {
+  try {
+    await supabase.from('admin_settings').upsert({ id: 1, payment_card_number: settings.paymentCardNumber });
   } catch (e) {}
 };

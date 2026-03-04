@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Transaction, UserProfile, EntryNotification, 
   SubscriptionPackage, Discount, DictionaryItem, 
-  AdminLog, PlatformAnalytics 
+  AdminLog, PlatformAnalytics, AdminConfig
 } from '../types';
 import { 
   getTransactions, getUser, adminUpdateBalance, 
@@ -11,7 +11,8 @@ import {
   getAllUsers, updateOtherUser, getSubscriptionPackages,
   saveSubscriptionPackage, getDiscounts, saveDiscount,
   deleteDiscount, getDictionaryItems, saveDictionaryItem,
-  getAdminLogs, addAdminLog, getPlatformAnalytics
+  getAdminLogs, addAdminLog, getPlatformAnalytics,
+  getAdminConfig, saveAdminConfig, updateTransaction
 } from '../services/storageService';
 
 type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security';
@@ -44,6 +45,7 @@ const Admin: React.FC = () => {
 
   // Subscription states
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
+  const [adminConfig, setAdminConfig] = useState<AdminConfig>(getAdminConfig());
 
   useEffect(() => {
     let isMounted = true;
@@ -106,19 +108,53 @@ const Admin: React.FC = () => {
       alert("Kirish xabarnomasi yangilandi!");
   };
 
-  const handleToggleBlock = (userId: string, isBlocked: boolean) => {
-    updateOtherUser(userId, { isBlocked: !isBlocked });
+  const handleToggleBlock = async (userId: string, isBlocked: boolean) => {
+    await updateOtherUser(userId, { isBlocked: !isBlocked });
     addAdminLog('User Status Update', `${!isBlocked ? 'Blocked' : 'Unblocked'} user ${userId}`);
-    setUsers(getAllUsers());
+    const allUsers = await getAllUsers();
+    setUsers(allUsers);
   };
 
-  const handleTogglePremium = (userId: string, isPremium: boolean) => {
-    updateOtherUser(userId, { isPremium: !isPremium });
+  const handleTogglePremium = async (userId: string, isPremium: boolean) => {
+    await updateOtherUser(userId, { isPremium: !isPremium, premiumExpiryDate: !isPremium ? new Date(Date.now() + 30 * 86400000).toISOString() : undefined });
     addAdminLog('User Premium Update', `${!isPremium ? 'Granted' : 'Revoked'} premium for user ${userId}`);
-    setUsers(getAllUsers());
+    const allUsers = await getAllUsers();
+    setUsers(allUsers);
   };
 
-  const handleAddWord = () => {
+  const handleSaveAdminConfig = () => {
+    saveAdminConfig(adminConfig);
+    addAdminLog('Admin Config Update', `Updated card number: ${adminConfig.cardNumber}`);
+    alert("Karta ma'lumotlari saqlandi!");
+  };
+
+  const handleApproveTransaction = async (tx: Transaction) => {
+    updateTransaction(tx.id, { status: 'approved' });
+    await updateOtherUser(tx.userId, { 
+      isPremium: true, 
+      pendingPremium: false,
+      premiumExpiryDate: tx.expiresAt 
+    });
+    addAdminLog('Transaction Approved', `Approved premium for user ${tx.userId}`);
+    setTxs(getTransactions());
+    setUsers(await getAllUsers());
+  };
+
+  const handleRejectTransaction = async (tx: Transaction) => {
+    const reason = "Sizning to'lovingiz soxta deb topildi.";
+    updateTransaction(tx.id, { status: 'rejected', rejectionReason: reason });
+    await updateOtherUser(tx.userId, { 
+      isPremium: false, 
+      pendingPremium: false,
+      premiumExpiryDate: undefined 
+    });
+    addAdminLog('Transaction Rejected', `Rejected premium for user ${tx.userId}. Reason: ${reason}`);
+    setTxs(getTransactions());
+    setUsers(await getAllUsers());
+    alert(`Foydalanuvchi rad etildi: ${reason}`);
+  };
+
+  const handleAddWord = async () => {
     if (!newWord.term || !newWord.translation) return;
     const item: DictionaryItem = {
       id: `word_${Date.now()}`,
@@ -130,11 +166,12 @@ const Admin: React.FC = () => {
     };
     saveDictionaryItem(item);
     addAdminLog('Dictionary Update', `Added word: ${item.term}`);
-    setDictItems(getDictionaryItems());
+    const items = await getDictionaryItems();
+    setDictItems(items);
     setNewWord({ term: '', translation: '', definition: '', example: '', category: 'General' });
   };
 
-  const handleAddDiscount = () => {
+  const handleAddDiscount = async () => {
     if (!newDiscount.code) return;
     const discount: Discount = {
       id: `disc_${Date.now()}`,
@@ -145,7 +182,8 @@ const Admin: React.FC = () => {
     };
     saveDiscount(discount);
     addAdminLog('Discount Update', `Created discount: ${discount.code}`);
-    setDiscounts(getDiscounts());
+    const allDiscounts = await getDiscounts();
+    setDiscounts(allDiscounts);
     setNewDiscount({ code: '', percentage: 10, expiryDate: '', isActive: true });
   };
 
@@ -218,23 +256,68 @@ const Admin: React.FC = () => {
 
   const renderPremium = () => (
     <div className="space-y-6">
-      <h3 className="font-black text-sm uppercase tracking-widest">Obuna Paketlari</h3>
-      <div className="grid gap-4">
-        {packages.map(p => (
-          <div key={p.id} className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
-            <div className="flex justify-between items-start mb-2">
-              <h4 className="font-black text-white">{p.name}</h4>
-              <p className="text-emerald-400 font-black">${p.price}</p>
+      <div className="glass-card p-6 rounded-3xl border border-blue-500/20 bg-blue-500/5">
+        <h3 className="font-black text-sm uppercase tracking-widest mb-4">Karta Ma'lumotlari (P2P)</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Karta Raqami</label>
+            <input 
+              type="text" 
+              value={adminConfig.cardNumber} 
+              onChange={(e) => setAdminConfig({...adminConfig, cardNumber: e.target.value})} 
+              className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl font-bold" 
+            />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Karta Egasi</label>
+            <input 
+              type="text" 
+              value={adminConfig.cardHolder} 
+              onChange={(e) => setAdminConfig({...adminConfig, cardHolder: e.target.value})} 
+              className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl font-bold" 
+            />
+          </div>
+          <button onClick={handleSaveAdminConfig} className="w-full py-4 bg-blue-600 rounded-2xl font-black text-xs uppercase tracking-widest text-white">Saqlash</button>
+        </div>
+      </div>
+
+      <h3 className="font-black text-sm uppercase tracking-widest">Kutilayotgan To'lovlar</h3>
+      <div className="space-y-4">
+        {txs.filter(t => t.status === 'pending').length === 0 && (
+          <p className="text-xs text-slate-500 italic text-center py-8">Hozircha kutilayotgan to'lovlar yo'q.</p>
+        )}
+        {txs.filter(t => t.status === 'pending').map(tx => (
+          <div key={tx.id} className="glass-card p-5 rounded-3xl border border-white/5 bg-slate-900/40">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="font-black text-white">{tx.username}</p>
+                <p className="text-[10px] text-slate-500">ID: {tx.userId.slice(-6)} | {new Date(tx.createdAt).toLocaleString()}</p>
+              </div>
+              <p className="text-emerald-400 font-black">{tx.amount.toLocaleString()} UZS</p>
             </div>
-            <p className="text-xs text-slate-400 mb-3">{p.durationDays} kunlik obuna</p>
-            <div className="flex flex-wrap gap-2">
-              {p.features.map((f, i) => <span key={i} className="text-[8px] bg-white/5 px-2 py-1 rounded-full text-slate-300">{f}</span>)}
+            
+            {tx.proofUrl && (
+              <div className="mb-4 rounded-2xl overflow-hidden border border-white/10">
+                <img src={tx.proofUrl} alt="Receipt" className="w-full h-auto max-h-64 object-contain bg-black" />
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleApproveTransaction(tx)}
+                className="flex-1 py-3 bg-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              >
+                Tasdiqlash
+              </button>
+              <button 
+                onClick={() => handleRejectTransaction(tx)}
+                className="flex-1 py-3 bg-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              >
+                Rad Etish
+              </button>
             </div>
           </div>
         ))}
-      </div>
-      <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-[10px] text-blue-300">
-        <i className="fa-solid fa-info-circle mr-1"></i> To'lovlar monitoringi: Stripe, Click, Payme integratsiyasi faol.
       </div>
     </div>
   );

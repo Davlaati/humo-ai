@@ -4,10 +4,12 @@ import { GoogleGenAI } from "@google/genai";
 import { playTapSound } from '../services/audioService';
 
 interface TranslatorProps {
+  user: UserProfile;
   onNavigate?: (tab: string) => void;
+  onShowPaywall?: () => void;
 }
 
-const Translator: React.FC<TranslatorProps> = ({ onNavigate }) => {
+const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onShowPaywall }) => {
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +23,11 @@ const Translator: React.FC<TranslatorProps> = ({ onNavigate }) => {
 
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
+
+    if (!user.isPremium && onShowPaywall) {
+      onShowPaywall();
+      return;
+    }
     
     playTapSound();
     setIsLoading(true);

@@ -8,6 +8,7 @@ interface SpeakingClubProps {
   user: UserProfile;
   onNavigate: (tab: string) => void;
   onUpdateUser: (user: UserProfile) => void;
+  onShowPaywall?: () => void;
 }
 
 interface AnalysisReport {
@@ -121,6 +122,11 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onUpdateU
   };
 
   const startSession = async (personalityOverride?: typeof AI_PERSONALITIES[0]) => {
+    if (!user.isPremium && onShowPaywall) {
+      onShowPaywall();
+      return;
+    }
+
     setError(null);
     setStatus('searching');
     setShowPersonalityPicker(false);

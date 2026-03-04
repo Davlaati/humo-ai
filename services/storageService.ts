@@ -1,7 +1,8 @@
 import { 
   UserProfile, Transaction, LeaderboardEntry, LeaderboardPeriod, 
   StarsTransaction, EntryNotification, SubscriptionPackage, 
-  Discount, DictionaryItem, AdminLog, PlatformAnalytics 
+  Discount, DictionaryItem, AdminLog, PlatformAnalytics,
+  AdminConfig
 } from "../types";
 import { 
   syncUserToSupabase, logAdminActionToSupabase, saveDictionaryItemToSupabase,
@@ -17,6 +18,7 @@ const PACKAGES_KEY = 'ravona_subscription_packages';
 const DISCOUNTS_KEY = 'ravona_discounts';
 const DICTIONARY_KEY = 'ravona_dictionary_items';
 const ADMIN_LOGS_KEY = 'ravona_admin_logs';
+const ADMIN_CONFIG_KEY = 'ravona_admin_config';
 const CONVERSION_RATE = 10; 
 
 export const getUser = (): UserProfile | null => {
@@ -47,6 +49,11 @@ export const getUser = (): UserProfile | null => {
     if (user.xp === undefined) user.xp = 0;
     if (user.coins === undefined) user.coins = 0;
     if (user.streak === undefined) user.streak = 0;
+    if (!user.badges) user.badges = [];
+    
+    // Trial Logic
+    if (!user.joinedAt) user.joinedAt = new Date().toISOString();
+    if (user.isTrialUsed === undefined) user.isTrialUsed = false;
     
     return user as UserProfile;
   } catch (e) {
@@ -167,8 +174,8 @@ export const saveAllUsers = (users: UserProfile[]) => {
   localStorage.setItem(USERS_LIST_KEY, JSON.stringify(users));
 };
 
-export const updateOtherUser = (userId: string, updates: Partial<UserProfile>) => {
-  const users = getAllUsers();
+export const updateOtherUser = async (userId: string, updates: Partial<UserProfile>) => {
+  const users = await getAllUsers();
   const index = users.findIndex(u => u.id === userId);
   if (index !== -1) {
     users[index] = { ...users[index], ...updates };
@@ -284,10 +291,84 @@ export const getTransactions = (): Transaction[] => {
   }
 };
 
+export const saveTransactions = (txs: Transaction[]) => {
+  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(txs));
+};
+
 export const addTransaction = (transaction: Transaction) => {
   const txs = getTransactions();
-  txs.push(transaction);
-  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(txs));
+  txs.unshift(transaction);
+  saveTransactions(txs);
+};
+
+export const updateTransaction = (txId: string, updates: Partial<Transaction>) => {
+  const txs = getTransactions();
+  const index = txs.findIndex(t => t.id === txId);
+  if (index !== -1) {
+    txs[index] = { ...txs[index], ...updates };
+    saveTransactions(txs);
+  }
+};
+
+export const getAdminConfig = (): AdminConfig => {
+  try {
+    const data = localStorage.getItem(ADMIN_CONFIG_KEY);
+    return data ? JSON.parse(data) : {
+      cardNumber: '8600 0000 0000 0000',
+      cardHolder: 'ADMIN NAME',
+      premiumPriceUZS: 36000,
+      premiumPriceUSD: 3
+    };
+  } catch (e) {
+    return {
+      cardNumber: '8600 0000 0000 0000',
+      cardHolder: 'ADMIN NAME',
+      premiumPriceUZS: 36000,
+      premiumPriceUSD: 3
+    };
+  }
+};
+
+export const saveAdminConfig = (config: AdminConfig) => {
+  localStorage.setItem(ADMIN_CONFIG_KEY, JSON.stringify(config));
+};
+
+export const isPremiumActive = (user: UserProfile): boolean => {
+  const now = new Date();
+  
+  // 1. Check paid premium
+  if (user.isPremium && user.premiumExpiryDate) {
+    const expiry = new Date(user.premiumExpiryDate);
+    if (now < expiry) return true;
+  }
+  
+  // 2. Check trial (3 days from joinedAt)
+  if (!user.isTrialUsed && user.joinedAt) {
+    const joined = new Date(user.joinedAt);
+    const trialEnd = new Date(joined.getTime() + 3 * 24 * 60 * 60 * 1000);
+    if (now < trialEnd) return true;
+  }
+  
+  return false;
+};
+
+export const getPremiumStatus = (user: UserProfile): 'trial' | 'paid' | 'expired' | 'pending' => {
+  const now = new Date();
+  
+  if (user.pendingPremium) return 'pending';
+  
+  if (user.isPremium && user.premiumExpiryDate) {
+    const expiry = new Date(user.premiumExpiryDate);
+    if (now < expiry) return 'paid';
+  }
+  
+  if (!user.isTrialUsed && user.joinedAt) {
+    const joined = new Date(user.joinedAt);
+    const trialEnd = new Date(joined.getTime() + 3 * 24 * 60 * 60 * 1000);
+    if (now < trialEnd) return 'trial';
+  }
+  
+  return 'expired';
 };
 
 export const initializeFromSupabase = async (userId: string): Promise<UserProfile | null> => {
