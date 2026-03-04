@@ -9,8 +9,10 @@ interface UserBadgesProps {
 }
 
 const UserBadges: React.FC<UserBadgesProps> = ({ user, compact = false }) => {
-  const achievements = user.badges || [];
-  const badgeIds = achievements.map(a => a.badgeId);
+  const achievements = Array.isArray(user.badges) ? user.badges : [];
+  const badgeIds = Array.isArray(achievements) && achievements.length > 0
+    ? achievements.map(a => a.badgeId)
+    : [];
 
   if (compact) {
     const mainBadge = badgeIds.length > 0 ? BADGE_DEFINITIONS[badgeIds[badgeIds.length - 1]] : null;

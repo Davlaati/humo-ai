@@ -26,6 +26,18 @@ type TelegramUser = {
   photo_url?: string;
 };
 
+
+
+const waitForTelegramInitData = async (maxWaitMs = 3000): Promise<void> => {
+  const tg = (window as any).Telegram?.WebApp;
+  if (!tg) return;
+
+  const startedAt = Date.now();
+  while (!tg.initData && Date.now() - startedAt < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+};
+
 const getTelegramUser = (): TelegramUser | null => {
   const tg = (window as any).Telegram?.WebApp;
   const unsafeUser = tg?.initDataUnsafe?.user;
@@ -76,6 +88,7 @@ const App: React.FC = () => {
     // Foydalanuvchini yuklash
     const initUser = async () => {
       try {
+        await waitForTelegramInitData();
         const tgUser = getTelegramUser();
       
         if (tgUser) {

@@ -1,9 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserProfile } from '../types';
 import UserBadges from './UserBadges';
 import { calculateLevel } from '../services/gamificationService';
 import { isPremiumActive } from '../services/storageService';
+import { fetchLeaderboardFromSupabase, fetchAllUsersFromSupabase } from '../services/supabaseService';
 
 interface ProfileProps {
   user: UserProfile;
@@ -19,15 +20,54 @@ const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser
   const { level, progress } = calculateLevel(user.xp);
   const isPremium = isPremiumActive(user);
   const [isEditingInterests, setIsEditingInterests] = useState(false);
-  const [editedInterests, setEditedInterests] = useState<string[]>(user.interests || []);
+  const [editedInterests, setEditedInterests] = useState<string[]>(Array.isArray(user.interests) ? user.interests : []);
 
-  const userInterests = user.interests || [];
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [stats, setStats] = useState<{ label: string; value: string | number; icon: string; color: string }[]>([]);
+  const [userList, setUserList] = useState<UserProfile[]>([]);
+  const [isSupabaseLoading, setIsSupabaseLoading] = useState(false);
+
+  const userInterests = Array.isArray(user.interests) ? user.interests : [];
 
   // Admin Login States
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [adminLogin, setAdminLogin] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+
+  useEffect(() => {
+    const syncProfileData = async () => {
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg && !tg.initData) {
+        return;
+      }
+
+      setIsSupabaseLoading(true);
+      try {
+        const [leaderboard, users] = await Promise.all([
+          fetchLeaderboardFromSupabase('alltime'),
+          fetchAllUsersFromSupabase()
+        ]);
+
+        setAchievements(Array.isArray(leaderboard) ? leaderboard : []);
+        setUserList(Array.isArray(users) ? users : []);
+      } catch (error) {
+        console.warn('Profile data fetch failed, using safe defaults.', error);
+        setAchievements([]);
+        setUserList([]);
+      } finally {
+        setStats([
+          { label: 'Jami XP', value: user.xp || 0, icon: 'fa-bolt', color: 'text-yellow-400' },
+          { label: 'Streak', value: `${user.streak || 0} kun`, icon: 'fa-fire', color: 'text-orange-500' },
+          { label: "O'rganildi", value: `${Array.isArray(user.learnedWords) ? user.learnedWords.length : 0} so'z`, icon: 'fa-brain', color: 'text-pink-400' },
+          { label: "G'alaba", value: `${user.wins || 0} marta`, icon: 'fa-chart-line', color: 'text-green-400' },
+        ]);
+        setIsSupabaseLoading(false);
+      }
+    };
+
+    syncProfileData();
+  }, [user.id, user.xp, user.streak, user.wins, user.learnedWords]);
 
   const toggleInterest = (interest: string) => {
     if (editedInterests.includes(interest)) {
@@ -125,11 +165,16 @@ const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser
         </div>
       </div>
 
+      {isSupabaseLoading && (
+        <div className="glass-card rounded-2xl p-4 border border-white/5 animate-pulse">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ma'lumotlar yuklanmoqda...</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
-         <StatCard label="Jami XP" value={user.xp} icon="fa-bolt" color="text-yellow-400" />
-         <StatCard label="Streak" value={`${user.streak} kun`} icon="fa-fire" color="text-orange-500" />
-         <StatCard label="O'rganildi" value={`${(user.learnedWords || []).length} so'z`} icon="fa-brain" color="text-pink-400" />
-         <StatCard label="G'alaba" value={`${user.wins || 0} marta`} icon="fa-chart-line" color="text-green-400" />
+        {Array.isArray(stats) && stats.length > 0 ? stats.map((item) => (
+          <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} color={item.color} />
+        )) : <div className="col-span-2 text-xs text-slate-400">Statistika hozircha mavjud emas.</div>}
       </div>
 
       {/* Gamification: Achievements Grid */}
@@ -153,13 +198,25 @@ const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser
         </div>
         
         <div className="overflow-x-auto pb-2 no-scrollbar">
-           <ActivityHeatmap activityLog={user.activityLog || []} />
+           <ActivityHeatmap activityLog={Array.isArray(user.activityLog) ? user.activityLog : []} />
         </div>
         
         <div className="flex justify-between mt-4 text-[9px] font-black text-gray-500 uppercase tracking-widest">
             <span>90 kun avval</span>
             <span>Bugun</span>
         </div>
+      </div>
+
+      <div className="glass-card rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-black text-sm uppercase tracking-tighter">Community Snapshot</h3>
+          <span className="text-[10px] text-slate-500 font-black uppercase">{Array.isArray(userList) ? userList.length : 0} users</span>
+        </div>
+        {Array.isArray(achievements) && achievements.length > 0 ? achievements.slice(0, 3).map((entry: any) => (
+          <div key={entry.userId} className="text-xs text-slate-300 py-1 border-b border-white/5 last:border-b-0">
+            {entry.name || 'User'} • {entry.xp || 0} XP
+          </div>
+        )) : <p className="text-xs text-slate-400">Liderlar ro'yxati hozircha mavjud emas.</p>}
       </div>
       
        <div className="glass-card rounded-2xl p-6 relative">
@@ -168,7 +225,7 @@ const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser
              <button onClick={() => { setIsEditingInterests(true); setEditedInterests(userInterests); }} className="text-blue-400 text-sm font-bold">Tahrirlash</button>
          </div>
          <div className="flex flex-wrap gap-2">
-             {userInterests?.length ? userInterests?.map(i => (
+             {Array.isArray(userInterests) && userInterests.length > 0 ? userInterests.map(i => (
                  <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-xs border border-white/5">{i}</span>
              )) : (
                  <p className="text-xs text-slate-400">Qiziqishlar hali tanlanmagan.</p>
@@ -184,7 +241,7 @@ const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser
              <p className="text-xs text-gray-400 mb-6 text-center">Kamida 3 ta, ko'pi bilan 8 ta tanlang</p>
              
              <div className="flex flex-wrap gap-2 justify-center mb-8">
-               {INTERESTS_OPTIONS.map(interest => (
+               {Array.isArray(INTERESTS_OPTIONS) && INTERESTS_OPTIONS.length > 0 ? INTERESTS_OPTIONS.map(interest => (
                  <button
                    key={interest}
                    onClick={() => toggleInterest(interest)}
@@ -192,7 +249,7 @@ const Profile: React.FC<ProfileProps> = ({ user, isLoading = false, onUpdateUser
                  >
                    {interest}
                  </button>
-               ))}
+               )) : <p className="text-xs text-slate-400">Qiziqishlar ro'yxati bo'sh.</p>}
              </div>
 
              <div className="flex space-x-3">
@@ -281,13 +338,14 @@ const ActivityHeatmap: React.FC<{ activityLog: string[] }> = ({ activityLog }) =
         const result = [];
         const today = new Date();
         // Set to midnight
+        // Set to midnight
         today.setHours(0, 0, 0, 0);
 
         for (let i = 90; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            const isActive = activityLog.includes(dateStr);
+            const isActive = Array.isArray(activityLog) ? activityLog.includes(dateStr) : false;
             result.push({ dateStr, isActive, date });
         }
         return result;
@@ -304,9 +362,9 @@ const ActivityHeatmap: React.FC<{ activityLog: string[] }> = ({ activityLog }) =
 
     return (
         <div className="flex space-x-1.5 min-w-max">
-            {weeks.map((week, wIdx) => (
+            {Array.isArray(weeks) && weeks.length > 0 ? weeks.map((week, wIdx) => (
                 <div key={wIdx} className="flex flex-col space-y-1.5">
-                    {week.map((day, dIdx) => (
+                    {Array.isArray(week) && week.length > 0 ? week.map((day) => (
                         <div 
                             key={day.dateStr}
                             className={`
@@ -320,9 +378,9 @@ const ActivityHeatmap: React.FC<{ activityLog: string[] }> = ({ activityLog }) =
                             `}
                             title={day.dateStr}
                         ></div>
-                    ))}
+                    )) : <div className="w-3.5 h-3.5 rounded-[2px] bg-white/5"></div>}
                 </div>
-            ))}
+            )) : <p className="text-xs text-slate-400">Faollik ma'lumotlari yo'q.</p>}
         </div>
     );
 }
