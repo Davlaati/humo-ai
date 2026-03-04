@@ -1,8 +1,12 @@
 
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { UserProfile, Transaction, DictionaryItem, AdminLog, Discount, SubscriptionPackage } from '../types';
 
+const shouldUseSupabase = () => isSupabaseConfigured;
+
 export const syncUserToSupabase = async (user: UserProfile) => {
+
+  if (!shouldUseSupabase()) return;
   try {
     const { error } = await supabase
       .from('profiles')
@@ -30,6 +34,8 @@ export const syncUserToSupabase = async (user: UserProfile) => {
 };
 
 export const fetchUserFromSupabase = async (userId: string): Promise<Partial<UserProfile> | null> => {
+
+  if (!shouldUseSupabase()) return null;
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -61,6 +67,8 @@ export const fetchUserFromSupabase = async (userId: string): Promise<Partial<Use
 };
 
 export const logAdminActionToSupabase = async (log: AdminLog) => {
+
+  if (!shouldUseSupabase()) return;
   try {
     await supabase.from('admin_logs').insert({
       admin_id: log.adminId,
@@ -73,6 +81,8 @@ export const logAdminActionToSupabase = async (log: AdminLog) => {
 };
 
 export const saveDictionaryItemToSupabase = async (item: DictionaryItem) => {
+
+  if (!shouldUseSupabase()) return;
   try {
     await supabase.from('dictionary').upsert({
       id: item.id,
@@ -86,6 +96,8 @@ export const saveDictionaryItemToSupabase = async (item: DictionaryItem) => {
 };
 
 export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): Promise<LeaderboardEntry[]> => {
+
+  if (!shouldUseSupabase()) return [];
   try {
     // In a real app, 'period' would filter by a 'created_at' or 'xp_this_week' column
     // For now, we'll just sort by total XP
@@ -113,6 +125,8 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
 };
 
 export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
+
+  if (!shouldUseSupabase()) return [];
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -141,6 +155,8 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
 };
 
 export const fetchAnalyticsFromSupabase = async (): Promise<PlatformAnalytics> => {
+
+  if (!shouldUseSupabase()) return { dailyActiveUsers: 0, totalRevenue: 0, aiRequestsCount: 0, errorCount: 0 };
   try {
     const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
     const { count: premiumUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_premium', true);
@@ -161,6 +177,8 @@ export const fetchAnalyticsFromSupabase = async (): Promise<PlatformAnalytics> =
 };
 
 export const updatePremiumStatusInSupabase = async (userId: string, isPremium: boolean) => {
+
+  if (!shouldUseSupabase()) return;
   try {
     await supabase.from('profiles').update({ is_premium: isPremium }).eq('id', userId);
   } catch (e) {}
@@ -168,6 +186,8 @@ export const updatePremiumStatusInSupabase = async (userId: string, isPremium: b
 
 // Payment functions
 export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'createdAt'>) => {
+
+  if (!shouldUseSupabase()) return null;
   try {
     const { data, error } = await supabase.from('payments').insert({
       user_id: payment.userId,
@@ -187,6 +207,8 @@ export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'cre
 };
 
 export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => {
+
+  if (!shouldUseSupabase()) return [];
   try {
     const { data, error } = await supabase
       .from('payments')
@@ -213,6 +235,8 @@ export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => 
 };
 
 export const updatePaymentStatusInSupabase = async (paymentId: string, status: 'approved' | 'rejected') => {
+
+  if (!shouldUseSupabase()) return;
   try {
     await supabase.from('payments').update({ status }).eq('id', paymentId);
   } catch (e) {}
@@ -220,6 +244,8 @@ export const updatePaymentStatusInSupabase = async (paymentId: string, status: '
 
 // Admin Settings functions
 export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | null> => {
+
+  if (!shouldUseSupabase()) return { paymentCardNumber: '8600 0000 0000 0000' };
   try {
     const { data, error } = await supabase.from('admin_settings').select('*').single();
     if (error) return { paymentCardNumber: '8600 0000 0000 0000' }; // Default fallback
@@ -230,6 +256,8 @@ export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | 
 };
 
 export const updateAdminSettingsInSupabase = async (settings: AdminSettings) => {
+
+  if (!shouldUseSupabase()) return;
   try {
     await supabase.from('admin_settings').upsert({ id: 1, payment_card_number: settings.paymentCardNumber });
   } catch (e) {}
