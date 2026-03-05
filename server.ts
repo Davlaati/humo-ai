@@ -19,7 +19,19 @@ async function startServer() {
   const PORT = 3000;
 
   // Speaking Club State
-  const rooms: Record<string, { id: string; name: string; creator: string; members: string[]; limit: number; createdAt: number }> = {};
+  interface Room {
+    id: string;
+    name: string;
+    topic: string;
+    level: string;
+    creator: string;
+    members: string[];
+    limit: number;
+    createdAt: number;
+    expiresAt: number;
+  }
+
+  const rooms: Record<string, Room> = {};
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -28,10 +40,25 @@ async function startServer() {
       socket.emit("rooms-list", Object.values(rooms));
     });
 
-    socket.on("create-room", ({ name, creator, limit }) => {
-      const id = Math.random().toString(36).substring(7);
-      rooms[id] = { id, name, creator, members: [socket.id], limit, createdAt: Date.now() };
+    socket.on("create-room", ({ name, topic, level, creator, limit }) => {
+      const id = Math.random().toString(36).substring(2, 9);
+      const createdAt = Date.now();
+      const expiresAt = createdAt + 30 * 60 * 1000; // 30 minutes
+
+      rooms[id] = { 
+        id, 
+        name, 
+        topic, 
+        level, 
+        creator, 
+        members: [socket.id], 
+        limit, 
+        createdAt, 
+        expiresAt 
+      };
+      
       socket.join(id);
+      socket.emit("room-created", id); // Send back the ID to the creator
       io.emit("rooms-list", Object.values(rooms));
     });
 
@@ -40,8 +67,24 @@ async function startServer() {
         rooms[roomId].members.push(socket.id);
         socket.join(roomId);
         io.to(roomId).emit("user-joined", socket.id);
+        socket.emit("room-joined", rooms[roomId]); // Confirm join to the user
         io.emit("rooms-list", Object.values(rooms));
+      } else {
+        socket.emit("error", "Room is full or does not exist");
       }
+    });
+
+    // WebRTC Signaling
+    socket.on("offer", (payload) => {
+      io.to(payload.target).emit("offer", payload);
+    });
+
+    socket.on("answer", (payload) => {
+      io.to(payload.target).emit("answer", payload);
+    });
+
+    socket.on("ice-candidate", (payload) => {
+      io.to(payload.target).emit("ice-candidate", payload);
     });
 
     socket.on("disconnect", () => {
@@ -49,11 +92,12 @@ async function startServer() {
         const index = rooms[roomId].members.indexOf(socket.id);
         if (index !== -1) {
           rooms[roomId].members.splice(index, 1);
+          io.to(roomId).emit("user-left", socket.id);
+          
           if (rooms[roomId].members.length === 0) {
             delete rooms[roomId];
-          } else {
-            io.to(roomId).emit("user-left", socket.id);
           }
+          
           io.emit("rooms-list", Object.values(rooms));
         }
       }
