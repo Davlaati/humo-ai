@@ -217,3 +217,46 @@ export interface PlatformAnalytics {
   aiRequestsCount: number;
   errorCount: number;
 }
+
+export type LibraryItemType = 'course' | 'podcast' | 'book';
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+export interface Quiz {
+  id: string;
+  title: string;
+  questions: QuizQuestion[];
+}
+
+export interface LessonItem {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  content: string;
+  order: number;
+  quiz?: Quiz;
+}
+
+export interface LibraryItem {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  type: LibraryItemType;
+  level: EnglishLevel;
+  category: string;
+  contentUrl?: string; // For podcasts (audio) or books (pdf/text)
+  author?: string;
+  duration?: string; // For podcasts
+  pages?: number; // For books
+  createdAt: string;
+  isActive: boolean;
+  isPremium?: boolean;
+  lessons?: LessonItem[]; // Only for courses
+}

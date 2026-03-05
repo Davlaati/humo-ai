@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { 
   UserProfile, Transaction, DictionaryItem, AdminLog, Discount, 
   SubscriptionPackage, LeaderboardPeriod, LeaderboardEntry, 
-  PlatformAnalytics, Payment, AdminSettings 
+  PlatformAnalytics, Payment, AdminSettings, LibraryItem 
 } from '../types';
 
 export const syncUserToSupabase = async (user: UserProfile) => {
@@ -278,6 +278,79 @@ export const fetchAnalyticsFromSupabase = async (): Promise<PlatformAnalytics> =
     };
   } catch (e) {
     return { dailyActiveUsers: 0, totalRevenue: 0, aiRequestsCount: 0, errorCount: 0 };
+  }
+};
+
+// Library Methods
+export const fetchLibraryItemsFromSupabase = async (type?: string): Promise<LibraryItem[]> => {
+  try {
+    let query = supabase.from('library').select('*').order('created_at', { ascending: false });
+    if (type) {
+      query = query.eq('type', type);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      thumbnail: item.thumbnail,
+      type: item.type,
+      level: item.level,
+      category: item.category,
+      contentUrl: item.content_url,
+      author: item.author,
+      duration: item.duration,
+      pages: item.pages,
+      createdAt: item.created_at,
+      isActive: item.is_active,
+      isPremium: item.is_premium,
+      lessons: item.lessons || []
+    }));
+  } catch (e) {
+    console.error('Fetch library items failed:', e);
+    return [];
+  }
+};
+
+export const saveLibraryItemToSupabase = async (item: Partial<LibraryItem>) => {
+  const data = {
+    id: item.id || undefined,
+    title: item.title,
+    description: item.description,
+    thumbnail: item.thumbnail,
+    type: item.type,
+    level: item.level,
+    category: item.category,
+    content_url: item.contentUrl,
+    author: item.author,
+    duration: item.duration,
+    pages: item.pages,
+    is_active: item.isActive,
+    is_premium: item.isPremium,
+    lessons: item.lessons,
+    created_at: item.createdAt || new Date().toISOString()
+  };
+
+  try {
+    const { error } = await supabase.from('library').upsert(data);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error('Save library item failed:', e);
+    throw e;
+  }
+};
+
+export const deleteLibraryItemFromSupabase = async (id: string) => {
+  try {
+    const { error } = await supabase.from('library').delete().eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error('Delete library item failed:', e);
+    throw e;
   }
 };
 

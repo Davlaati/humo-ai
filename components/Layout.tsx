@@ -37,7 +37,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, showN
                <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest text-slate-400 opacity-50">O'yinlar</span>
             </div>
             
-            <NavButton icon="fa-robot" label="Tutor" active={activeTab === 'tutor'} onClick={() => onTabChange('tutor')} />
+            <NavButton icon="fa-book-open" label="Kutubxona" active={activeTab === 'library'} onClick={() => onTabChange('library')} />
             <NavButton icon="fa-user" label="Profil" active={activeTab === 'profile'} onClick={() => onTabChange('profile')} />
           </div>
         </div>

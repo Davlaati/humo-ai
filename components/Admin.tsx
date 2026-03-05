@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Transaction, UserProfile, EntryNotification, 
   SubscriptionPackage, Discount, DictionaryItem, 
-  AdminLog, PlatformAnalytics, AdminConfig, Payment, AdminSettings
+  AdminLog, PlatformAnalytics, AdminConfig, Payment, AdminSettings, LibraryItem, EnglishLevel
 } from '../types';
 import { 
   getTransactions, getUser, adminUpdateBalance, 
@@ -19,10 +19,13 @@ import {
   updatePaymentStatusInSupabase, 
   fetchAdminSettingsFromSupabase, 
   updateAdminSettingsInSupabase,
-  updatePremiumStatusInSupabase
+  updatePremiumStatusInSupabase,
+  fetchLibraryItemsFromSupabase,
+  saveLibraryItemToSupabase,
+  deleteLibraryItemFromSupabase
 } from '../services/supabaseService';
 
-type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security';
+type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security' | 'library';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -56,6 +59,11 @@ const Admin: React.FC = () => {
   const [adminConfig, setAdminConfig] = useState<AdminConfig>(getAdminConfig());
   const [newCardNumber, setNewCardNumber] = useState('');
 
+  // Library states
+  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+  const [editingItem, setEditingItem] = useState<Partial<LibraryItem> | null>(null);
+  const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
     
@@ -70,7 +78,8 @@ const Admin: React.FC = () => {
           allDiscounts,
           subPackages,
           payments,
-          settings
+          settings,
+          libItems
         ] = await Promise.all([
           getTransactions(),
           getAllUsers(),
@@ -80,7 +89,8 @@ const Admin: React.FC = () => {
           getDiscounts(),
           getSubscriptionPackages(),
           fetchPendingPaymentsFromSupabase(),
-          fetchAdminSettingsFromSupabase()
+          fetchAdminSettingsFromSupabase(),
+          fetchLibraryItemsFromSupabase()
         ]);
 
         if (isMounted) {
@@ -93,6 +103,7 @@ const Admin: React.FC = () => {
           setDictItems(dictionaryItems);
           setDiscounts(allDiscounts);
           setPackages(subPackages);
+          setLibraryItems(libItems);
           if (settings) setNewCardNumber(settings.paymentCardNumber);
         }
       } catch (err) {
@@ -209,6 +220,31 @@ const Admin: React.FC = () => {
     const allDiscounts = await getDiscounts();
     setDiscounts(allDiscounts);
     setNewDiscount({ code: '', percentage: 10, expiryDate: '', isActive: true });
+  };
+
+  const handleSaveLibraryItem = async () => {
+    if (!editingItem?.title || !editingItem?.type) return;
+    try {
+      await saveLibraryItemToSupabase(editingItem);
+      addAdminLog('Library Update', `Saved library item: ${editingItem.title}`);
+      setLibraryItems(await fetchLibraryItemsFromSupabase());
+      setEditingItem(null);
+      setIsLibraryModalOpen(false);
+      alert("Kutubxona elementi saqlandi!");
+    } catch (e) {
+      alert("Xatolik yuz berdi!");
+    }
+  };
+
+  const handleDeleteLibraryItem = async (id: string) => {
+    if (!window.confirm("Haqiqatan ham o'chirmoqchimisiz?")) return;
+    try {
+      await deleteLibraryItemFromSupabase(id);
+      addAdminLog('Library Delete', `Deleted library item: ${id}`);
+      setLibraryItems(await fetchLibraryItemsFromSupabase());
+    } catch (e) {
+      alert("Xatolik yuz berdi!");
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,6 +440,254 @@ const Admin: React.FC = () => {
     </div>
   );
 
+  const renderLibrary = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black italic uppercase tracking-tighter">Kutubxona Boshqaruvi</h2>
+        <button 
+          onClick={() => {
+            setEditingItem({ 
+              title: '', description: '', thumbnail: '', type: 'course', 
+              level: EnglishLevel.Beginner, category: 'General', 
+              isActive: true, isPremium: false, lessons: [] 
+            });
+            setIsLibraryModalOpen(true);
+          }}
+          className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold uppercase tracking-widest"
+        >
+          Yangi qo'shish
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {libraryItems.map(item => (
+          <div key={item.id} className="glass-card p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <img src={item.thumbnail} className="w-16 h-10 rounded-lg object-cover" alt="" />
+              <div>
+                <p className="text-sm font-bold text-white">{item.title}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-black">{item.type} • {item.level}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => {
+                  setEditingItem(item);
+                  setIsLibraryModalOpen(true);
+                }}
+                className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center"
+              >
+                <i className="fa-solid fa-pen text-xs"></i>
+              </button>
+              <button 
+                onClick={() => handleDeleteLibraryItem(item.id)}
+                className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center"
+              >
+                <i className="fa-solid fa-trash text-xs"></i>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isLibraryModalOpen && editingItem && (
+        <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 rounded-[40px] border border-white/10">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-2xl font-black italic uppercase tracking-tighter">Elementni tahrirlash</h3>
+              <button onClick={() => setIsLibraryModalOpen(false)} className="text-slate-500"><i className="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Sarlavha</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.title} 
+                    onChange={e => setEditingItem({...editingItem, title: e.target.value})}
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Turi</label>
+                  <select 
+                    value={editingItem.type} 
+                    onChange={e => setEditingItem({...editingItem, type: e.target.value as any})}
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                  >
+                    <option value="course">Kurs</option>
+                    <option value="podcast">Podcast</option>
+                    <option value="book">Kitob</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Tavsif</label>
+                <textarea 
+                  value={editingItem.description} 
+                  onChange={e => setEditingItem({...editingItem, description: e.target.value})}
+                  className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm h-24"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Thumbnail URL</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.thumbnail} 
+                    onChange={e => setEditingItem({...editingItem, thumbnail: e.target.value})}
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Content URL (Podcast/Book)</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.contentUrl} 
+                    onChange={e => setEditingItem({...editingItem, contentUrl: e.target.value})}
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Daraja</label>
+                  <select 
+                    value={editingItem.level} 
+                    onChange={e => setEditingItem({...editingItem, level: e.target.value as any})}
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                  >
+                    {Object.values(EnglishLevel).map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Kategoriya</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.category} 
+                    onChange={e => setEditingItem({...editingItem, category: e.target.value})}
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-6 py-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={editingItem.isActive} 
+                    onChange={e => setEditingItem({...editingItem, isActive: e.target.checked})}
+                    className="w-4 h-4 rounded bg-slate-800 border-white/10 text-blue-600"
+                  />
+                  <span className="text-xs font-bold text-slate-300">Faol</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={editingItem.isPremium} 
+                    onChange={e => setEditingItem({...editingItem, isPremium: e.target.checked})}
+                    className="w-4 h-4 rounded bg-slate-800 border-white/10 text-amber-600"
+                  />
+                  <span className="text-xs font-bold text-slate-300">Premium</span>
+                </label>
+              </div>
+
+              {editingItem.type === 'course' && (
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black uppercase tracking-widest text-blue-400">Darslar ({editingItem.lessons?.length || 0})</h4>
+                    <button 
+                      onClick={() => {
+                        const lessons = editingItem.lessons || [];
+                        setEditingItem({
+                          ...editingItem,
+                          lessons: [...lessons, { id: `lesson_${Date.now()}`, title: 'Yangi dars', description: '', content: '', order: lessons.length + 1 }]
+                        });
+                      }}
+                      className="text-[10px] font-black text-blue-500 uppercase tracking-widest"
+                    >
+                      Dars qo'shish
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {editingItem.lessons?.map((lesson, idx) => (
+                      <div key={lesson.id} className="p-4 rounded-2xl bg-slate-800/30 border border-white/5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-slate-500">#{idx + 1} Dars</span>
+                          <button 
+                            onClick={() => {
+                              const lessons = [...(editingItem.lessons || [])];
+                              lessons.splice(idx, 1);
+                              setEditingItem({...editingItem, lessons});
+                            }}
+                            className="text-red-400 text-xs"
+                          >
+                            O'chirish
+                          </button>
+                        </div>
+                        <input 
+                          type="text" 
+                          placeholder="Dars sarlavhasi"
+                          value={lesson.title}
+                          onChange={e => {
+                            const lessons = [...(editingItem.lessons || [])];
+                            lessons[idx].title = e.target.value;
+                            setEditingItem({...editingItem, lessons});
+                          }}
+                          className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs"
+                        />
+                        <textarea 
+                          placeholder="Dars mazmuni"
+                          value={lesson.content}
+                          onChange={e => {
+                            const lessons = [...(editingItem.lessons || [])];
+                            lessons[idx].content = e.target.value;
+                            setEditingItem({...editingItem, lessons});
+                          }}
+                          className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs h-20"
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Video URL (YouTube/Vimeo)"
+                          value={lesson.videoUrl || ''}
+                          onChange={e => {
+                            const lessons = [...(editingItem.lessons || [])];
+                            lessons[idx].videoUrl = e.target.value;
+                            setEditingItem({...editingItem, lessons});
+                          }}
+                          className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-6 flex space-x-4">
+                <button 
+                  onClick={handleSaveLibraryItem}
+                  className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest text-sm"
+                >
+                  Saqlash
+                </button>
+                <button 
+                  onClick={() => setIsLibraryModalOpen(false)}
+                  className="px-8 py-4 rounded-2xl bg-slate-800 text-slate-400 font-black uppercase tracking-widest text-sm"
+                >
+                  Bekor qilish
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderSecurity = () => (
     <div className="space-y-4">
       <h3 className="font-black text-sm uppercase tracking-widest">Admin Action Loglari</h3>
@@ -434,7 +718,7 @@ const Admin: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Nav */}
         <div className="w-16 border-r border-white/5 flex flex-col items-center py-6 space-y-6 shrink-0 bg-slate-900/20">
-          {(['dashboard', 'users', 'premium', 'marketing', 'dictionary', 'discounts', 'security'] as AdminTab[]).map(tab => (
+          {(['dashboard', 'users', 'premium', 'marketing', 'dictionary', 'discounts', 'library', 'security'] as AdminTab[]).map(tab => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -446,7 +730,8 @@ const Admin: React.FC = () => {
                 tab === 'premium' ? 'fa-crown' :
                 tab === 'marketing' ? 'fa-bullhorn' :
                 tab === 'dictionary' ? 'fa-book' :
-                tab === 'discounts' ? 'fa-tag' : 'fa-shield-halved'
+                tab === 'discounts' ? 'fa-tag' : 
+                tab === 'library' ? 'fa-book-open' : 'fa-shield-halved'
               }`}></i>
             </button>
           ))}
@@ -460,6 +745,7 @@ const Admin: React.FC = () => {
           {activeTab === 'marketing' && renderMarketing()}
           {activeTab === 'dictionary' && renderDictionary()}
           {activeTab === 'discounts' && renderDiscounts()}
+          {activeTab === 'library' && renderLibrary()}
           {activeTab === 'security' && renderSecurity()}
           <div className="h-24"></div>
         </div>
