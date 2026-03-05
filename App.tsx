@@ -23,7 +23,7 @@ const Checkout = React.lazy(() => import('./components/Checkout'));
 const Paywall = React.lazy(() => import('./components/Paywall'));
 
 const App: React.FC = () => {
-  const { user, loading: userLoading, updateUser } = useUserSync();
+  const { user, loading: userLoading, error: userError, updateUser, refresh: refreshUser } = useUserSync();
   const [activeTab, setActiveTab] = useState('home');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -107,6 +107,24 @@ const App: React.FC = () => {
   const handleUpdateUser = (updatedUser: UserProfile) => {
       updateUser(updatedUser);
   };
+
+  if (userError && !isInitialSplash) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-[#0c1222] p-8 text-center">
+         <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
+            <i className="fa-solid fa-triangle-exclamation text-2xl text-red-500"></i>
+         </div>
+         <h2 className="text-xl font-bold text-white mb-2">Xatolik yuz berdi</h2>
+         <p className="text-gray-400 text-sm mb-8">{userError}</p>
+         <button 
+           onClick={() => refreshUser()}
+           className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition"
+         >
+           Qayta urinish
+         </button>
+      </div>
+    );
+  }
 
   if (user && !user.isOnboarded && !isInitialSplash && !userLoading) {
     return <Onboarding onComplete={handleOnboardingComplete} />;

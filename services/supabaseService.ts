@@ -58,7 +58,15 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       .eq('id', userId)
       .single();
     
-    if (error || !data) return null;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Explicitly not found
+      }
+      console.error('Supabase fetch error:', error);
+      throw error; // Network or other error
+    }
+    
+    if (!data) return null;
     
     return {
       id: data.id,

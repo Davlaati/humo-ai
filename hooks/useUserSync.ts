@@ -33,6 +33,7 @@ export const useUserSync = () => {
         
         setUser(profile);
       } else {
+        // This ONLY runs if profile is null (confirmed not found)
         // New User Initialization
         const now = new Date().toISOString();
         const newUser: UserProfile = {
@@ -63,7 +64,8 @@ export const useUserSync = () => {
         setUser(newUser);
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error('User sync error:', err);
+      setError(err.message || 'Ma\'lumotlarni yuklashda xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.');
     } finally {
       setLoading(false);
     }
