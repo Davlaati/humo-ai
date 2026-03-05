@@ -561,10 +561,10 @@ const Admin: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Thumbnail (Rasm yuklash)</label>
-                  <div className="flex items-center space-x-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Muqova (Thumbnail)</label>
+                  <div className="flex items-center space-x-4">
                     <input 
                       type="file" 
                       accept="image/*"
@@ -574,29 +574,52 @@ const Admin: React.FC = () => {
                     />
                     <label 
                       htmlFor="thumb-upload"
-                      className="flex-1 bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-xs cursor-pointer hover:bg-slate-800 transition truncate"
+                      className={`flex-1 flex items-center justify-center space-x-3 border-2 border-dashed rounded-2xl p-4 transition-all cursor-pointer ${
+                        editingItem.thumbnail 
+                          ? 'border-blue-500/30 bg-blue-500/5 text-blue-400' 
+                          : 'border-white/5 bg-slate-800/50 text-slate-500 hover:border-blue-500/30 hover:bg-blue-500/5'
+                      }`}
                     >
-                      {editingItem.thumbnail ? 'Rasm tanlangan' : 'Rasm tanlash...'}
+                      <i className={`fa-solid ${editingItem.thumbnail ? 'fa-image' : 'fa-cloud-arrow-up'} text-xl`}></i>
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {editingItem.thumbnail ? 'Rasm yuklangan' : 'Rasm tanlash'}
+                      </span>
                     </label>
-                    {editingItem.thumbnail && <img src={editingItem.thumbnail} className="w-10 h-10 rounded-lg object-cover" alt="" />}
+                    {editingItem.thumbnail && (
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 shrink-0">
+                        <img src={editingItem.thumbnail} className="w-full h-full object-cover" alt="Preview" />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Content (Audio/PDF yuklash)</label>
-                  <input 
-                    type="file" 
-                    accept={editingItem.type === 'podcast' ? 'audio/*' : 'application/pdf'}
-                    onChange={e => handleFileUpload(e, 'content')}
-                    className="hidden"
-                    id="content-upload"
-                  />
-                  <label 
-                    htmlFor="content-upload"
-                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-xs cursor-pointer hover:bg-slate-800 transition block truncate"
-                  >
-                    {editingItem.contentUrl ? 'Fayl yuklangan' : 'Fayl tanlash...'}
-                  </label>
-                </div>
+
+                {editingItem.type !== 'course' && (
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
+                      {editingItem.type === 'podcast' ? 'Audio Fayl' : 'Kitob (PDF)'}
+                    </label>
+                    <input 
+                      type="file" 
+                      accept={editingItem.type === 'podcast' ? 'audio/*' : 'application/pdf'}
+                      onChange={e => handleFileUpload(e, 'content')}
+                      className="hidden"
+                      id="content-upload"
+                    />
+                    <label 
+                      htmlFor="content-upload"
+                      className={`flex-1 flex items-center justify-center space-x-3 border-2 border-dashed rounded-2xl p-4 transition-all cursor-pointer ${
+                        editingItem.contentUrl 
+                          ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' 
+                          : 'border-white/5 bg-slate-800/50 text-slate-500 hover:border-blue-500/30 hover:bg-blue-500/5'
+                      }`}
+                    >
+                      <i className={`fa-solid ${editingItem.contentUrl ? 'fa-file-circle-check' : 'fa-file-arrow-up'} text-xl`}></i>
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {editingItem.contentUrl ? 'Fayl yuklangan' : 'Faylni tanlang'}
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -643,74 +666,137 @@ const Admin: React.FC = () => {
               </div>
 
               {editingItem.type === 'course' && (
-                <div className="space-y-4 pt-4 border-t border-white/5">
+                <div className="space-y-6 pt-6 border-t border-white/10">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-black uppercase tracking-widest text-blue-400">Darslar ({editingItem.lessons?.length || 0})</h4>
+                    <div>
+                      <h4 className="text-lg font-black italic uppercase tracking-tighter text-blue-400">Kurs Playlisti</h4>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Darslar ketma-ketligini boshqaring</p>
+                    </div>
                     <button 
                       onClick={() => {
                         const lessons = editingItem.lessons || [];
                         setEditingItem({
                           ...editingItem,
-                          lessons: [...lessons, { id: `lesson_${Date.now()}`, title: 'Yangi dars', description: '', content: '', order: lessons.length + 1 }]
+                          lessons: [...lessons, { id: `lesson_${Date.now()}`, title: '', description: '', content: '', order: lessons.length + 1 }]
                         });
                       }}
-                      className="text-[10px] font-black text-blue-500 uppercase tracking-widest"
+                      className="px-4 py-2 rounded-xl bg-blue-600/20 text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/30 hover:bg-blue-600 hover:text-white transition-all"
                     >
+                      <i className="fa-solid fa-plus mr-2"></i>
                       Dars qo'shish
                     </button>
                   </div>
-                  <div className="space-y-3">
+
+                  <div className="space-y-4">
+                    {editingItem.lessons?.length === 0 && (
+                      <div className="py-12 border-2 border-dashed border-white/5 rounded-[30px] flex flex-col items-center justify-center text-slate-600">
+                        <i className="fa-solid fa-list-ol text-3xl mb-3 opacity-20"></i>
+                        <p className="text-xs font-bold uppercase tracking-widest">Hozircha darslar yo'q</p>
+                      </div>
+                    )}
+                    
                     {editingItem.lessons?.map((lesson, idx) => (
-                      <div key={lesson.id} className="p-4 rounded-2xl bg-slate-800/30 border border-white/5 space-y-3">
+                      <div key={lesson.id} className="glass-card p-6 rounded-[30px] bg-slate-800/20 border border-white/5 space-y-4 relative group">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-slate-500">#{idx + 1} Dars</span>
-                          <button 
-                            onClick={() => {
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center font-black text-xs border border-blue-500/20">
+                              {idx + 1}
+                            </div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dars Ma'lumotlari</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {idx > 0 && (
+                              <button 
+                                onClick={() => {
+                                  const lessons = [...(editingItem.lessons || [])];
+                                  [lessons[idx], lessons[idx-1]] = [lessons[idx-1], lessons[idx]];
+                                  setEditingItem({...editingItem, lessons});
+                                }}
+                                className="w-8 h-8 rounded-lg bg-white/5 text-slate-400 hover:text-white flex items-center justify-center"
+                              >
+                                <i className="fa-solid fa-chevron-up text-[10px]"></i>
+                              </button>
+                            )}
+                            {idx < (editingItem.lessons?.length || 0) - 1 && (
+                              <button 
+                                onClick={() => {
+                                  const lessons = [...(editingItem.lessons || [])];
+                                  [lessons[idx], lessons[idx+1]] = [lessons[idx+1], lessons[idx]];
+                                  setEditingItem({...editingItem, lessons});
+                                }}
+                                className="w-8 h-8 rounded-lg bg-white/5 text-slate-400 hover:text-white flex items-center justify-center"
+                              >
+                                <i className="fa-solid fa-chevron-down text-[10px]"></i>
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => {
+                                if (window.confirm("Darsni o'chirmoqchimisiz?")) {
+                                  const lessons = [...(editingItem.lessons || [])];
+                                  lessons.splice(idx, 1);
+                                  setEditingItem({...editingItem, lessons});
+                                }
+                              }}
+                              className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all"
+                            >
+                              <i className="fa-solid fa-trash-can text-[10px]"></i>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                          <input 
+                            type="text" 
+                            placeholder="Dars sarlavhasi (masalan: Kirish qismi)"
+                            value={lesson.title}
+                            onChange={e => {
                               const lessons = [...(editingItem.lessons || [])];
-                              lessons.splice(idx, 1);
+                              lessons[idx].title = e.target.value;
                               setEditingItem({...editingItem, lessons});
                             }}
-                            className="text-red-400 text-xs"
-                          >
-                            O'chirish
-                          </button>
-                        </div>
-                        <input 
-                          type="text" 
-                          placeholder="Dars sarlavhasi"
-                          value={lesson.title}
-                          onChange={e => {
-                            const lessons = [...(editingItem.lessons || [])];
-                            lessons[idx].title = e.target.value;
-                            setEditingItem({...editingItem, lessons});
-                          }}
-                          className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs"
-                        />
-                        <textarea 
-                          placeholder="Dars mazmuni"
-                          value={lesson.content}
-                          onChange={e => {
-                            const lessons = [...(editingItem.lessons || [])];
-                            lessons[idx].content = e.target.value;
-                            setEditingItem({...editingItem, lessons});
-                          }}
-                          className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs h-20"
-                        />
-                        <div>
-                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Dars videosi (Yuklash)</label>
-                          <input 
-                            type="file" 
-                            accept="video/*"
-                            onChange={e => handleFileUpload(e, 'lesson_video', idx)}
-                            className="hidden"
-                            id={`lesson-video-${idx}`}
+                            className="w-full bg-slate-900/50 border border-white/5 rounded-2xl px-5 py-3 text-sm focus:border-blue-500/50 outline-none transition-all"
                           />
-                          <label 
-                            htmlFor={`lesson-video-${idx}`}
-                            className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-[10px] cursor-pointer hover:bg-slate-900 transition block truncate"
-                          >
-                            {lesson.videoUrl ? 'Video yuklangan' : 'Video tanlash...'}
-                          </label>
+                          <textarea 
+                            placeholder="Dars haqida qisqacha tavsif yoki dars matni..."
+                            value={lesson.content}
+                            onChange={e => {
+                              const lessons = [...(editingItem.lessons || [])];
+                              lessons[idx].content = e.target.value;
+                              setEditingItem({...editingItem, lessons});
+                            }}
+                            className="w-full bg-slate-900/50 border border-white/5 rounded-2xl px-5 py-3 text-sm h-28 focus:border-blue-500/50 outline-none transition-all resize-none"
+                          />
+                        </div>
+
+                        <div className="pt-2">
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Dars Videosi</label>
+                          <div className="flex items-center space-x-3">
+                            <input 
+                              type="file" 
+                              accept="video/*"
+                              onChange={e => handleFileUpload(e, 'lesson_video', idx)}
+                              className="hidden"
+                              id={`lesson-video-${idx}`}
+                            />
+                            <label 
+                              htmlFor={`lesson-video-${idx}`}
+                              className={`flex-1 flex items-center justify-center space-x-3 border-2 border-dashed rounded-2xl p-4 transition-all cursor-pointer ${
+                                lesson.videoUrl 
+                                  ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' 
+                                  : 'border-white/5 bg-slate-900/50 text-slate-500 hover:border-blue-500/30 hover:bg-blue-500/5'
+                              }`}
+                            >
+                              <i className={`fa-solid ${lesson.videoUrl ? 'fa-check-circle' : 'fa-cloud-arrow-up'} text-xl`}></i>
+                              <span className="text-[10px] font-black uppercase tracking-widest">
+                                {lesson.videoUrl ? 'Video yuklangan' : 'Video faylni tanlang'}
+                              </span>
+                            </label>
+                            {lesson.videoUrl && (
+                              <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-white/5">
+                                <i className="fa-solid fa-film text-slate-400"></i>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
