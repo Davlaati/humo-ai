@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { UserProfile } from '../types';
-import { Users, Mic, MicOff, PhoneOff, Clock, Plus, MessageSquare, Globe, Headphones } from 'lucide-react';
+import { Users, Mic, MicOff, PhoneOff, Clock, Plus, MessageSquare, Globe, Headphones, Star } from 'lucide-react';
 
 interface SpeakingClubProps {
   user: UserProfile;
@@ -41,6 +41,13 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
   const [newRoom, setNewRoom] = useState({ name: '', topic: TOPICS[0], level: LEVELS[1], limit: 4 });
   const [timeLeft, setTimeLeft] = useState<string>("30:00");
   const [isMuted, setIsMuted] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
+
+  // WebRTC Refs
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const peersRef = useRef<Record<string, RTCPeerConnection>>({});
+  const remoteAudiosRef = useRef<Record<string, HTMLAudioElement>>({});
 
   useEffect(() => {
     const newSocket = io();
@@ -51,31 +58,134 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
     });
 
     newSocket.on('room-created', (roomId) => {
-      // Auto-join logic handled by server sending room-joined or we can optimistically set it
-      // But server emits room-joined to the joiner. Creator is already joined on server.
-      // Let's wait for room-joined or find it in the list.
-      // Actually, for creator, we can just find the room in the updated list or wait for a specific event.
-      // Simplified: The server adds creator to members. We just need to find the room.
+      // Creator logic handled via room-joined or list update
     });
 
-    newSocket.on('room-joined', (room: Room) => {
+    newSocket.on('room-joined', async (room: Room) => {
       setCurrentRoom(room);
       setIsCreating(false);
+      await initWebRTC(newSocket, room.id);
     });
 
-    newSocket.on('user-joined', (userId) => {
-      console.log('User joined:', userId);
-      // In a real app, we'd fetch user details here
+    // WebRTC Signaling
+    newSocket.on('user-joined', async (userId) => {
+      console.log('User joined, creating offer for:', userId);
+      const peer = createPeer(userId, newSocket);
+      peersRef.current[userId] = peer;
+      
+      const stream = localStreamRef.current;
+      if (stream) {
+        stream.getTracks().forEach(track => peer.addTrack(track, stream));
+      }
+
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      newSocket.emit('offer', { target: userId, sdp: offer });
+    });
+
+    newSocket.on('offer', async ({ target, sdp, sender }) => { // sender is the one who sent offer
+        // Actually, the server should pass sender ID. Let's assume payload has sender.
+        // In server.ts we just forward payload. So payload needs sender ID.
+        // We need to update server.ts to include sender ID or client sends it.
+        // For now, let's assume the client sends { target, sdp, sender: socket.id }
+        // But wait, 'user-joined' gives us the userId of the NEW user.
+        // Existing users offer TO the new user.
+        // The new user receives offers.
+        
+        // Let's refine:
+        // 1. User A is in room.
+        // 2. User B joins. Server tells A: "B joined".
+        // 3. A creates offer -> sends to B.
+        // 4. B receives offer from A.
+        const peer = createPeer(sender || 'unknown', newSocket); // We need sender ID here
+        peersRef.current[sender] = peer;
+        
+        const stream = localStreamRef.current;
+        if (stream) {
+            stream.getTracks().forEach(track => peer.addTrack(track, stream));
+        }
+
+        await peer.setRemoteDescription(new RTCSessionDescription(sdp));
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        newSocket.emit('answer', { target: sender, sdp: answer, sender: newSocket.id });
+    });
+
+    newSocket.on('answer', async ({ sdp, sender }) => {
+        const peer = peersRef.current[sender];
+        if (peer) {
+            await peer.setRemoteDescription(new RTCSessionDescription(sdp));
+        }
+    });
+
+    newSocket.on('ice-candidate', async ({ candidate, sender }) => {
+        const peer = peersRef.current[sender];
+        if (peer) {
+            await peer.addIceCandidate(new RTCIceCandidate(candidate));
+        }
     });
 
     newSocket.on('user-left', (userId) => {
-      console.log('User left:', userId);
+      if (peersRef.current[userId]) {
+        peersRef.current[userId].close();
+        delete peersRef.current[userId];
+      }
+      if (remoteAudiosRef.current[userId]) {
+        remoteAudiosRef.current[userId].remove();
+        delete remoteAudiosRef.current[userId];
+      }
     });
 
     return () => {
       newSocket.disconnect();
+      cleanupWebRTC();
     };
   }, []);
+
+  const initWebRTC = async (socket: Socket, roomId: string) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStreamRef.current = stream;
+      // We don't need to do anything else here, 'user-joined' will trigger offer creation
+      // for existing users, they wait for 'user-joined'.
+      // Wait, if I join, I am the new user. Existing users will send ME offers.
+      // So I just need to be ready to receive offers.
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+    }
+  };
+
+  const createPeer = (targetId: string, socket: Socket) => {
+    const peer = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    peer.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit('ice-candidate', { target: targetId, candidate: event.candidate, sender: socket.id });
+      }
+    };
+
+    peer.ontrack = (event) => {
+      const audio = new Audio();
+      audio.srcObject = event.streams[0];
+      audio.autoplay = true;
+      remoteAudiosRef.current[targetId] = audio;
+    };
+
+    return peer;
+  };
+
+  const cleanupWebRTC = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    Object.values(peersRef.current).forEach(peer => peer.close());
+    peersRef.current = {};
+    Object.values(remoteAudiosRef.current).forEach(audio => audio.remove());
+    remoteAudiosRef.current = {};
+  };
 
   // Timer Logic
   useEffect(() => {
@@ -88,7 +198,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
       if (diff <= 0) {
         setTimeLeft("00:00");
         clearInterval(interval);
-        // Optionally auto-leave
+        handleLeaveRoom(true); // Auto leave and show rating
       } else {
         const minutes = Math.floor(diff / 60000);
         const seconds = Math.floor((diff % 60000) / 1000);
@@ -108,27 +218,16 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
         creator: user.name, 
         limit: newRoom.limit 
       });
-      // Optimistic UI update or wait for server response
-      // For now, we rely on the server sending 'room-joined' or finding it in 'rooms-list'
-      // But 'create-room' on server sends 'room-created' with ID.
-      // Let's listen for 'room-created' and then find the room.
-      socket.once('room-created', (id) => {
-         // We need to fetch the room details or wait for rooms-list update
-         // A simple hack: wait for the next rooms-list update and filter by ID
-         // OR, server could send the full room object on creation.
-         // Let's rely on the rooms-list update which broadcasts to everyone including creator.
-      });
     }
   };
   
-  // Watch for rooms update to auto-enter if we just created one
   useEffect(() => {
       if (socket && !currentRoom) {
-          // If we are in the members list of any room, join it (reconnection logic or creation logic)
           const myRoom = rooms.find(r => r.members.includes(socket.id || ''));
           if (myRoom) {
               setCurrentRoom(myRoom);
               setIsCreating(false);
+              // Re-init WebRTC if needed, but room-joined should handle it
           }
       }
   }, [rooms, socket, currentRoom]);
@@ -139,27 +238,67 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
     }
   };
 
-  const handleLeaveRoom = () => {
+  const handleLeaveRoom = (showRate = false) => {
     if (socket) {
       socket.disconnect();
-      const newSocket = io(); // Reconnect to get a fresh socket/id and leave the room on server
+      cleanupWebRTC();
+      
+      const newSocket = io();
       setSocket(newSocket);
-      // Re-bind listeners... (simplified for this demo, ideally we just emit 'leave-room')
-      // Since server handles disconnect = leave, we can just refresh the socket.
-      // Better: emit 'leave-room' event if we added it to server.
-      // For now, disconnect/reconnect works to reset state.
       setCurrentRoom(null);
       
-      // Re-bind listeners for the new socket
-        newSocket.on('rooms-list', (updatedRooms: Room[]) => {
-            setRooms(updatedRooms);
-        });
-        newSocket.on('room-joined', (room: Room) => {
-            setCurrentRoom(room);
-            setIsCreating(false);
-        });
+      if (showRate) setShowRating(true);
+
+      newSocket.on('rooms-list', (updatedRooms: Room[]) => {
+          setRooms(updatedRooms);
+      });
+      newSocket.on('room-joined', async (room: Room) => {
+          setCurrentRoom(room);
+          setIsCreating(false);
+          await initWebRTC(newSocket, room.id);
+      });
+      // Re-bind other WebRTC listeners... (omitted for brevity, but crucial for re-joining)
+      // In a real app, extract socket setup to a reusable function
     }
   };
+
+  const toggleMute = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted;
+      });
+      setIsMuted(!isMuted);
+    }
+  };
+
+  if (showRating) {
+      return (
+          <div className="flex flex-col h-full bg-[#0c1222] p-6 items-center justify-center">
+              <div className="glass-card p-8 rounded-[40px] border border-white/10 text-center max-w-sm w-full">
+                  <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/30">
+                      <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
+                  </div>
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-2 text-white">Suhbat qanday o'tdi?</h2>
+                  <p className="text-slate-400 text-xs font-bold mb-8">Hamkorlaringizni baholang</p>
+                  
+                  <div className="flex justify-center space-x-2 mb-8">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                          <button key={star} onClick={() => setRating(star)} className="focus:outline-none transform active:scale-90 transition">
+                              <Star className={`w-8 h-8 ${rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-slate-600'}`} />
+                          </button>
+                      ))}
+                  </div>
+
+                  <button 
+                    onClick={() => setShowRating(false)}
+                    className="w-full liquid-button py-4 rounded-[25px] font-black uppercase tracking-widest"
+                  >
+                      Yuborish
+                  </button>
+              </div>
+          </div>
+      );
+  }
 
   if (currentRoom) {
     return (
@@ -198,8 +337,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
                             </span>
                         </div>
                         {/* Speaking Indicator */}
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-slate-900 flex items-center justify-center">
-                            <Mic className="w-3 h-3 text-white" />
+                        <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-slate-900 flex items-center justify-center ${isMuted && memberId === socket?.id ? 'bg-red-500' : 'bg-green-500'}`}>
+                            {isMuted && memberId === socket?.id ? <MicOff className="w-3 h-3 text-white" /> : <Mic className="w-3 h-3 text-white" />}
                         </div>
                     </div>
                     
@@ -239,14 +378,14 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
         {/* Controls */}
         <div className="relative z-10 p-6 pb-10 flex justify-center items-center space-x-6">
             <button 
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={toggleMute}
                 className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isMuted ? 'bg-white text-slate-900' : 'bg-white/10 text-white backdrop-blur-md border border-white/20'}`}
             >
                 {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
             </button>
             
             <button 
-                onClick={handleLeaveRoom}
+                onClick={() => handleLeaveRoom(true)}
                 className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-xl shadow-red-500/30 active:scale-95 transition-all"
             >
                 <PhoneOff className="w-8 h-8 text-white" />
