@@ -66,7 +66,7 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white p-6 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0f172a] text-white p-6 pb-32 flex flex-col font-sans">
       <AnimatePresence mode="wait">
         {state === 'intro' && (
           <motion.div key="intro" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex-1 flex flex-col justify-center items-center text-center">
