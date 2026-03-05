@@ -87,10 +87,10 @@ export const generateLessonContent = async (user: UserProfile, topic: string) =>
   }
 };
 
-export const getDictionaryDefinition = async (word: string) => {
+export const getDictionaryDefinition = async (word: string, lang: string = 'Uz') => {
   try {
     const ai = getAIClient();
-    const prompt = `Define the English word "${word}". Provide Uzbek translation and an example sentence. Return JSON: { "definition": "...", "translation": "...", "example": "..." }`;
+    const prompt = `Define the English word "${word}". Provide ${lang} translation and an example sentence. Return JSON: { "definition": "...", "translation": "...", "example": "..." }`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -262,7 +262,7 @@ export const consultWithMentor = async (user: UserProfile, query: string, type: 
 
       # 3. TECHNICAL RULES:
       - Javoblar qisqa, vizual skanerlashga oson (Markdown headers va bullet points) bo'lsin.
-      - O'zbek tilida gapiring (Beginner/Intermediate uchun), lekin terminlarni inglizcha qoldiring.
+      - ${user.settings?.language === 'Ru' ? 'На русском языке' : user.settings?.language === 'Eng' ? 'In English' : 'O\'zbek tilida'} gapiring (Beginner/Intermediate uchun), lekin terminlarni inglizcha qoldiring.
     `;
 
     const userPrompt = type === 'daily' 

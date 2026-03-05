@@ -87,14 +87,19 @@ const App: React.FC = () => {
     }
   }, [user?.id]);
 
-  const handleOnboardingComplete = (onboardingData: UserProfile) => {
+  const handleOnboardingComplete = (onboardingData: Partial<UserProfile>) => {
     const updatedUser = { 
       ...user,
       ...onboardingData, 
       isOnboarded: true,
       streak: 1,
-      coins: (user?.coins || 500) + 20 
-    };
+      coins: (user?.coins || 500) + 20,
+      settings: {
+        ...user?.settings,
+        ...onboardingData.settings,
+        isOnboarded: true
+      }
+    } as UserProfile;
     updateUser(updatedUser);
     setIsAppRevealed(true);
   };

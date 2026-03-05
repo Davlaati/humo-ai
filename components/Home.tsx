@@ -5,6 +5,7 @@ import { playTapSound } from '../services/audioService';
 import DailyStreakCard from './DailyStreakCard';
 import { validateAndUpdateStreak } from '../services/streakSystem';
 import { checkAchievements, calculateLevel } from '../services/gamificationService';
+import { getTranslation } from '../translations';
 
 interface HomeProps {
   user: UserProfile;
@@ -17,6 +18,7 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakReward, onClearStreakReward }) => {
   const { level, progress } = calculateLevel(user.xp);
   const prevStats = useRef({ xp: user.xp, wins: user.wins || 0 });
+  const lang = user.settings?.language || 'Uz';
 
   // Initialize Gamification Logic
   useEffect(() => {
@@ -50,7 +52,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
 
   const handlePlaceholder = (feature: string) => {
     playTapSound();
-    alert(`${feature} tez kunda ishga tushadi!`);
+    alert(`${feature} ${getTranslation('coming_soon', lang)}`);
   };
 
   return (
@@ -59,13 +61,13 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
       {/* 1. HEADER */}
       <div className="flex justify-between items-center pt-2 mb-2">
         <div className="flex flex-col">
-           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Xush kelibsiz</span>
-           <h1 className="text-2xl font-black text-white leading-none">Salom, {user.name.split(' ')[0]}</h1>
+           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">{getTranslation('welcome', lang)}</span>
+           <h1 className="text-2xl font-black text-white leading-none">{getTranslation('hello', lang)}, {user.name.split(' ')[0]}</h1>
         </div>
 
         <div onClick={() => onNavigate('wallet')} className="bg-white/5 backdrop-blur-md rounded-2xl px-4 py-2 flex items-center space-x-2 border border-white/10 shadow-lg active:scale-95 transition-transform cursor-pointer">
            <div className="flex flex-col items-end mr-1">
-              <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Level {level}</span>
+              <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">{getTranslation('level', lang)} {level}</span>
               <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden mt-0.5">
                  <div className="h-full bg-blue-500" style={{ width: `${progress}%` }}></div>
               </div>

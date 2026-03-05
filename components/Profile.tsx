@@ -4,6 +4,7 @@ import { UserProfile } from '../types';
 import UserBadges from './UserBadges';
 import { calculateLevel } from '../services/gamificationService';
 import { isPremiumActive } from '../services/storageService';
+import { getTranslation } from '../translations';
 
 interface ProfileProps {
   user: UserProfile;
@@ -19,6 +20,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
   const isPremium = isPremiumActive(user);
   const [isEditingInterests, setIsEditingInterests] = useState(false);
   const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
+  const lang = user.settings?.language || 'Uz';
 
   // Admin Login States
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -38,7 +40,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
 
   const handleSaveInterests = () => {
     if (editedInterests.length < 3) {
-      alert("Kamida 3 ta qiziqishni tanlang!");
+      alert(getTranslation('min_interests', lang));
       return;
     }
     onUpdateUser({ ...user, interests: editedInterests });
@@ -68,7 +70,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
          <h2 className="text-2xl font-black">{user.name}</h2>
          <p className="text-gray-400 font-medium">@{user.username || 'user'}</p>
          <div className="flex space-x-2 mt-2">
-            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">Level {level}</span>
+            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">{getTranslation('level', lang)} {level}</span>
             <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-500/30">{user.level}</span>
          </div>
       </div>
@@ -79,13 +81,13 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
             <div className="absolute top-0 right-0 p-4 opacity-20">
                 <i className="fa-solid fa-crown text-5xl rotate-12"></i>
             </div>
-            <h3 className="text-lg font-black italic uppercase tracking-tighter mb-1">Premiumga O'ting</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Barcha imkoniyatlarni oching</p>
+            <h3 className="text-lg font-black italic uppercase tracking-tighter mb-1">{getTranslation('go_premium', lang)}</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">{getTranslation('unlock_all', lang)}</p>
             <button 
               onClick={onShowPremium}
               className="px-6 py-2.5 bg-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20"
             >
-              Sotib Olish
+              {getTranslation('buy_now', lang)}
             </button>
         </div>
       )}
@@ -105,10 +107,10 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-         <StatCard label="Jami XP" value={user.xp} icon="fa-bolt" color="text-yellow-400" />
-         <StatCard label="Streak" value={`${user.streak} kun`} icon="fa-fire" color="text-orange-500" />
-         <StatCard label="O'rganildi" value={`${(user.learnedWords || []).length} so'z`} icon="fa-brain" color="text-pink-400" />
-         <StatCard label="G'alaba" value={`${user.wins || 0} marta`} icon="fa-chart-line" color="text-green-400" />
+         <StatCard label={getTranslation('total_xp', lang)} value={user.xp} icon="fa-bolt" color="text-yellow-400" />
+         <StatCard label={getTranslation('streak', lang)} value={`${user.streak} ${getTranslation('days', lang)}`} icon="fa-fire" color="text-orange-500" />
+         <StatCard label={getTranslation('learned', lang)} value={`${(user.learnedWords || []).length} ${getTranslation('words', lang)}`} icon="fa-brain" color="text-pink-400" />
+         <StatCard label={getTranslation('wins', lang)} value={`${user.wins || 0} ${getTranslation('times', lang)}`} icon="fa-chart-line" color="text-green-400" />
       </div>
 
       {/* Gamification: Achievements Grid */}
@@ -118,16 +120,16 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
       <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/5">
         <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="font-black text-sm uppercase tracking-tighter">Faollik Heatmap</h3>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Oxirgi 90 kunlik natija</p>
+              <h3 className="font-black text-sm uppercase tracking-tighter">{getTranslation('activity_heatmap', lang)}</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{getTranslation('last_90_days', lang)}</p>
             </div>
             <div className="flex items-center space-x-1">
-               <span className="text-[8px] text-gray-500 uppercase font-black">Kam</span>
+               <span className="text-[8px] text-gray-500 uppercase font-black">{getTranslation('less', lang)}</span>
                <div className="w-2 h-2 rounded-sm bg-white/5"></div>
                <div className="w-2 h-2 rounded-sm bg-orange-900/50"></div>
                <div className="w-2 h-2 rounded-sm bg-orange-600/70"></div>
                <div className="w-2 h-2 rounded-sm bg-orange-500"></div>
-               <span className="text-[8px] text-gray-500 uppercase font-black">Ko'p</span>
+               <span className="text-[8px] text-gray-500 uppercase font-black">{getTranslation('more', lang)}</span>
             </div>
         </div>
         
@@ -136,15 +138,15 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
         </div>
         
         <div className="flex justify-between mt-4 text-[9px] font-black text-gray-500 uppercase tracking-widest">
-            <span>90 kun avval</span>
-            <span>Bugun</span>
+            <span>{getTranslation('90_days_ago', lang)}</span>
+            <span>{getTranslation('today', lang)}</span>
         </div>
       </div>
       
        <div className="glass-card rounded-2xl p-6 relative">
          <div className="flex justify-between items-center mb-4">
-             <h3 className="font-bold">Qiziqishlar</h3>
-             <button onClick={() => { setIsEditingInterests(true); setEditedInterests(user.interests); }} className="text-blue-400 text-sm font-bold">Tahrirlash</button>
+             <h3 className="font-bold">{getTranslation('interests', lang)}</h3>
+             <button onClick={() => { setIsEditingInterests(true); setEditedInterests(user.interests); }} className="text-blue-400 text-sm font-bold">{getTranslation('edit', lang)}</button>
          </div>
          <div className="flex flex-wrap gap-2">
              {user.interests.map(i => (
@@ -157,8 +159,8 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
        {isEditingInterests && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
            <div className="glass-card w-full max-w-sm rounded-3xl p-6 border border-white/20 shadow-2xl animate-slide-up">
-             <h3 className="text-xl font-bold mb-4 text-center">Qiziqishlarni o'zgartirish</h3>
-             <p className="text-xs text-gray-400 mb-6 text-center">Kamida 3 ta, ko'pi bilan 8 ta tanlang</p>
+             <h3 className="text-xl font-bold mb-4 text-center">{getTranslation('edit_interests', lang)}</h3>
+             <p className="text-xs text-gray-400 mb-6 text-center">{getTranslation('min_max_interests', lang)}</p>
              
              <div className="flex flex-wrap gap-2 justify-center mb-8">
                {INTERESTS_OPTIONS.map(interest => (
@@ -177,13 +179,13 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
                  onClick={() => setIsEditingInterests(false)} 
                  className="flex-1 py-3 rounded-xl bg-white/5 text-gray-400 font-bold text-sm"
                >
-                 Bekor qilish
+                 {getTranslation('cancel', lang)}
                </button>
                <button 
                  onClick={handleSaveInterests} 
                  className="flex-1 py-3 rounded-xl liquid-button text-white font-bold text-sm"
                >
-                 Saqlash
+                 {getTranslation('save', lang)}
                </button>
              </div>
            </div>

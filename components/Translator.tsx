@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { playTapSound } from '../services/audioService';
+import { getTranslation } from '../translations';
 
 interface TranslatorProps {
   user: UserProfile;
@@ -16,6 +17,7 @@ const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onShowPaywall
   const [isLoading, setIsLoading] = useState(false);
   const [sourceLang, setSourceLang] = useState('English');
   const [targetLang, setTargetLang] = useState('Uzbek');
+  const lang = user.settings?.language || 'Uz';
 
   const handleBack = () => {
     playTapSound();
@@ -43,10 +45,10 @@ const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onShowPaywall
         }
       });
       
-      setTranslatedText(response.text || 'Tarjima qilishda xatolik yuz berdi.');
+      setTranslatedText(response.text || getTranslation('error', lang));
     } catch (error) {
       console.error("Translation error:", error);
-      setTranslatedText('Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.');
+      setTranslatedText(getTranslation('error', lang));
     } finally {
       setIsLoading(false);
     }
@@ -63,17 +65,17 @@ const Translator: React.FC<TranslatorProps> = ({ user, onNavigate, onShowPaywall
   const copyToClipboard = (text: string) => {
     playTapSound();
     navigator.clipboard.writeText(text);
-    alert("Nusxa olindi!");
+    alert(getTranslation('copied', lang));
   };
 
   return (
     <div className="p-5 pb-32 space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-         <div className="flex flex-col">
+          <div className="flex flex-col">
             <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mb-1">AI Powered</span>
-            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Tarjimon</h1>
-         </div>
+            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">{getTranslation('translator', lang)}</h1>
+          </div>
          <button 
            onClick={handleBack}
            className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 active:scale-90 transition-all"

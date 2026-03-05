@@ -6,6 +6,7 @@ import { consultWithMentor, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
 import { awardXP } from '../services/gamificationService';
 import { syncUserToSupabase } from '../services/supabaseService';
+import { getTranslation } from '../translations';
 
 interface SmartDictionaryProps {
   user: UserProfile;
@@ -18,6 +19,7 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const resultRef = useRef<HTMLDivElement>(null);
+  const lang = user.settings?.language || 'Uz';
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -27,14 +29,14 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
     
     try {
       const result = await consultWithMentor(user, query, 'lookup');
-      setResponse(result || "Ma'lumot topilmadi.");
+      setResponse(result || getTranslation('error', lang));
       setHistory(prev => [query, ...prev].slice(0, 5));
       
       // Award XP for search
       const updatedUser = awardXP(user, 3);
       onUpdateUser(updatedUser);
     } catch (e) {
-      setResponse("Xatolik yuz berdi.");
+      setResponse(getTranslation('error', lang));
     } finally {
       setIsLoading(false);
     }
@@ -43,18 +45,18 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
   const handleDailyWords = async () => {
     playTapSound();
     setIsLoading(true);
-    setQuery("Kunlik so'zlar");
+    setQuery(getTranslation('daily_words', lang) || "Daily Words");
     setResponse(null);
     
     try {
       const result = await consultWithMentor(user, '', 'daily');
-      setResponse(result || "Bugungi so'zlar tayyorlanmadi.");
+      setResponse(result || getTranslation('error', lang));
       
       // Award XP for daily words
       const updatedUser = awardXP(user, 10);
       onUpdateUser(updatedUser);
     } catch (e) {
-      setResponse("Xatolik yuz berdi.");
+      setResponse(getTranslation('error', lang));
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +112,7 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
           <i className="fa-solid fa-book-journal-whills text-3xl text-white"></i>
         </div>
         <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white">RAVONA MENTOR</h1>
-        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Aqlli Lug'at</p>
+        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">{getTranslation('smart_dictionary', lang)}</p>
       </div>
 
       {/* Search Input */}
@@ -121,7 +123,7 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="So'z, ibora yoki mavzu..." 
+            placeholder={getTranslation('search_placeholder', lang)} 
             className="bg-transparent w-full px-4 py-3 text-white placeholder-slate-500 font-medium focus:outline-none"
           />
           <button 
@@ -141,7 +143,7 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
           className="flex items-center space-x-2 px-4 py-2 rounded-full glass-card border border-white/5 whitespace-nowrap active:scale-95 transition hover:bg-white/5"
         >
           <i className="fa-solid fa-calendar-day text-yellow-400"></i>
-          <span className="text-xs font-bold text-slate-300">Kunlik So'zlar</span>
+          <span className="text-xs font-bold text-slate-300">{getTranslation('daily_words', lang)}</span>
         </button>
         {history.map((h, i) => (
            <button 
@@ -164,8 +166,8 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
                      <i className="fa-solid fa-robot text-emerald-400"></i>
                    </div>
                    <div>
-                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mentor Javobi</p>
-                     <p className="text-xs text-emerald-400 font-bold">Moslashtirilgan</p>
+                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{getTranslation('mentor_response', lang)}</p>
+                     <p className="text-xs text-emerald-400 font-bold">{getTranslation('personalized', lang)}</p>
                    </div>
                 </div>
                 {/* TTS Button if query matches start of response (simple check) */}
@@ -183,14 +185,14 @@ const SmartDictionary: React.FC<SmartDictionaryProps> = ({ user, onUpdateUser })
 
              <div className="mt-6 pt-4 border-t border-white/5 flex justify-center">
                 <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest italic">
-                   AI javoblari xato bo'lishi mumkin
+                   {getTranslation('ai_warning', lang)}
                 </p>
              </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-slate-600 opacity-50">
              <i className="fa-solid fa-comment-dots text-6xl mb-4"></i>
-             <p className="text-xs font-bold uppercase tracking-widest">So'rang va o'rganing</p>
+             <p className="text-xs font-bold uppercase tracking-widest">{getTranslation('ask_and_learn', lang)}</p>
           </div>
         )}
       </div>

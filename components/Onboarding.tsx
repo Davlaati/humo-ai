@@ -44,12 +44,17 @@ const TRANSLATIONS: Record<string, Record<LangKey, string>> = {
 };
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+  const tg = (window as any).Telegram?.WebApp;
+  const tgUser = tg?.initDataUnsafe?.user;
+
   const [step, setStep] = useState(0);
   const [selectedLang, setSelectedLang] = useState<LangKey>('Eng');
   const [data, setData] = useState<Partial<UserProfile>>({
     personalities: [],
     interests: [],
-    age: '20'
+    age: '20',
+    name: tgUser?.first_name || '',
+    settings: { language: 'Eng', theme: 'dark' }
   });
   const [loadingText, setLoadingText] = useState('Loading...');
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -60,6 +65,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const selectLanguage = (l: LangKey) => {
     setSelectedLang(l);
+    setData(prev => ({
+      ...prev,
+      settings: { ...prev.settings, language: l } as any
+    }));
     next();
   };
 
