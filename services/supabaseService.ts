@@ -24,7 +24,15 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         last_active_date: new Date().toISOString(),
         telegram_stars: user.telegramStars,
         settings: user.settings,
-        is_blocked: user.isBlocked
+        is_blocked: user.isBlocked,
+        is_onboarded: user.isOnboarded,
+        age: user.age,
+        level: user.level,
+        goal: user.goal,
+        personalities: user.personalities,
+        study_minutes: user.studyMinutes,
+        practice_frequency: user.practiceFrequency,
+        joined_at: user.joinedAt
       });
     if (error) console.error('Error syncing user to Supabase:', error);
   } catch (e) {
@@ -57,6 +65,7 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       telegramStars: data.telegram_stars,
       settings: data.settings,
       isBlocked: data.is_blocked,
+      isOnboarded: data.is_onboarded,
       age: data.age || '18',
       level: data.level || 'Beginner',
       goal: data.goal || 'General',
@@ -179,6 +188,7 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       trialExpiresAt: d.trial_expires_at,
       premiumUntil: d.premium_until,
       isBlocked: d.is_blocked,
+      isOnboarded: d.is_onboarded,
       telegramStars: d.telegram_stars,
       starsHistory: d.stars_history || [],
       settings: d.settings,

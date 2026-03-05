@@ -51,6 +51,7 @@ export const useUserSync = () => {
           practiceFrequency: 'Daily',
           interests: [],
           isPremium: false,
+          isOnboarded: false,
           lastActiveDate: now,
           joinedAt: now,
           telegramStars: 0,

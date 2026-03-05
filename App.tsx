@@ -87,13 +87,15 @@ const App: React.FC = () => {
     }
   }, [user?.id]);
 
-  const handleOnboardingComplete = (profile: UserProfile) => {
-    const newUser = { 
-      ...profile, 
+  const handleOnboardingComplete = (onboardingData: UserProfile) => {
+    const updatedUser = { 
+      ...user,
+      ...onboardingData, 
+      isOnboarded: true,
       streak: 1,
-      coins: (profile.coins || 0) + 20 
+      coins: (user?.coins || 500) + 20 
     };
-    updateUser(newUser);
+    updateUser(updatedUser);
     setIsAppRevealed(true);
   };
 
@@ -101,8 +103,16 @@ const App: React.FC = () => {
       updateUser(updatedUser);
   };
 
-  if (!user && !isInitialSplash && !userLoading) {
+  if (user && !user.isOnboarded && !isInitialSplash && !userLoading) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  if (!user && !isInitialSplash && !userLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-[#0c1222]">
+         <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Foydalanuvchi aniqlanmadi</p>
+      </div>
+    );
   }
 
   if (userLoading && !isInitialSplash) {

@@ -89,6 +89,7 @@ export interface UserProfile {
   pendingPremium?: boolean; // Legacy support
   isTrialUsed?: boolean;
   isBlocked?: boolean;
+  isOnboarded?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
   badges?: Achievement[];

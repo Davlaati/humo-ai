@@ -47,10 +47,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const [selectedLang, setSelectedLang] = useState<LangKey>('Eng');
   const [data, setData] = useState<Partial<UserProfile>>({
-    coins: 0,
-    xp: 0,
-    streak: 0,
-    joinedAt: new Date().toISOString(),
     personalities: [],
     interests: [],
     age: '20'
