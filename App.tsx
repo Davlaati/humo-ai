@@ -100,6 +100,10 @@ const App: React.FC = () => {
         isOnboarded: true
       }
     } as UserProfile;
+    
+    // Local fallback to prevent onboarding loop
+    localStorage.setItem(`ravona_onboarded_${user?.id}`, 'true');
+    
     updateUser(updatedUser);
     setIsAppRevealed(true);
   };

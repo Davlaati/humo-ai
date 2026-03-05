@@ -47,10 +47,10 @@ export const syncUserToSupabase = async (user: UserProfile) => {
       .upsert(data);
     
     if (error) {
-      console.warn('Full upsert failed, trying minimal upsert (settings-based)...', error);
-      // Fallback: Try minimal upsert with only core columns that are guaranteed to exist
-      // and store everything else in the 'settings' JSONB column
-      const minimalData = {
+      console.warn('Full upsert failed, trying minimal upsert...', error);
+      
+      // Fallback 1: Try with columns that are most likely to exist
+      const minimalData: any = {
         id: user.id,
         name: user.name,
         username: user.username,
@@ -61,8 +61,25 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         is_premium: user.isPremium,
         settings: data.settings
       };
+      
+      // Try to include is_onboarded if it might exist
+      if (user.isOnboarded !== undefined) {
+        minimalData.is_onboarded = user.isOnboarded;
+      }
+
       const { error: minError } = await supabase.from('profiles').upsert(minimalData);
-      if (minError) throw minError;
+      
+      if (minError) {
+        console.warn('Minimal upsert failed, trying absolute minimum (ID + Settings)...', minError);
+        // Fallback 2: Absolute minimum - just ID and the JSONB settings column
+        const absoluteMinData = {
+          id: user.id,
+          settings: data.settings,
+          name: user.name // Name is usually required
+        };
+        const { error: absError } = await supabase.from('profiles').upsert(absoluteMinData);
+        if (absError) throw absError;
+      }
     }
   } catch (e) {
     console.error('Supabase sync failed:', e);
@@ -89,6 +106,7 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
     if (!data) return null;
     
     const settings = data.settings || {};
+    const isOnboarded = data.is_onboarded === true || settings.isOnboarded === true;
     
     return {
       id: data.id,
@@ -105,7 +123,7 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       telegramStars: data.telegram_stars,
       settings: settings,
       isBlocked: data.is_blocked,
-      isOnboarded: data.is_onboarded === true || settings.isOnboarded === true,
+      isOnboarded: isOnboarded,
       age: data.age || settings.age || '18',
       level: data.level || settings.level || 'Beginner',
       goal: data.goal || settings.goal || 'General',

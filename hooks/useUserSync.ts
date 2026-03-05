@@ -23,6 +23,12 @@ export const useUserSync = () => {
       let profile = await fetchUserFromSupabase(userId);
 
       if (profile) {
+        // Local fallback check
+        const localOnboarded = localStorage.getItem(`ravona_onboarded_${userId}`);
+        if (!profile.isOnboarded && localOnboarded === 'true') {
+          profile.isOnboarded = true;
+        }
+
         // Handle Streak Logic
         const { newStreak, shouldUpdate } = calculateStreak(profile.lastActiveDate, profile.streak);
         
