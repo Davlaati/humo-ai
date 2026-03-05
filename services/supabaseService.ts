@@ -18,7 +18,6 @@ export const syncUserToSupabase = async (user: UserProfile) => {
     streak: user.streak,
     is_premium: user.isPremium,
     interests: user.interests,
-    last_active_date: new Date().toISOString(),
     telegram_stars: user.telegramStars,
     settings: {
       ...user.settings,
@@ -29,7 +28,8 @@ export const syncUserToSupabase = async (user: UserProfile) => {
       personalities: user.personalities,
       studyMinutes: user.studyMinutes,
       practiceFrequency: user.practiceFrequency,
-      joinedAt: user.joinedAt
+      joinedAt: user.joinedAt,
+      lastActiveDate: new Date().toISOString()
     },
     is_blocked: user.isBlocked,
     is_onboarded: user.isOnboarded,
@@ -38,8 +38,7 @@ export const syncUserToSupabase = async (user: UserProfile) => {
     goal: user.goal,
     personalities: user.personalities,
     study_minutes: user.studyMinutes,
-    practice_frequency: user.practiceFrequency,
-    joined_at: user.joinedAt
+    practice_frequency: user.practiceFrequency
   };
 
   try {
@@ -60,8 +59,7 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         xp: user.xp,
         streak: user.streak,
         is_premium: user.isPremium,
-        settings: data.settings,
-        last_active_date: data.last_active_date
+        settings: data.settings
       };
       const { error: minError } = await supabase.from('profiles').upsert(minimalData);
       if (minError) throw minError;
@@ -103,7 +101,7 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       streak: data.streak,
       isPremium: data.is_premium,
       interests: data.interests || settings.interests || [],
-      lastActiveDate: data.last_active_date,
+      lastActiveDate: data.last_active_date || settings.lastActiveDate || new Date().toISOString(),
       telegramStars: data.telegram_stars,
       settings: settings,
       isBlocked: data.is_blocked,
@@ -235,8 +233,8 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       telegramStars: d.telegram_stars,
       starsHistory: d.stars_history || [],
       settings: d.settings,
-      joinedAt: d.joined_at || new Date().toISOString(),
-      lastActiveDate: d.last_active_date || new Date().toISOString(),
+      joinedAt: d.joined_at || d.settings?.joinedAt || new Date().toISOString(),
+      lastActiveDate: d.last_active_date || d.settings?.lastActiveDate || new Date().toISOString(),
       activeSecondsToday: 0
     }));
   } catch (e) {
