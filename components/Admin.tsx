@@ -22,7 +22,8 @@ import {
   updatePremiumStatusInSupabase,
   fetchLibraryItemsFromSupabase,
   saveLibraryItemToSupabase,
-  deleteLibraryItemFromSupabase
+  deleteLibraryItemFromSupabase,
+  uploadFileToSupabase
 } from '../services/supabaseService';
 
 type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security' | 'library';
@@ -63,6 +64,7 @@ const Admin: React.FC = () => {
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [editingItem, setEditingItem] = useState<Partial<LibraryItem> | null>(null);
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -244,6 +246,33 @@ const Admin: React.FC = () => {
       setLibraryItems(await fetchLibraryItemsFromSupabase());
     } catch (e) {
       alert("Xatolik yuz berdi!");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'content' | 'lesson_video', lessonIdx?: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const bucket = type === 'thumbnail' ? 'thumbnails' : 'library-content';
+      const url = await uploadFileToSupabase(bucket, file);
+      
+      if (type === 'thumbnail') {
+        setEditingItem(prev => ({ ...prev, thumbnail: url }));
+      } else if (type === 'content') {
+        setEditingItem(prev => ({ ...prev, contentUrl: url }));
+      } else if (type === 'lesson_video' && typeof lessonIdx === 'number') {
+        const lessons = [...(editingItem?.lessons || [])];
+        lessons[lessonIdx].videoUrl = url;
+        setEditingItem(prev => ({ ...prev, lessons }));
+      }
+      alert("Fayl muvaffaqiyatli yuklandi!");
+    } catch (e) {
+      console.error(e);
+      alert("Fayl yuklashda xatolik! Supabase Storage bucketlari ('thumbnails', 'library-content') yaratilganligiga ishonch hosil qiling.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -534,22 +563,39 @@ const Admin: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Thumbnail URL</label>
-                  <input 
-                    type="text" 
-                    value={editingItem.thumbnail} 
-                    onChange={e => setEditingItem({...editingItem, thumbnail: e.target.value})}
-                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
-                  />
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Thumbnail (Rasm yuklash)</label>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={e => handleFileUpload(e, 'thumbnail')}
+                      className="hidden"
+                      id="thumb-upload"
+                    />
+                    <label 
+                      htmlFor="thumb-upload"
+                      className="flex-1 bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-xs cursor-pointer hover:bg-slate-800 transition truncate"
+                    >
+                      {editingItem.thumbnail ? 'Rasm tanlangan' : 'Rasm tanlash...'}
+                    </label>
+                    {editingItem.thumbnail && <img src={editingItem.thumbnail} className="w-10 h-10 rounded-lg object-cover" alt="" />}
+                  </div>
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Content URL (Podcast/Book)</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Content (Audio/PDF yuklash)</label>
                   <input 
-                    type="text" 
-                    value={editingItem.contentUrl} 
-                    onChange={e => setEditingItem({...editingItem, contentUrl: e.target.value})}
-                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-sm"
+                    type="file" 
+                    accept={editingItem.type === 'podcast' ? 'audio/*' : 'application/pdf'}
+                    onChange={e => handleFileUpload(e, 'content')}
+                    className="hidden"
+                    id="content-upload"
                   />
+                  <label 
+                    htmlFor="content-upload"
+                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-xs cursor-pointer hover:bg-slate-800 transition block truncate"
+                  >
+                    {editingItem.contentUrl ? 'Fayl yuklangan' : 'Fayl tanlash...'}
+                  </label>
                 </div>
               </div>
 
@@ -650,17 +696,22 @@ const Admin: React.FC = () => {
                           }}
                           className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs h-20"
                         />
-                        <input 
-                          type="text" 
-                          placeholder="Video URL (YouTube/Vimeo)"
-                          value={lesson.videoUrl || ''}
-                          onChange={e => {
-                            const lessons = [...(editingItem.lessons || [])];
-                            lessons[idx].videoUrl = e.target.value;
-                            setEditingItem({...editingItem, lessons});
-                          }}
-                          className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-xs"
-                        />
+                        <div>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Dars videosi (Yuklash)</label>
+                          <input 
+                            type="file" 
+                            accept="video/*"
+                            onChange={e => handleFileUpload(e, 'lesson_video', idx)}
+                            className="hidden"
+                            id={`lesson-video-${idx}`}
+                          />
+                          <label 
+                            htmlFor={`lesson-video-${idx}`}
+                            className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-[10px] cursor-pointer hover:bg-slate-900 transition block truncate"
+                          >
+                            {lesson.videoUrl ? 'Video yuklangan' : 'Video tanlash...'}
+                          </label>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -670,12 +721,14 @@ const Admin: React.FC = () => {
               <div className="pt-6 flex space-x-4">
                 <button 
                   onClick={handleSaveLibraryItem}
-                  className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest text-sm"
+                  disabled={isUploading}
+                  className={`flex-1 py-4 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest text-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  Saqlash
+                  {isUploading ? 'Yuklanmoqda...' : 'Saqlash'}
                 </button>
                 <button 
                   onClick={() => setIsLibraryModalOpen(false)}
+                  disabled={isUploading}
                   className="px-8 py-4 rounded-2xl bg-slate-800 text-slate-400 font-black uppercase tracking-widest text-sm"
                 >
                   Bekor qilish

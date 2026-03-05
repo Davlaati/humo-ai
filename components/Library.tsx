@@ -39,6 +39,18 @@ const Library: React.FC<LibraryProps> = ({ user, onNavigate, onUpdateUser }) => 
     setActiveLesson(0);
   };
 
+  const isDirectVideo = (url: string) => {
+    return url.match(/\.(mp4|webm|ogg|mov)$/i) || url.includes('supabase.co/storage/v1/object/public');
+  };
+
+  const isPDF = (url: string) => {
+    return url.toLowerCase().endsWith('.pdf') || url.includes('application/pdf');
+  };
+
+  const isAudio = (url: string) => {
+    return url.match(/\.(mp3|wav|ogg|m4a)$/i) || url.includes('audio/');
+  };
+
   if (selectedItem) {
     return (
       <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in">
@@ -60,11 +72,20 @@ const Library: React.FC<LibraryProps> = ({ user, onNavigate, onUpdateUser }) => 
               <div className="glass-card rounded-3xl overflow-hidden mb-6">
                 {selectedItem.lessons[activeLesson].videoUrl ? (
                   <div className="aspect-video bg-black flex items-center justify-center">
-                    <iframe 
-                      src={selectedItem.lessons[activeLesson].videoUrl} 
-                      className="w-full h-full"
-                      allowFullScreen
-                    ></iframe>
+                    {isDirectVideo(selectedItem.lessons[activeLesson].videoUrl!) ? (
+                      <video 
+                        src={selectedItem.lessons[activeLesson].videoUrl} 
+                        className="w-full h-full" 
+                        controls 
+                        playsInline
+                      />
+                    ) : (
+                      <iframe 
+                        src={selectedItem.lessons[activeLesson].videoUrl} 
+                        className="w-full h-full"
+                        allowFullScreen
+                      ></iframe>
+                    )}
                   </div>
                 ) : (
                   <div className="aspect-video bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center p-8 text-center">
@@ -124,15 +145,51 @@ const Library: React.FC<LibraryProps> = ({ user, onNavigate, onUpdateUser }) => 
                   <p className="text-slate-400 text-sm leading-relaxed mb-8">{selectedItem.description}</p>
                   
                   {selectedItem.contentUrl && (
-                    <a 
-                      href={selectedItem.contentUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="w-full py-4 rounded-2xl liquid-button text-white font-black uppercase tracking-widest text-sm flex items-center justify-center space-x-3"
-                    >
-                      <i className={`fa-solid ${selectedItem.type === 'podcast' ? 'fa-play' : 'fa-download'}`}></i>
-                      <span>{selectedItem.type === 'podcast' ? 'Tinglash' : 'Yuklab olish / O\'qish'}</span>
-                    </a>
+                    <div className="space-y-6">
+                      {isAudio(selectedItem.contentUrl) && (
+                        <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
+                          <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Audio Player</p>
+                          <audio 
+                            src={selectedItem.contentUrl} 
+                            controls 
+                            className="w-full accent-blue-500"
+                          />
+                        </div>
+                      )}
+
+                      {isPDF(selectedItem.contentUrl) ? (
+                        <div className="space-y-4">
+                          <div className="aspect-[3/4] w-full bg-slate-800 rounded-2xl overflow-hidden border border-white/10">
+                            <iframe 
+                              src={`https://docs.google.com/viewer?url=${encodeURIComponent(selectedItem.contentUrl)}&embedded=true`}
+                              className="w-full h-full"
+                              title="PDF Viewer"
+                            ></iframe>
+                          </div>
+                          <a 
+                            href={selectedItem.contentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-full py-4 rounded-2xl bg-white/5 text-white font-black uppercase tracking-widest text-sm flex items-center justify-center space-x-3 border border-white/10"
+                          >
+                            <i className="fa-solid fa-external-link text-xs"></i>
+                            <span>To'liq ekranda ochish</span>
+                          </a>
+                        </div>
+                      ) : (
+                        !isAudio(selectedItem.contentUrl) && (
+                          <a 
+                            href={selectedItem.contentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-full py-4 rounded-2xl liquid-button text-white font-black uppercase tracking-widest text-sm flex items-center justify-center space-x-3"
+                          >
+                            <i className={`fa-solid ${selectedItem.type === 'podcast' ? 'fa-play' : 'fa-download'}`}></i>
+                            <span>{selectedItem.type === 'podcast' ? 'Tinglash' : 'Yuklab olish / O\'qish'}</span>
+                          </a>
+                        )
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
