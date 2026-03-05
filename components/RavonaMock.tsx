@@ -12,32 +12,62 @@ interface Question {
 const questions: Question[] = [
   {
     id: 1,
-    question: "If I _____ you, I would study harder for the IELTS exam.",
-    options: ["am", "was", "were", "would be"],
-    correctAnswer: 2
+    question: "Choose the correct form: 'By the time the teacher arrived, the students _____ the grammar exercise.'",
+    options: ["already finished", "had already finished", "have already finished", "already finish"],
+    correctAnswer: 1
   },
   {
     id: 2,
-    question: "She _____ to the cinema every Friday, but this week she's staying home.",
-    options: ["go", "goes", "is going", "went"],
+    question: "Identify the correct sentence structure: '_____ she studied hard, she didn't pass the exam.'",
+    options: ["Despite", "Although", "In spite of", "However"],
     correctAnswer: 1
   },
   {
     id: 3,
-    question: "By the time we arrive, the movie _____.",
-    options: ["will start", "will have started", "starts", "has started"],
-    correctAnswer: 1
+    question: "Select the correct conditional: 'If I _____ you, I would have accepted the job offer.'",
+    options: ["was", "were", "had been", "would be"],
+    correctAnswer: 2
   },
   {
     id: 4,
-    question: "I'm looking forward _____ you at the party.",
-    options: ["to see", "to seeing", "see", "seeing"],
-    correctAnswer: 1
+    question: "Choose the correct preposition: 'He is very good _____ solving complex linguistic problems.'",
+    options: ["at", "in", "on", "with"],
+    correctAnswer: 0
   },
   {
     id: 5,
-    question: "Neither the teacher nor the students _____ the answer.",
-    options: ["know", "knows", "are knowing", "is knowing"],
+    question: "Select the correct relative clause: 'The man _____ I spoke to yesterday is the CEO.'",
+    options: ["who", "which", "whom", "whose"],
+    correctAnswer: 2
+  },
+  {
+    id: 6,
+    question: "Choose the correct passive voice: 'The report _____ by the committee by tomorrow morning.'",
+    options: ["will be completed", "will have been completed", "is completed", "has been completed"],
+    correctAnswer: 1
+  },
+  {
+    id: 7,
+    question: "Identify the correct modal verb: 'You _____ have told me about the meeting; I was waiting for hours!'",
+    options: ["must", "should", "could", "might"],
+    correctAnswer: 1
+  },
+  {
+    id: 8,
+    question: "Choose the correct gerund/infinitive: 'She stopped _____ to her friend because she was late.'",
+    options: ["to talk", "talking", "talk", "talked"],
+    correctAnswer: 1
+  },
+  {
+    id: 9,
+    question: "Select the correct inversion: '_____ had I left the house than it started to rain.'",
+    options: ["No sooner", "Hardly", "Scarcely", "Not only"],
+    correctAnswer: 0
+  },
+  {
+    id: 10,
+    question: "Choose the correct causative: 'I need to _____ my car _____ tomorrow.'",
+    options: ["have / repaired", "get / repair", "have / repair", "get / to repair"],
     correctAnswer: 0
   }
 ];
@@ -59,7 +89,9 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
   };
 
   const finishExam = () => {
-    const finalScore = Math.round((score + (questions[currentQuestion].correctAnswer === -1 ? 0 : 0)) / questions.length * 12); // Simple mapping to 1-12
+    // Map score (0-10) to 1-12 scale
+    // 0 correct -> 1, 10 correct -> 12
+    const finalScore = Math.round(1 + (score / questions.length) * 11);
     const ravonaScore = Math.max(1, Math.min(12, finalScore));
     onUpdateUser({ ...user, ravonaScore });
     setFinished(true);

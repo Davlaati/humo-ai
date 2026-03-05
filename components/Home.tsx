@@ -186,6 +186,22 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                 </div>
             </div>
 
+            {/* Ravona Mock (Half) */}
+            <div 
+              onClick={() => handleAction('mock')}
+              className="col-span-1 glass-card bg-gradient-to-br from-blue-500/20 to-indigo-500/20 backdrop-blur-xl border border-blue-500/30 rounded-[35px] p-5 relative h-36 overflow-visible group active:scale-[0.98] transition-all shadow-lg cursor-pointer"
+            >
+                <div className="relative z-10 mt-2">
+                    <h3 className="text-lg font-black italic text-white uppercase tracking-tighter">Ravona Mock</h3>
+                    <p className="text-blue-300 text-[9px] font-bold">Grammar Exam</p>
+                </div>
+                <div className="absolute -right-2 -top-4 w-24 h-24 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform pointer-events-none">
+                     <div className="w-full h-full flex items-center justify-center text-[65px] transform rotate-12">
+                        📝
+                    </div>
+                </div>
+            </div>
+
             {/* Top Rating (Half) */}
             <div 
               onClick={() => handleAction('leaderboard')}
