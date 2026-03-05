@@ -358,8 +358,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
       {/* Create Room Modal */}
       {isCreating && (
-          <div className="fixed inset-0 z-50 bg-[#0c1222]/90 backdrop-blur-xl flex items-end sm:items-center justify-center p-4 sm:p-6 animate-fade-in">
-              <div className="w-full max-w-md bg-[#151b2d] border border-white/10 rounded-[40px] p-8 shadow-2xl relative">
+          <div className="fixed inset-0 z-[200] bg-[#0c1222]/90 backdrop-blur-xl flex items-end sm:items-center justify-center p-4 sm:p-6 animate-fade-in">
+              <div className="w-full max-w-md bg-[#151b2d] border border-white/10 rounded-[40px] p-8 pb-10 shadow-2xl relative mb-20 sm:mb-0">
                   <button 
                     onClick={() => setIsCreating(false)}
                     className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 transition-colors"
