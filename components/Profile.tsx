@@ -68,6 +68,16 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
              </div>
          </div>
          <h2 className="text-2xl font-black">{user.name}</h2>
+         {user.ravonaScore && (
+           <div className="mt-3 flex flex-col items-center">
+             <div className="px-4 py-1.5 bg-blue-600 text-white rounded-full text-xs font-black uppercase tracking-widest border border-blue-400 shadow-lg shadow-blue-600/20">
+               Ravona Score: {user.ravonaScore}
+             </div>
+             <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest mt-1">
+               IELTS Equivalent: {user.ravonaScore >= 11 ? '8.5 - 9.0' : user.ravonaScore >= 9 ? '7.0 - 8.0' : user.ravonaScore >= 7 ? '5.5 - 6.5' : user.ravonaScore >= 5 ? '4.0 - 5.0' : 'Below 4.0'}
+             </p>
+           </div>
+         )}
          <p className="text-gray-400 font-medium">@{user.username || 'user'}</p>
          <div className="flex space-x-2 mt-2">
             <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">{getTranslation('level', lang)} {level}</span>

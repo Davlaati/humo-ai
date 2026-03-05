@@ -13,6 +13,7 @@ import Admin from './components/Admin';
 import Game from './components/Game';
 import WordBank from './components/WordBank';
 import SpeakingClub from './components/SpeakingClub';
+import RavonaMock from './components/RavonaMock';
 import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
@@ -206,6 +207,7 @@ const App: React.FC = () => {
           case 'game': return <Game user={user} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} onShowPaywall={() => setShowPaywall(true)} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
+          case 'mock': return <RavonaMock user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'library': return <Library user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setActiveTab('pricing')} />;
           case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;

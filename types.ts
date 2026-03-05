@@ -94,6 +94,7 @@ export interface UserProfile {
   starsHistory: StarsTransaction[];
   badges?: Achievement[];
   level_progress?: number;
+  ravonaScore?: number; // Added for Ravona Mock Exam
   // Added settings property to UserProfile interface
   settings?: UserSettings;
 }
