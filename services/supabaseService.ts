@@ -7,46 +7,68 @@ import {
 } from '../types';
 
 export const syncUserToSupabase = async (user: UserProfile) => {
+  const data: any = {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    avatar_url: user.avatarUrl,
+    coins: user.coins,
+    xp: user.xp,
+    wins: user.wins || 0,
+    streak: user.streak,
+    is_premium: user.isPremium,
+    interests: user.interests,
+    last_active_date: new Date().toISOString(),
+    telegram_stars: user.telegramStars,
+    settings: {
+      ...user.settings,
+      isOnboarded: user.isOnboarded,
+      age: user.age,
+      level: user.level,
+      goal: user.goal,
+      personalities: user.personalities,
+      studyMinutes: user.studyMinutes,
+      practiceFrequency: user.practiceFrequency,
+      joinedAt: user.joinedAt
+    },
+    is_blocked: user.isBlocked,
+    is_onboarded: user.isOnboarded,
+    age: user.age,
+    level: user.level,
+    goal: user.goal,
+    personalities: user.personalities,
+    study_minutes: user.studyMinutes,
+    practice_frequency: user.practiceFrequency,
+    joined_at: user.joinedAt
+  };
+
   try {
     const { error } = await supabase
       .from('profiles')
-      .upsert({
+      .upsert(data);
+    
+    if (error) {
+      console.warn('Full upsert failed, trying minimal upsert (settings-based)...', error);
+      // Fallback: Try minimal upsert with only core columns that are guaranteed to exist
+      // and store everything else in the 'settings' JSONB column
+      const minimalData = {
         id: user.id,
         name: user.name,
         username: user.username,
         avatar_url: user.avatarUrl,
         coins: user.coins,
         xp: user.xp,
-        wins: user.wins || 0,
         streak: user.streak,
         is_premium: user.isPremium,
-        interests: user.interests,
-        last_active_date: new Date().toISOString(),
-        telegram_stars: user.telegramStars,
-        settings: {
-          ...user.settings,
-          isOnboarded: user.isOnboarded,
-          age: user.age,
-          level: user.level,
-          goal: user.goal,
-          personalities: user.personalities,
-          studyMinutes: user.studyMinutes,
-          practiceFrequency: user.practiceFrequency,
-          joinedAt: user.joinedAt
-        },
-        is_blocked: user.isBlocked,
-        is_onboarded: user.isOnboarded,
-        age: user.age,
-        level: user.level,
-        goal: user.goal,
-        personalities: user.personalities,
-        study_minutes: user.studyMinutes,
-        practice_frequency: user.practiceFrequency,
-        joined_at: user.joinedAt
-      });
-    if (error) console.error('Error syncing user to Supabase:', error);
+        settings: data.settings,
+        last_active_date: data.last_active_date
+      };
+      const { error: minError } = await supabase.from('profiles').upsert(minimalData);
+      if (minError) throw minError;
+    }
   } catch (e) {
     console.error('Supabase sync failed:', e);
+    throw e;
   }
 };
 
@@ -68,6 +90,8 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
     
     if (!data) return null;
     
+    const settings = data.settings || {};
+    
     return {
       id: data.id,
       name: data.name,
@@ -78,23 +102,24 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       wins: data.wins || 0,
       streak: data.streak,
       isPremium: data.is_premium,
-      interests: data.interests || [],
+      interests: data.interests || settings.interests || [],
       lastActiveDate: data.last_active_date,
       telegramStars: data.telegram_stars,
-      settings: data.settings || {},
+      settings: settings,
       isBlocked: data.is_blocked,
-      isOnboarded: data.is_onboarded === true || data.settings?.isOnboarded === true,
-      age: data.age || data.settings?.age || '18',
-      level: data.level || data.settings?.level || 'Beginner',
-      goal: data.goal || data.settings?.goal || 'General',
-      personalities: data.personalities || data.settings?.personalities || ['Kind'],
-      studyMinutes: data.study_minutes || data.settings?.studyMinutes || 0,
-      practiceFrequency: data.practice_frequency || data.settings?.practiceFrequency || 'Daily',
-      joinedAt: data.joined_at || data.settings?.joinedAt || new Date().toISOString(),
+      isOnboarded: data.is_onboarded === true || settings.isOnboarded === true,
+      age: data.age || settings.age || '18',
+      level: data.level || settings.level || 'Beginner',
+      goal: data.goal || settings.goal || 'General',
+      personalities: data.personalities || settings.personalities || ['Kind'],
+      studyMinutes: data.study_minutes || settings.studyMinutes || 0,
+      practiceFrequency: data.practice_frequency || settings.practiceFrequency || 'Daily',
+      joinedAt: data.joined_at || settings.joinedAt || new Date().toISOString(),
       activeSecondsToday: 0
     } as UserProfile;
   } catch (e) {
-    return null;
+    console.error('Fetch user failed:', e);
+    throw e;
   }
 };
 

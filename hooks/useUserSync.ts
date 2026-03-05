@@ -100,14 +100,19 @@ export const useUserSync = () => {
   }, [tgUser, loadUser]);
 
   const updateUser = async (updates: Partial<UserProfile>) => {
-    const currentUser = user || {} as UserProfile;
-    const updatedUser = { ...currentUser, ...updates } as UserProfile;
-    
-    // 1. Update Supabase FIRST (Requirement)
-    await syncUserToSupabase(updatedUser);
-    
-    // 2. Update Local State
-    setUser(updatedUser);
+    try {
+      const currentUser = user || {} as UserProfile;
+      const updatedUser = { ...currentUser, ...updates } as UserProfile;
+      
+      // 1. Update Supabase FIRST (Requirement)
+      await syncUserToSupabase(updatedUser);
+      
+      // 2. Update Local State
+      setUser(updatedUser);
+    } catch (err: any) {
+      console.error('Update user error:', err);
+      setError(err.message || 'Ma\'lumotlarni saqlashda xatolik yuz berdi.');
+    }
   };
 
   return { user, loading, error, updateUser, refresh: loadUser };
