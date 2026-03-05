@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Clock, CheckCircle2, XCircle, Award } from 'lucide-react';
+import { Trophy, Clock, Award, ChevronRight } from 'lucide-react';
 
 interface Question {
   id: number;
@@ -27,9 +27,8 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
   const [state, setState] = useState<'intro' | 'exam' | 'result'>('intro');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [timeLeft, setTimeLeft] = useState(300);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     if (state === 'exam' && timeLeft > 0) {
@@ -40,23 +39,17 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
     }
   }, [state, timeLeft]);
 
-  const handleAnswer = (index: number) => {
-    if (isChecking) return;
-    setSelectedAnswer(index);
-    setIsChecking(true);
-    
-    setTimeout(() => {
-      if (index === questions[currentQuestion].correctAnswer) {
-        setScore(prev => prev + 1);
-      }
-      if (currentQuestion + 1 < questions.length) {
-        setCurrentQuestion(prev => prev + 1);
-        setSelectedAnswer(null);
-        setIsChecking(false);
-      } else {
-        finishExam();
-      }
-    }, 1000);
+  const handleNext = () => {
+    if (selectedAnswer === null) return;
+    if (selectedAnswer === questions[currentQuestion].correctAnswer) {
+      setScore(prev => prev + 1);
+    }
+    if (currentQuestion + 1 < questions.length) {
+      setCurrentQuestion(prev => prev + 1);
+      setSelectedAnswer(null);
+    } else {
+      finishExam();
+    }
   };
 
   const finishExam = () => {
@@ -73,39 +66,51 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col">
+    <div className="min-h-screen bg-[#0f172a] text-white p-6 flex flex-col font-sans">
       <AnimatePresence mode="wait">
         {state === 'intro' && (
-          <motion.div key="intro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col justify-center items-center text-center">
-            <Trophy size={64} className="text-blue-500 mb-6" />
-            <h1 className="text-4xl font-black mb-4">Ravona Mock</h1>
-            <p className="text-slate-400 mb-8 max-w-xs">Grammatika darajangizni aniqlang va sertifikatga ega bo'ling!</p>
-            <button onClick={() => setState('exam')} className="bg-blue-600 px-8 py-4 rounded-2xl font-black text-lg w-full max-w-xs">Boshlash</button>
+          <motion.div key="intro" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex-1 flex flex-col justify-center items-center text-center">
+            <div className="w-32 h-32 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-blue-600/20">
+                <Trophy size={64} className="text-white" />
+            </div>
+            <h1 className="text-4xl font-black mb-4 uppercase tracking-tighter">Ravona Mock</h1>
+            <p className="text-slate-400 mb-8 max-w-xs font-bold">Grammatika darajangizni aniqlang va sertifikatga ega bo'ling!</p>
+            <button onClick={() => setState('exam')} className="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-2xl font-black text-lg w-full max-w-xs shadow-lg shadow-blue-600/20 active:scale-95 transition-all">Boshlash</button>
           </motion.div>
         )}
 
         {state === 'exam' && (
           <motion.div key="exam" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
             <div className="flex justify-between items-center mb-8">
-              <div className="flex items-center gap-2 text-blue-400 font-mono text-xl"><Clock size={20} /> {formatTime(timeLeft)}</div>
+              <div className="flex items-center gap-2 text-blue-400 font-mono text-xl bg-blue-500/10 px-4 py-2 rounded-xl border border-blue-500/20"><Clock size={20} /> {formatTime(timeLeft)}</div>
               <div className="text-sm text-slate-500 font-black uppercase tracking-widest">{currentQuestion + 1} / {questions.length}</div>
             </div>
+            
             <div className="flex-1 flex flex-col justify-center">
-              <p className="text-2xl font-bold mb-8">{questions[currentQuestion].question}</p>
-              <div className="space-y-4">
+              <motion.div key={currentQuestion} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card bg-slate-900/50 p-8 rounded-3xl border border-white/5 mb-8 shadow-xl">
+                <p className="text-xl font-bold leading-relaxed">{questions[currentQuestion].question}</p>
+              </motion.div>
+              
+              <div className="space-y-3">
                 {questions[currentQuestion].options.map((option, index) => (
                   <button 
                     key={index} 
-                    onClick={() => handleAnswer(index)} 
-                    disabled={isChecking}
-                    className={`w-full p-5 rounded-2xl text-left border-2 transition-all ${selectedAnswer === index ? (index === questions[currentQuestion].correctAnswer ? 'border-green-500 bg-green-500/20' : 'border-red-500 bg-red-500/20') : 'border-slate-800 bg-slate-900'} `}
+                    onClick={() => setSelectedAnswer(index)} 
+                    className={`w-full p-5 rounded-2xl text-left border-2 transition-all font-bold ${selectedAnswer === index ? 'border-blue-500 bg-blue-500/20' : 'border-white/5 bg-white/5 hover:border-white/10'}`}
                   >
                     {option}
-                    {selectedAnswer === index && (index === questions[currentQuestion].correctAnswer ? <CheckCircle2 className="inline ml-2 text-green-500" /> : <XCircle className="inline ml-2 text-red-500" />)}
                   </button>
                 ))}
               </div>
             </div>
+
+            <button 
+              onClick={handleNext} 
+              disabled={selectedAnswer === null}
+              className={`mt-8 w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all ${selectedAnswer === null ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 active:scale-95'}`}
+            >
+              Keyingisi <ChevronRight size={20} />
+            </button>
           </motion.div>
         )}
 
@@ -116,9 +121,9 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
               <div className="text-7xl font-black text-white">{user.ravonaScore}</div>
               <div className="text-blue-200 font-bold uppercase tracking-widest">Ravona Score</div>
             </motion.div>
-            <h2 className="text-3xl font-black mb-2">Tabriklaymiz!</h2>
-            <p className="text-slate-400 mb-8">Sizning IELTS darajangiz: <span className="text-white font-bold">{user.ravonaScore! >= 11 ? '8.5 - 9.0' : user.ravonaScore! >= 9 ? '7.0 - 8.0' : user.ravonaScore! >= 7 ? '5.5 - 6.5' : user.ravonaScore! >= 5 ? '4.0 - 5.0' : 'Below 4.0'}</span></p>
-            <button onClick={() => onNavigate('home')} className="bg-white text-slate-950 px-8 py-4 rounded-2xl font-black text-lg w-full max-w-xs">Asosiy sahifa</button>
+            <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter">Tabriklaymiz!</h2>
+            <p className="text-slate-400 mb-8 font-bold">Sizning IELTS darajangiz: <span className="text-white font-bold">{user.ravonaScore! >= 11 ? '8.5 - 9.0' : user.ravonaScore! >= 9 ? '7.0 - 8.0' : user.ravonaScore! >= 7 ? '5.5 - 6.5' : user.ravonaScore! >= 5 ? '4.0 - 5.0' : 'Below 4.0'}</span></p>
+            <button onClick={() => onNavigate('home')} className="bg-white text-slate-950 px-8 py-4 rounded-2xl font-black text-lg w-full max-w-xs shadow-xl active:scale-95 transition-all">Asosiy sahifa</button>
           </motion.div>
         )}
       </AnimatePresence>
