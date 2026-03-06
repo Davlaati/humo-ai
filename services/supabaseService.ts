@@ -29,7 +29,11 @@ export const syncUserToSupabase = async (user: UserProfile) => {
       studyMinutes: user.studyMinutes,
       practiceFrequency: user.practiceFrequency,
       joinedAt: user.joinedAt,
-      lastActiveDate: new Date().toISOString()
+      lastActiveDate: new Date().toISOString(),
+      isPrivate: user.isPrivate,
+      followers: user.followers,
+      following: user.following,
+      bio: user.bio
     },
     is_blocked: user.isBlocked,
     is_onboarded: user.isOnboarded,
@@ -131,7 +135,11 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       studyMinutes: data.study_minutes || settings.studyMinutes || 0,
       practiceFrequency: data.practice_frequency || settings.practiceFrequency || 'Daily',
       joinedAt: data.joined_at || settings.joinedAt || new Date().toISOString(),
-      activeSecondsToday: 0
+      activeSecondsToday: 0,
+      isPrivate: settings.isPrivate || false,
+      followers: settings.followers || [],
+      following: settings.following || [],
+      bio: settings.bio || ''
     } as UserProfile;
   } catch (e) {
     console.error('Fetch user failed:', e);
@@ -177,42 +185,48 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
     // For now, we'll just sort by total XP
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, xp, wins, is_premium')
+      .select('id, name, xp, wins, is_premium, settings')
       .order('xp', { ascending: false })
-      .limit(50);
+      .limit(100); // Increased limit to account for filtered private users
     
     if (error) {
       console.error('Leaderboard query error:', error);
       // Fallback: try without wins if it doesn't exist
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('profiles')
-        .select('id, name, xp, is_premium')
+        .select('id, name, xp, is_premium, settings')
         .order('xp', { ascending: false })
-        .limit(50);
+        .limit(100);
       
       if (fallbackError) throw fallbackError;
-      return (fallbackData || []).map((u, index) => ({
+      return (fallbackData || [])
+        .filter(u => !u.settings?.isPrivate)
+        .slice(0, 50)
+        .map((u, index) => ({
+          userId: u.id,
+          name: u.name || 'Noma\'lum',
+          xp: u.xp || 0,
+          wins: 0,
+          rank: index + 1,
+          isCurrentUser: false,
+          trend: 'same',
+          isPremium: u.is_premium
+        }));
+    }
+    
+    return (data || [])
+      .filter(u => !u.settings?.isPrivate)
+      .slice(0, 50)
+      .map((u, index) => ({
         userId: u.id,
         name: u.name || 'Noma\'lum',
         xp: u.xp || 0,
-        wins: 0,
+        wins: u.wins || 0,
         rank: index + 1,
         isCurrentUser: false,
         trend: 'same',
         isPremium: u.is_premium
       }));
-    }
-    
-    return (data || []).map((u, index) => ({
-      userId: u.id,
-      name: u.name || 'Noma\'lum',
-      xp: u.xp || 0,
-      wins: u.wins || 0,
-      rank: index + 1,
-      isCurrentUser: false,
-      trend: 'same',
-      isPremium: u.is_premium
-    }));
   } catch (e) {
     console.error('Leaderboard fetch failed:', e);
     return [];

@@ -5,6 +5,7 @@ import UserBadges from './UserBadges';
 import { calculateLevel } from '../services/gamificationService';
 import { isPremiumActive } from '../services/storageService';
 import { getTranslation } from '../translations';
+import { Settings, Lock, Globe, Users, Edit3, X } from 'lucide-react';
 
 interface ProfileProps {
   user: UserProfile;
@@ -21,6 +22,11 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
   const [isEditingInterests, setIsEditingInterests] = useState(false);
   const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
   const lang = user.settings?.language || 'Uz';
+
+  // Settings State
+  const [showSettings, setShowSettings] = useState(false);
+  const [editedBio, setEditedBio] = useState(user.bio || '');
+  const [editedIsPrivate, setEditedIsPrivate] = useState(user.isPrivate || false);
 
   // Admin Login States
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -47,6 +53,15 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
     setIsEditingInterests(false);
   };
 
+  const handleSaveSettings = () => {
+    onUpdateUser({
+      ...user,
+      bio: editedBio,
+      isPrivate: editedIsPrivate
+    });
+    setShowSettings(false);
+  };
+
   const handleAdminAuth = () => {
     if (adminLogin === 'davlaati' && adminPassword === '337520209') {
         if (onShowAdmin) onShowAdmin();
@@ -61,10 +76,26 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
 
   return (
     <div className="p-4 pb-24 space-y-6 animate-slide-up relative">
+      {/* Settings Button */}
+      <button 
+        onClick={() => {
+          setEditedBio(user.bio || '');
+          setEditedIsPrivate(user.isPrivate || false);
+          setShowSettings(true);
+        }}
+        className="absolute top-4 right-4 p-2 bg-white/5 rounded-full hover:bg-white/10 transition z-10"
+      >
+        <Settings className="w-6 h-6 text-white" />
+      </button>
+
       <div className="flex flex-col items-center pt-8">
          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 p-1 mb-4 shadow-xl">
              <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                 <span className="text-3xl font-bold">{user.name.charAt(0)}</span>
+                 {user.avatarUrl ? (
+                   <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                 ) : (
+                   <span className="text-3xl font-bold">{user.name.charAt(0)}</span>
+                 )}
              </div>
          </div>
          <h2 className="text-2xl font-black">{user.name}</h2>
@@ -95,10 +126,36 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
              </p>
            </div>
          )}
-         <p className="text-gray-400 font-medium">@{user.username || 'user'}</p>
-         <div className="flex space-x-2 mt-2">
+         <p className="text-gray-400 font-medium mt-1">@{user.username || 'user'}</p>
+         
+         {user.bio && (
+           <p className="text-sm text-gray-300 mt-2 text-center max-w-xs px-4 italic">
+             "{user.bio}"
+           </p>
+         )}
+
+         <div className="flex space-x-2 mt-3">
             <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/30">{getTranslation('level', lang)} {level}</span>
-            <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-500/30">{user.level}</span>
+            {user.isPrivate ? (
+              <span className="px-3 py-1 bg-red-500/20 text-red-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30 flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Private
+              </span>
+            ) : (
+              <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/30 flex items-center gap-1">
+                <Globe className="w-3 h-3" /> Public
+              </span>
+            )}
+         </div>
+
+         <div className="flex items-center space-x-6 mt-6 w-full justify-center">
+            <div className="text-center">
+              <p className="text-lg font-black text-white">{(user.followers || []).length}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest">Followers</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-black text-white">{(user.following || []).length}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest">Following</p>
+            </div>
          </div>
       </div>
 
@@ -213,6 +270,61 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
                  className="flex-1 py-3 rounded-xl liquid-button text-white font-bold text-sm"
                >
                  {getTranslation('save', lang)}
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Settings Modal */}
+       {showSettings && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
+           <div className="glass-card w-full max-w-sm rounded-3xl p-6 border border-white/20 shadow-2xl animate-slide-up">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold">Profile Settings</h3>
+               <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-white/10 rounded-full">
+                 <X className="w-5 h-5 text-gray-400" />
+               </button>
+             </div>
+
+             <div className="space-y-6">
+               {/* Privacy Toggle */}
+               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                 <div className="flex items-center gap-3">
+                   {editedIsPrivate ? <Lock className="w-5 h-5 text-red-400" /> : <Globe className="w-5 h-5 text-green-400" />}
+                   <div>
+                     <p className="font-bold text-sm">{editedIsPrivate ? 'Private Account' : 'Public Account'}</p>
+                     <p className="text-[10px] text-gray-500">
+                       {editedIsPrivate ? 'Only followers can see your stats.' : 'Everyone can see your profile.'}
+                     </p>
+                   </div>
+                 </div>
+                 <button 
+                   onClick={() => setEditedIsPrivate(!editedIsPrivate)}
+                   className={`w-12 h-6 rounded-full relative transition-colors ${editedIsPrivate ? 'bg-red-500/50' : 'bg-green-500/50'}`}
+                 >
+                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${editedIsPrivate ? 'left-7' : 'left-1'}`}></div>
+                 </button>
+               </div>
+
+               {/* Bio Input */}
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Bio</label>
+                 <textarea
+                   value={editedBio}
+                   onChange={(e) => setEditedBio(e.target.value)}
+                   placeholder="Tell us about yourself..."
+                   maxLength={150}
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors resize-none h-24"
+                 />
+                 <p className="text-[10px] text-gray-500 text-right mt-1">{editedBio.length}/150</p>
+               </div>
+
+               <button 
+                 onClick={handleSaveSettings}
+                 className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-600/20 active:scale-95 transition"
+               >
+                 Save Changes
                </button>
              </div>
            </div>

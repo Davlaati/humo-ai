@@ -7,10 +7,12 @@ import { Users, Mic, MicOff, PhoneOff, Clock, Plus, MessageSquare, Globe, Headph
 interface SpeakingClubProps {
   user: UserProfile;
   onNavigate: (tab: string) => void;
+  onViewUser?: (userId: string) => void;
 }
 
 interface Member {
   id: string;
+  userId: string;
   name: string;
   isPremium: boolean;
 }
@@ -25,6 +27,7 @@ interface Room {
   limit: number;
   createdAt: number;
   expiresAt: number;
+  isFriendsOnly?: boolean;
 }
 
 const TOPICS = [
@@ -39,12 +42,12 @@ const TOPICS = [
 
 const LEVELS = ["Beginner", "Intermediate", "Advanced", "Native"];
 
-const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
+const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUser }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: '', topic: TOPICS[0], level: LEVELS[1], limit: 4 });
+  const [newRoom, setNewRoom] = useState({ name: '', topic: TOPICS[0], level: LEVELS[1], limit: 4, isFriendsOnly: false });
   const [timeLeft, setTimeLeft] = useState<string>("30:00");
   const [isMuted, setIsMuted] = useState(false);
   const [showRating, setShowRating] = useState(false);
@@ -150,6 +153,11 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
         delete remoteAudiosRef.current[userId];
       }
     });
+    
+    newSocket.on('error', (message) => {
+        alert(message); // Simple alert for now, could be a toast
+        setIsSubmitting(false);
+    });
 
     return () => {
       newSocket.disconnect();
@@ -229,13 +237,20 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
       setIsSubmitting(true);
       const roomName = newRoom.name.trim() || `English Practice #${Math.floor(Math.random() * 1000)}`;
       
+      const allowedUserIds = newRoom.isFriendsOnly 
+        ? [...(user.followers || []), ...(user.following || [])] 
+        : [];
+
       socket.emit('create-room', { 
         name: roomName, 
         topic: newRoom.topic, 
         level: newRoom.level, 
         creator: user.name, 
         limit: newRoom.limit,
-        isPremium: user.isPremium
+        isPremium: user.isPremium,
+        userId: user.id,
+        isFriendsOnly: newRoom.isFriendsOnly,
+        allowedUserIds
       });
     }
   };
@@ -253,7 +268,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
   const handleJoinRoom = (roomId: string) => {
     if (socket) {
-      socket.emit('join-room', { roomId, user: { name: user.name, isPremium: user.isPremium } });
+      socket.emit('join-room', { roomId, user: { id: user.id, name: user.name, isPremium: user.isPremium } });
     }
   };
 
@@ -472,7 +487,13 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
               </div>
           ) : (
               rooms.map(room => (
-                  <div key={room.id} className="glass-card p-5 rounded-[30px] border border-white/10 group active:scale-[0.98] transition-all">
+                  <div key={room.id} className="glass-card p-5 rounded-[30px] border border-white/10 group active:scale-[0.98] transition-all relative overflow-hidden">
+                      {room.isFriendsOnly && (
+                          <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1 z-10">
+                              <i className="fa-solid fa-lock text-[10px]"></i>
+                              Friends Only
+                          </div>
+                      )}
                       <div className="flex justify-between items-start mb-4">
                           <div>
                               <div className="flex items-center space-x-2 mb-1">
@@ -495,7 +516,14 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
                           <div className="flex -space-x-2">
                               {/* Actual avatars */}
                               {room.members.slice(0, 3).map((member, i) => (
-                                  <div key={member.id} className={`w-8 h-8 rounded-full border-2 border-[#0c1222] flex items-center justify-center text-[10px] font-bold ${member.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-slate-800 text-white'}`}>
+                                  <div 
+                                    key={member.id} 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onViewUser?.(member.userId);
+                                    }}
+                                    className={`w-8 h-8 rounded-full border-2 border-[#0c1222] flex items-center justify-center text-[10px] font-bold cursor-pointer hover:scale-110 transition-transform ${member.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-slate-800 text-white'}`}
+                                  >
                                       {member.name.charAt(0)}
                                   </div>
                               ))}
@@ -570,6 +598,20 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
                                   </button>
                               ))}
                           </div>
+                      </div>
+
+                      {/* Friends Only Toggle */}
+                      <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
+                          <div>
+                              <h4 className="text-sm font-bold text-white">Friends Only</h4>
+                              <p className="text-[10px] text-slate-400 font-medium mt-1">Only followers & following can join</p>
+                          </div>
+                          <button 
+                              onClick={() => setNewRoom({...newRoom, isFriendsOnly: !newRoom.isFriendsOnly})}
+                              className={`w-12 h-6 rounded-full relative transition-colors ${newRoom.isFriendsOnly ? 'bg-green-500' : 'bg-slate-700'}`}
+                          >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${newRoom.isFriendsOnly ? 'left-7' : 'left-1'}`}></div>
+                          </button>
                       </div>
 
                       <button 

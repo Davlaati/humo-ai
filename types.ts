@@ -97,6 +97,10 @@ export interface UserProfile {
   ravonaScore?: number; // Added for Ravona Mock Exam
   // Added settings property to UserProfile interface
   settings?: UserSettings;
+  isPrivate?: boolean;
+  followers?: string[];
+  following?: string[];
+  bio?: string;
 }
 
 export interface Transaction {

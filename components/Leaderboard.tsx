@@ -7,9 +7,10 @@ import UserBadges from './UserBadges';
 interface LeaderboardProps {
   user: UserProfile;
   onNavigate: (tab: string) => void;
+  onViewUser?: (userId: string) => void;
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate, onViewUser }) => {
   const [period, setPeriod] = useState<LeaderboardPeriod>('weekly');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +80,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
           {/* Podium Area matching screenshot */}
           <div className="flex justify-center items-end h-56 mb-8 px-4">
              {/* 2nd Place */}
-             <div className="flex flex-col items-center w-20 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+             <div 
+               className="flex flex-col items-center w-20 animate-slide-up cursor-pointer active:scale-95 transition-transform" 
+               style={{ animationDelay: '0.1s' }}
+               onClick={() => topThree[1] && onViewUser?.(topThree[1].userId)}
+             >
                 <div className="relative mb-3">
                    <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-500/50 flex items-center justify-center text-xl font-bold text-slate-300 overflow-hidden">
                       {topThree[1]?.name?.charAt(0)}
@@ -95,7 +100,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
              </div>
 
              {/* 1st Place */}
-             <div className="flex flex-col items-center w-28 mx-2 animate-slide-up">
+             <div 
+               className="flex flex-col items-center w-28 mx-2 animate-slide-up cursor-pointer active:scale-95 transition-transform"
+               onClick={() => topThree[0] && onViewUser?.(topThree[0].userId)}
+             >
                 <div className="relative mb-4">
                    <div className="absolute -inset-2 bg-yellow-500/20 rounded-full blur-xl animate-pulse"></div>
                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 border-4 border-yellow-200/50 flex items-center justify-center text-4xl font-bold text-[#080d19] shadow-2xl overflow-hidden relative">
@@ -112,7 +120,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
              </div>
 
              {/* 3rd Place */}
-             <div className="flex flex-col items-center w-20 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+             <div 
+               className="flex flex-col items-center w-20 animate-slide-up cursor-pointer active:scale-95 transition-transform" 
+               style={{ animationDelay: '0.2s' }}
+               onClick={() => topThree[2] && onViewUser?.(topThree[2].userId)}
+             >
                 <div className="relative mb-3">
                    <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-orange-800/50 flex items-center justify-center text-xl font-bold text-orange-700 overflow-hidden">
                       {topThree[2]?.name?.charAt(0)}
@@ -133,7 +145,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
             {rest.map((entry) => (
               <div 
                 key={entry.userId}
-                className={`flex items-center py-4 px-5 rounded-[24px] border transition-all active:scale-[0.98] ${entry.isPremium ? 'bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'bg-white/[0.02] border-white/[0.03]'}`}
+                onClick={() => onViewUser?.(entry.userId)}
+                className={`flex items-center py-4 px-5 rounded-[24px] border transition-all active:scale-[0.98] cursor-pointer ${entry.isPremium ? 'bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'bg-white/[0.02] border-white/[0.03]'}`}
               >
                 <span className={`w-8 text-[11px] font-bold italic ${entry.isPremium ? 'text-yellow-500' : 'text-slate-600'}`}>#{entry.rank}</span>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm mr-4 border ${entry.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-white/5 text-slate-400 border-white/5'}`}>

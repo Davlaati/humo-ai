@@ -19,6 +19,7 @@ import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
 import Translator from './components/Translator';
 import Library from './components/Library';
+import UserProfileView from './components/UserProfileView';
 
 const Pricing = React.lazy(() => import('./components/Pricing'));
 const Checkout = React.lazy(() => import('./components/Checkout'));
@@ -27,6 +28,8 @@ const Paywall = React.lazy(() => import('./components/Paywall'));
 const App: React.FC = () => {
   const { user, loading: userLoading, error: userError, updateUser, refresh: refreshUser } = useUserSync();
   const [activeTab, setActiveTab] = useState('home');
+  const [previousTab, setPreviousTab] = useState('home');
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
@@ -150,6 +153,12 @@ const App: React.FC = () => {
       updateUser(updatedUser);
   };
 
+  const handleViewUser = (userId: string) => {
+    setPreviousTab(activeTab);
+    setViewingUserId(userId);
+    setActiveTab('user-profile');
+  };
+
   if (userError && !isInitialSplash) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-[#0c1222] p-8 text-center">
@@ -241,11 +250,12 @@ const App: React.FC = () => {
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
           case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
           case 'game': return <Game user={user} />;
-          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} />;
-          case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
+          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
+          case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'mock': return <RavonaMock user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'library': return <Library user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setActiveTab('pricing')} />;
+          case 'user-profile': return viewingUserId ? <UserProfileView userId={viewingUserId} onBack={() => { setActiveTab(previousTab); setViewingUserId(null); }} /> : <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
           case 'translator': return <Translator user={user} onNavigate={setActiveTab} onShowPaywall={() => setShowPaywall(true)} />;
           case 'pricing': {

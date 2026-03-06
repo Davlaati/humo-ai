@@ -21,6 +21,7 @@ async function startServer() {
   // Speaking Club State
   interface Member {
     id: string; // socket.id
+    userId: string; // Persistent User ID
     name: string;
     isPremium: boolean;
   }
@@ -35,6 +36,8 @@ async function startServer() {
     limit: number;
     createdAt: number;
     expiresAt: number;
+    isFriendsOnly?: boolean;
+    allowedUserIds?: string[];
   }
 
   const rooms: Record<string, Room> = {};
@@ -46,7 +49,7 @@ async function startServer() {
       socket.emit("rooms-list", Object.values(rooms));
     });
 
-    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium }) => {
+    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium, userId, isFriendsOnly, allowedUserIds }) => {
       const id = Math.random().toString(36).substring(2, 9);
       const createdAt = Date.now();
       const expiresAt = createdAt + 30 * 60 * 1000; // 30 minutes
@@ -57,10 +60,12 @@ async function startServer() {
         topic, 
         level, 
         creator, 
-        members: [{ id: socket.id, name: creator, isPremium: !!isPremium }], 
+        members: [{ id: socket.id, userId, name: creator, isPremium: !!isPremium }], 
         limit, 
         createdAt, 
-        expiresAt 
+        expiresAt,
+        isFriendsOnly: !!isFriendsOnly,
+        allowedUserIds: allowedUserIds || []
       };
       
       socket.join(id);
@@ -70,15 +75,40 @@ async function startServer() {
     });
 
     socket.on("join-room", ({ roomId, user }) => {
-      if (rooms[roomId] && rooms[roomId].members.length < rooms[roomId].limit) {
-        const member = { id: socket.id, name: user.name, isPremium: !!user.isPremium };
-        rooms[roomId].members.push(member);
+      const room = rooms[roomId];
+      if (room) {
+        if (room.members.length >= room.limit) {
+          socket.emit("error", "Room is full");
+          return;
+        }
+
+        if (room.isFriendsOnly) {
+          // Check if user is allowed
+          // The creator is already in members, so this check is for new joiners
+          // We check if the joining user's ID is in the allowed list
+          // OR if they are the creator (though creator joins on create)
+          // Wait, creator joins on create.
+          
+          // If allowedUserIds is present, check it.
+          // Note: allowedUserIds should contain IDs of friends.
+          // Does it contain the creator's ID? Probably not necessary if we trust the creator logic.
+          // But for safety, let's assume allowedUserIds contains the list of people who CAN join.
+          
+          const isAllowed = room.allowedUserIds?.includes(user.id);
+          if (!isAllowed) {
+             socket.emit("error", "This room is for friends only");
+             return;
+          }
+        }
+
+        const member = { id: socket.id, userId: user.id, name: user.name, isPremium: !!user.isPremium };
+        room.members.push(member);
         socket.join(roomId);
         io.to(roomId).emit("user-joined", member);
-        socket.emit("room-joined", rooms[roomId]); // Confirm join to the user
+        socket.emit("room-joined", room); // Confirm join to the user
         io.emit("rooms-list", Object.values(rooms));
       } else {
-        socket.emit("error", "Room is full or does not exist");
+        socket.emit("error", "Room does not exist");
       }
     });
 

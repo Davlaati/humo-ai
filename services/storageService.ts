@@ -51,6 +51,12 @@ export const getUser = (): UserProfile | null => {
     if (user.streak === undefined) user.streak = 0;
     if (!user.badges) user.badges = [];
     
+    // New Profile Fields
+    if (user.isPrivate === undefined) user.isPrivate = false;
+    if (!user.followers) user.followers = [];
+    if (!user.following) user.following = [];
+    if (!user.bio) user.bio = '';
+
     // Trial Logic
     if (!user.joinedAt) user.joinedAt = new Date().toISOString();
     if (user.isTrialUsed === undefined) user.isTrialUsed = false;
@@ -395,4 +401,63 @@ export const incrementActiveTime = (seconds: number): UserProfile | null => {
     return user;
   }
   return null;
+};
+
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  const currentUser = getUser();
+  if (currentUser && currentUser.id === userId) {
+    return currentUser;
+  }
+  const { fetchUserFromSupabase } = await import("./supabaseService");
+  return await fetchUserFromSupabase(userId);
+};
+
+export const followUser = async (targetUserId: string): Promise<boolean> => {
+  const currentUser = getUser();
+  if (!currentUser) return false;
+  if (currentUser.id === targetUserId) return false;
+
+  if (!currentUser.following.includes(targetUserId)) {
+    currentUser.following.push(targetUserId);
+    saveUser(currentUser);
+  }
+
+  try {
+    const { fetchUserFromSupabase, syncUserToSupabase } = await import("./supabaseService");
+    const targetUser = await fetchUserFromSupabase(targetUserId);
+    if (targetUser) {
+      if (!targetUser.followers) targetUser.followers = [];
+      if (!targetUser.followers.includes(currentUser.id)) {
+        targetUser.followers.push(currentUser.id);
+        await syncUserToSupabase(targetUser);
+      }
+    }
+    return true;
+  } catch (e) {
+    console.error("Failed to follow user", e);
+    return false;
+  }
+};
+
+export const unfollowUser = async (targetUserId: string): Promise<boolean> => {
+  const currentUser = getUser();
+  if (!currentUser) return false;
+
+  if (currentUser.following.includes(targetUserId)) {
+    currentUser.following = currentUser.following.filter(id => id !== targetUserId);
+    saveUser(currentUser);
+  }
+
+  try {
+    const { fetchUserFromSupabase, syncUserToSupabase } = await import("./supabaseService");
+    const targetUser = await fetchUserFromSupabase(targetUserId);
+    if (targetUser && targetUser.followers) {
+      targetUser.followers = targetUser.followers.filter(id => id !== currentUser.id);
+      await syncUserToSupabase(targetUser);
+    }
+    return true;
+  } catch (e) {
+    console.error("Failed to unfollow user", e);
+    return false;
+  }
 };
