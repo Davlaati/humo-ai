@@ -106,6 +106,7 @@ export interface UserProfile {
   isTrialUsed?: boolean;
   isBlocked?: boolean;
   isOnboarded?: boolean;
+  hasSeenTutorial?: boolean;
   telegramStars: number;
   starsHistory: StarsTransaction[];
   badges?: Achievement[];

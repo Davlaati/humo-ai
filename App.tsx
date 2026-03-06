@@ -4,6 +4,7 @@ import { UserProfile, EntryNotification as EntryNotifType, EnglishLevel } from '
 import { incrementActiveTime, getEntryNotification } from './services/storageService';
 import { useUserSync } from './hooks/useUserSync';
 import Onboarding from './components/Onboarding';
+import Tutorial from './components/Tutorial';
 import Layout from './components/Layout';
 import Home from './components/Home';
 import Lesson from './components/Lesson';
@@ -149,6 +150,19 @@ const App: React.FC = () => {
     setIsAppRevealed(true);
   };
 
+  const handleTutorialComplete = () => {
+    const updatedUser = { 
+      ...user,
+      hasSeenTutorial: true,
+      settings: {
+        ...user?.settings,
+        hasSeenTutorial: true
+      }
+    } as UserProfile;
+    
+    updateUser(updatedUser);
+  };
+
   const handleUpdateUser = (updatedUser: UserProfile) => {
       updateUser(updatedUser);
   };
@@ -179,6 +193,10 @@ const App: React.FC = () => {
 
   if (user && !user.isOnboarded && !isInitialSplash && !userLoading) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  if (user && user.isOnboarded && !user.hasSeenTutorial && !isInitialSplash && !userLoading) {
+    return <Tutorial onComplete={handleTutorialComplete} />;
   }
 
   if (!user && !isInitialSplash && !userLoading) {

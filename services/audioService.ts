@@ -18,7 +18,8 @@ const getAudioContext = () => {
   return audioCtx;
 };
 
-export const playTapSound = () => {
+export const playTapSound = (soundEnabled: boolean = true) => {
+  if (!soundEnabled) return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -43,7 +44,8 @@ export const playTapSound = () => {
   }
 };
 
-export const playSuccessSound = () => {
+export const playSuccessSound = (soundEnabled: boolean = true) => {
+  if (!soundEnabled) return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -83,7 +85,8 @@ export const playSuccessSound = () => {
   }
 };
 
-export const playErrorSound = () => {
+export const playErrorSound = (soundEnabled: boolean = true) => {
+  if (!soundEnabled) return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -105,5 +108,12 @@ export const playErrorSound = () => {
     oscillator.stop(ctx.currentTime + 0.2);
   } catch (error) {
     console.warn("Error Audio playback failed:", error);
+  }
+};
+
+export const playVibration = (vibrationEnabled: boolean = true, duration: number = 50) => {
+  if (!vibrationEnabled) return;
+  if ('vibrate' in navigator) {
+    navigator.vibrate(duration);
   }
 };
