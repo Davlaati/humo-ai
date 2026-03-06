@@ -49,29 +49,40 @@ async function startServer() {
       socket.emit("rooms-list", Object.values(rooms));
     });
 
-    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium, userId, isFriendsOnly, allowedUserIds }) => {
-      const id = Math.random().toString(36).substring(2, 9);
-      const createdAt = Date.now();
-      const expiresAt = createdAt + 30 * 60 * 1000; // 30 minutes
+    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium, userId, isFriendsOnly, allowedUserIds }, callback) => {
+      try {
+        const id = Math.random().toString(36).substring(2, 9);
+        const createdAt = Date.now();
+        const expiresAt = createdAt + 30 * 60 * 1000; // 30 minutes
 
-      rooms[id] = { 
-        id, 
-        name, 
-        topic, 
-        level, 
-        creator, 
-        members: [{ id: socket.id, userId, name: creator, isPremium: !!isPremium }], 
-        limit, 
-        createdAt, 
-        expiresAt,
-        isFriendsOnly: !!isFriendsOnly,
-        allowedUserIds: allowedUserIds || []
-      };
-      
-      socket.join(id);
-      socket.emit("room-created", id); // Send back the ID to the creator
-      socket.emit("room-joined", rooms[id]); // Immediately join the creator to the room
-      io.emit("rooms-list", Object.values(rooms));
+        rooms[id] = { 
+          id, 
+          name, 
+          topic, 
+          level, 
+          creator, 
+          members: [{ id: socket.id, userId, name: creator, isPremium: !!isPremium }], 
+          limit, 
+          createdAt, 
+          expiresAt,
+          isFriendsOnly: !!isFriendsOnly,
+          allowedUserIds: allowedUserIds || []
+        };
+        
+        socket.join(id);
+        socket.emit("room-created", id); // Send back the ID to the creator
+        socket.emit("room-joined", rooms[id]); // Immediately join the creator to the room
+        io.emit("rooms-list", Object.values(rooms));
+
+        if (typeof callback === 'function') {
+          callback({ status: 'ok', roomId: id });
+        }
+      } catch (error) {
+        console.error("Error creating room:", error);
+        if (typeof callback === 'function') {
+          callback({ status: 'error', message: 'Failed to create room' });
+        }
+      }
     });
 
     socket.on("join-room", ({ roomId, user }) => {
@@ -123,6 +134,18 @@ async function startServer() {
 
     socket.on("ice-candidate", (payload) => {
       io.to(payload.target).emit("ice-candidate", payload);
+    });
+
+    // Word Chain Logic
+    socket.on('word-chain:submit', ({ word, userId }) => {
+      // Very simple logic for now
+      io.emit('word-chain:update', { lastWord: word, message: `User ${userId} submitted ${word}` });
+    });
+
+    // Guessing Game Logic
+    socket.on('guessing-game:submit', ({ guess, userId }) => {
+      // Very simple logic for now
+      io.emit('guessing-game:update', { clue: '...', message: `User ${userId} guessed ${guess}` });
     });
 
     socket.on("disconnect", () => {

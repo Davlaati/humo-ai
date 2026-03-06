@@ -40,6 +40,22 @@ export interface StarsTransaction {
 export interface UserSettings {
   language: Language;
   theme: 'light' | 'dark';
+  soundEnabled?: boolean;
+  vibrationEnabled?: boolean;
+  isOnboarded?: boolean;
+  age?: string;
+  level?: EnglishLevel;
+  goal?: string;
+  personalities?: TeachingPersonality[];
+  studyMinutes?: number;
+  practiceFrequency?: string;
+  joinedAt?: string;
+  lastActiveDate?: string;
+  interests?: string[];
+  isPrivate?: boolean;
+  followers?: string[];
+  following?: string[];
+  bio?: string;
 }
 
 export interface Badge {
@@ -206,6 +222,9 @@ export interface Payment {
 
 export interface AdminSettings {
   paymentCardNumber: string;
+  privacyPolicyUrl?: string;
+  termsOfUseUrl?: string;
+  publicOfferUrl?: string;
 }
 
 export interface DictionaryItem {

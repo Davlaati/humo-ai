@@ -26,7 +26,7 @@ import {
   uploadFileToSupabase
 } from '../services/supabaseService';
 
-type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security' | 'library';
+type AdminTab = 'dashboard' | 'users' | 'premium' | 'marketing' | 'dictionary' | 'discounts' | 'security' | 'library' | 'documents';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -65,6 +65,7 @@ const Admin: React.FC = () => {
   const [editingItem, setEditingItem] = useState<Partial<LibraryItem> | null>(null);
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [docUrls, setDocUrls] = useState<{privacy?: string, terms?: string, offer?: string}>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -106,7 +107,14 @@ const Admin: React.FC = () => {
           setDiscounts(allDiscounts);
           setPackages(subPackages);
           setLibraryItems(libItems);
-          if (settings) setNewCardNumber(settings.paymentCardNumber);
+          if (settings) {
+            setNewCardNumber(settings.paymentCardNumber);
+            setDocUrls({
+              privacy: settings.privacyPolicyUrl,
+              terms: settings.termsOfUseUrl,
+              offer: settings.publicOfferUrl
+            });
+          }
         }
       } catch (err) {
         console.error("Admin data refresh failed:", err);
@@ -286,6 +294,80 @@ const Admin: React.FC = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'privacy' | 'terms' | 'offer') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadFileToSupabase('library-content', file);
+      const newUrls = { ...docUrls, [type]: url };
+      setDocUrls(newUrls);
+      
+      await updateAdminSettingsInSupabase({
+        paymentCardNumber: newCardNumber,
+        privacyPolicyUrl: newUrls.privacy,
+        termsOfUseUrl: newUrls.terms,
+        publicOfferUrl: newUrls.offer
+      });
+      alert("Hujjat yuklandi va saqlandi!");
+    } catch (e) {
+      console.error(e);
+      alert("Fayl yuklashda xatolik! 'legal-docs' bucket mavjudligini tekshiring.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const renderDocuments = () => (
+    <div className="space-y-6">
+      <div className="glass-card p-6 rounded-3xl border border-white/5 bg-slate-900/40">
+        <h3 className="font-black text-sm uppercase tracking-widest mb-6">Yuridik Hujjatlar (PDF)</h3>
+        
+        <div className="space-y-6">
+          {[
+            { id: 'privacy', label: 'Maxfiylik Siyosati', url: docUrls.privacy },
+            { id: 'offer', label: 'Ommaviy Offerta', url: docUrls.offer },
+            { id: 'terms', label: 'Foydalanish Qoidalari', url: docUrls.terms }
+          ].map(doc => (
+            <div key={doc.id} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{doc.label}</label>
+                {doc.url && (
+                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 hover:underline">
+                    Joriy faylni ko'rish
+                  </a>
+                )}
+              </div>
+              <div className="flex items-center space-x-3">
+                <input 
+                  type="file" 
+                  accept="application/pdf"
+                  onChange={e => handleDocUpload(e, doc.id as any)}
+                  className="hidden"
+                  id={`doc-upload-${doc.id}`}
+                />
+                <label 
+                  htmlFor={`doc-upload-${doc.id}`}
+                  className={`flex-1 flex items-center justify-center space-x-3 border-2 border-dashed rounded-2xl p-4 transition-all cursor-pointer ${
+                    doc.url 
+                      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' 
+                      : 'border-white/5 bg-slate-800/50 text-slate-500 hover:border-blue-500/30 hover:bg-blue-500/5'
+                  }`}
+                >
+                  <i className={`fa-solid ${doc.url ? 'fa-file-circle-check' : 'fa-file-pdf'} text-xl`}></i>
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    {doc.url ? 'Yangilash' : 'PDF Yuklash'}
+                  </span>
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -856,12 +938,12 @@ const Admin: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Nav */}
-        <div className="w-16 border-r border-white/5 flex flex-col items-center py-6 space-y-6 shrink-0 bg-slate-900/20">
-          {(['dashboard', 'users', 'premium', 'marketing', 'dictionary', 'discounts', 'library', 'security'] as AdminTab[]).map(tab => (
+        <div className="w-16 border-r border-white/5 flex flex-col items-center py-6 space-y-6 shrink-0 bg-slate-900/20 overflow-y-auto no-scrollbar">
+          {(['dashboard', 'users', 'premium', 'marketing', 'dictionary', 'discounts', 'library', 'documents', 'security'] as AdminTab[]).map(tab => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:bg-white/5'}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:bg-white/5'}`}
             >
               <i className={`fa-solid ${
                 tab === 'dashboard' ? 'fa-chart-line' :
@@ -870,7 +952,8 @@ const Admin: React.FC = () => {
                 tab === 'marketing' ? 'fa-bullhorn' :
                 tab === 'dictionary' ? 'fa-book' :
                 tab === 'discounts' ? 'fa-tag' : 
-                tab === 'library' ? 'fa-book-open' : 'fa-shield-halved'
+                tab === 'library' ? 'fa-book-open' : 
+                tab === 'documents' ? 'fa-file-contract' : 'fa-shield-halved'
               }`}></i>
             </button>
           ))}
@@ -885,6 +968,7 @@ const Admin: React.FC = () => {
           {activeTab === 'dictionary' && renderDictionary()}
           {activeTab === 'discounts' && renderDiscounts()}
           {activeTab === 'library' && renderLibrary()}
+          {activeTab === 'documents' && renderDocuments()}
           {activeTab === 'security' && renderSecurity()}
           <div className="h-24"></div>
         </div>

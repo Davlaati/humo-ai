@@ -17,7 +17,7 @@ import RavonaMock from './components/RavonaMock';
 import Leaderboard from './components/Leaderboard';
 import EntryNotification from './components/EntryNotification';
 import SmartDictionary from './components/SmartDictionary';
-import Translator from './components/Translator';
+import GrammarAnalyzer from './components/GrammarAnalyzer';
 import Library from './components/Library';
 import UserProfileView from './components/UserProfileView';
 
@@ -257,7 +257,7 @@ const App: React.FC = () => {
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setActiveTab('pricing')} />;
           case 'user-profile': return viewingUserId ? <UserProfileView userId={viewingUserId} onBack={() => { setActiveTab(previousTab); setViewingUserId(null); }} /> : <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
-          case 'translator': return <Translator user={user} onNavigate={setActiveTab} onShowPaywall={() => setShowPaywall(true)} />;
+          case 'translator': return <GrammarAnalyzer user={user} onNavigate={setActiveTab} />;
           case 'pricing': {
             return (
               <React.Suspense fallback={<div>Loading...</div>}>

@@ -234,6 +234,11 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
 
   const handleCreateRoom = () => {
     if (socket && !isSubmitting) {
+      if (!socket.connected) {
+        alert("Connection lost. Please wait...");
+        return;
+      }
+
       setIsSubmitting(true);
       const roomName = newRoom.name.trim() || `English Practice #${Math.floor(Math.random() * 1000)}`;
       
@@ -251,6 +256,11 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
         userId: user.id,
         isFriendsOnly: newRoom.isFriendsOnly,
         allowedUserIds
+      }, (response: any) => {
+        if (response && response.status === 'error') {
+          alert(response.message || "Failed to create room");
+          setIsSubmitting(false);
+        }
       });
     }
   };

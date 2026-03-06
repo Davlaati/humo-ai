@@ -8,7 +8,7 @@ export const UI_TRANSLATIONS: Record<string, Record<Language, string>> = {
   ai_tutor: { Uz: "AI Tutor", Ru: "AI Тьютор", Eng: "AI Tutor" },
   updated: { Uz: "Yangilangan", Ru: "Обновлено", Eng: "Updated" },
   smart_dictionary: { Uz: "Aqlli lug'at", Ru: "Умный словарь", Eng: "Smart Dictionary" },
-  translator: { Uz: "Tarjimon", Ru: "Переводчик", Eng: "Translator" },
+  grammar_check: { Uz: "Grammar Check", Ru: "Проверка грамматики", Eng: "Grammar Check" },
   word_bank: { Uz: "So'zlar banki", Ru: "Банк слов", Eng: "Word Bank" },
   leaderboard: { Uz: "Reyting", Ru: "Рейтинг", Eng: "Leaderboard" },
   profile: { Uz: "Profil", Ru: "Профиль", Eng: "Profile" },

@@ -252,15 +252,15 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                   bgEmoji="💰"
               />
 
-              {/* Translator Banner */}
+              {/* Grammar Analyzer Banner */}
               <LargeBannerItem 
-                  title="AI Tarjimon" 
-                  subtitle="Matnlarni professional darajada tarjima qiling"
-                  icon="fa-language"
-                  color="text-blue-400"
-                  bgColor="bg-blue-500/20"
+                  title="Grammar Check" 
+                  subtitle="Matnlarni grammatik tahlil qiling"
+                  icon="fa-spell-check"
+                  color="text-green-400"
+                  bgColor="bg-green-500/20"
                   onClick={() => handleAction('translator')}
-                  bgEmoji="🌐"
+                  bgEmoji="✅"
               />
           </div>
       </div>

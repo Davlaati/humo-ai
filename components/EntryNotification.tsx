@@ -34,56 +34,51 @@ const EntryNotification: React.FC<EntryNotificationProps> = ({ notification, onC
   };
 
   return (
-    <div className="fixed inset-0 z-[5000] flex items-end justify-center animate-fade-in">
+    <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 animate-fade-in">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleDismiss}></div>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={handleDismiss}></div>
 
       <div 
-        className={`w-full max-w-md h-[85vh] rounded-t-[40px] overflow-hidden relative shadow-2xl transition-all duration-500 bg-[#007aff] flex flex-col ${isAnimatingOut ? 'translate-y-full' : 'translate-y-0 animate-slide-up'}`}
+        className={`w-full max-w-sm rounded-[40px] overflow-hidden relative shadow-2xl transition-all duration-500 bg-gradient-to-br from-blue-600 to-indigo-700 flex flex-col ${isAnimatingOut ? 'scale-95 opacity-0' : 'scale-100 opacity-100 animate-zoom-in'}`}
       >
-        {/* Top Handle */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/30 rounded-full z-20"></div>
-
         {/* Close Button */}
         <button 
           onClick={handleDismiss}
-          className="absolute top-6 right-6 w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#007aff] z-20 shadow-lg active:scale-90 transition-transform"
+          className="absolute top-4 right-4 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white z-20 hover:bg-white/20 active:scale-90 transition-transform"
         >
           <i className="fa-solid fa-xmark text-sm"></i>
         </button>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center relative z-10">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative z-10">
           
-          {/* Image Placeholder / Image */}
-          <div className="w-full flex-1 flex flex-col items-center justify-center space-y-6">
-            {notification.image ? (
+          {/* Image */}
+          {notification.image && (
+            <div className="w-24 h-24 rounded-3xl bg-white/10 flex items-center justify-center mb-6 shadow-xl overflow-hidden">
               <img 
                 src={notification.image} 
                 alt={notification.title} 
-                className="max-w-full max-h-[40vh] object-contain rounded-2xl shadow-xl"
+                className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
-            ) : null}
-
-            <div className="space-y-3">
-              <h1 className="text-3xl font-black text-white leading-tight uppercase tracking-tighter">
-                {notification.title}
-              </h1>
-              <p className="text-white/80 text-sm font-bold leading-relaxed">
-                {notification.description}
-              </p>
             </div>
+          )}
+
+          <div className="space-y-2 mb-8">
+            <h1 className="text-2xl font-black text-white leading-tight uppercase tracking-tighter">
+              {notification.title}
+            </h1>
+            <p className="text-white/70 text-xs font-bold leading-relaxed">
+              {notification.description}
+            </p>
           </div>
 
           {/* Action Button */}
-          <div className="w-full pt-10 pb-6">
-            <button 
-              onClick={handleAction}
-              className="w-full py-5 rounded-[28px] bg-[#cce5ff] text-[#007aff] font-black text-sm uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all"
-            >
-              {notification.buttonText || 'DAVOM ETISH'}
-            </button>
-          </div>
+          <button 
+            onClick={handleAction}
+            className="w-full py-4 rounded-[20px] bg-white text-blue-700 font-black text-xs uppercase tracking-[0.1em] shadow-xl active:scale-95 transition-all"
+          >
+            {notification.buttonText || 'DAVOM ETISH'}
+          </button>
         </div>
       </div>
     </div>

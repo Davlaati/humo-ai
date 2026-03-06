@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import WordBattle from './WordBattle';
 import CosmicScramble from './CosmicScramble';
+import WordChain from './WordChain';
+import GuessingGame from './GuessingGame';
 import { playTapSound } from '../services/audioService';
-import { Gamepad2, Flame, Shield, Star, Rocket } from 'lucide-react';
+import { Gamepad2, Flame, Shield, Star, Rocket, Zap, MessageSquare } from 'lucide-react';
 
 interface GameProps {
   user: UserProfile;
 }
 
-type ActiveGame = 'menu' | 'word-battle' | 'cosmic-scramble';
+type ActiveGame = 'menu' | 'word-battle' | 'cosmic-scramble' | 'word-chain' | 'guessing-game';
 
 const Game: React.FC<GameProps> = ({ user }) => {
   const [activeGame, setActiveGame] = useState<ActiveGame>('menu');
@@ -20,6 +22,14 @@ const Game: React.FC<GameProps> = ({ user }) => {
 
   if (activeGame === 'cosmic-scramble') {
     return <CosmicScramble user={user} onBack={() => setActiveGame('menu')} />;
+  }
+
+  if (activeGame === 'word-chain') {
+    return <WordChain user={user} onBack={() => setActiveGame('menu')} />;
+  }
+
+  if (activeGame === 'guessing-game') {
+    return <GuessingGame user={user} onBack={() => setActiveGame('menu')} />;
   }
 
   return (
@@ -107,6 +117,45 @@ const Game: React.FC<GameProps> = ({ user }) => {
             </div>
           </div>
 
+          {/* Game Card 3: Word Chain */}
+          <div 
+            onClick={() => { playTapSound(); setActiveGame('word-chain'); }}
+            className="group relative w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-pointer transform transition-all active:scale-95 hover:shadow-[0_0_30px_rgba(234,179,8,0.3)] border-2 border-yellow-500/30"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-600 to-amber-800"></div>
+            
+            <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/30">
+                  <Zap className="text-white w-5 h-5" />
+                </div>
+                <h2 className="text-2xl font-black text-white italic tracking-tight">SO'Z ZANJIRI</h2>
+              </div>
+              <p className="text-yellow-100/80 text-sm font-medium line-clamp-2">
+                Do'stlaringiz bilan so'z zanjirini davom ettiring!
+              </p>
+            </div>
+          </div>
+
+          {/* Game Card 4: Guessing Game */}
+          <div 
+            onClick={() => { playTapSound(); setActiveGame('guessing-game'); }}
+            className="group relative w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-pointer transform transition-all active:scale-95 hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] border-2 border-green-500/30"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-green-600 to-emerald-800"></div>
+            
+            <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/30">
+                  <MessageSquare className="text-white w-5 h-5" />
+                </div>
+                <h2 className="text-2xl font-black text-white italic tracking-tight">TOPISHMOQ</h2>
+              </div>
+              <p className="text-green-100/80 text-sm font-medium line-clamp-2">
+                Do'stlaringiz bilan so'zlarni toping!
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

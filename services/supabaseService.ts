@@ -399,6 +399,7 @@ export const updatePremiumStatusInSupabase = async (userId: string, isPremium: b
 // Payment functions
 export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'createdAt'>) => {
   try {
+    console.log('Creating payment:', payment);
     const { data, error } = await supabase.from('payments').insert({
       user_id: payment.userId,
       user_name: payment.userName,
@@ -408,7 +409,13 @@ export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'cre
       receipt_image_url: payment.receiptImageUrl,
       status: payment.status
     }).select().single();
-    if (error) throw error;
+    
+    if (error) {
+      console.error('Error creating payment in Supabase:', error);
+      throw error;
+    }
+    
+    console.log('Payment created successfully:', data);
     return data;
   } catch (e) {
     console.error('Error creating payment:', e);
@@ -424,7 +431,12 @@ export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => 
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching pending payments:', error);
+      throw error;
+    }
+    
+    console.log('Fetched pending payments:', data);
     
     return (data || []).map(d => ({
       id: d.id,
@@ -438,6 +450,7 @@ export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => 
       createdAt: d.created_at
     }));
   } catch (e) {
+    console.error('Fetch pending payments failed:', e);
     return [];
   }
 };
@@ -453,7 +466,12 @@ export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | 
   try {
     const { data, error } = await supabase.from('admin_settings').select('*').single();
     if (error) return { paymentCardNumber: '8600 0000 0000 0000' }; // Default fallback
-    return { paymentCardNumber: data.payment_card_number };
+    return { 
+      paymentCardNumber: data.payment_card_number,
+      privacyPolicyUrl: data.privacy_policy_url,
+      termsOfUseUrl: data.terms_of_use_url,
+      publicOfferUrl: data.public_offer_url
+    };
   } catch (e) {
     return { paymentCardNumber: '8600 0000 0000 0000' };
   }
@@ -461,6 +479,12 @@ export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | 
 
 export const updateAdminSettingsInSupabase = async (settings: AdminSettings) => {
   try {
-    await supabase.from('admin_settings').upsert({ id: 1, payment_card_number: settings.paymentCardNumber });
+    await supabase.from('admin_settings').upsert({ 
+      id: 1, 
+      payment_card_number: settings.paymentCardNumber,
+      privacy_policy_url: settings.privacyPolicyUrl,
+      terms_of_use_url: settings.termsOfUseUrl,
+      public_offer_url: settings.publicOfferUrl
+    });
   } catch (e) {}
 };

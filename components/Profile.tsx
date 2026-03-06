@@ -5,7 +5,9 @@ import UserBadges from './UserBadges';
 import { calculateLevel } from '../services/gamificationService';
 import { isPremiumActive } from '../services/storageService';
 import { getTranslation } from '../translations';
-import { Settings, Lock, Globe, Users, Edit3, X } from 'lucide-react';
+import { Settings, Lock, Globe, Users, Edit3, X, Volume2, Smartphone, Languages, HelpCircle, FileText, Info, AlertTriangle, ChevronRight } from 'lucide-react';
+import { fetchAdminSettingsFromSupabase } from '../services/supabaseService';
+import { AdminSettings, Language } from '../types';
 
 interface ProfileProps {
   user: UserProfile;
@@ -27,6 +29,26 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
   const [showSettings, setShowSettings] = useState(false);
   const [editedBio, setEditedBio] = useState(user.bio || '');
   const [editedIsPrivate, setEditedIsPrivate] = useState(user.isPrivate || false);
+  
+  // New Features State
+  const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
+  const [showAbout, setShowAbout] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfTitle, setPdfTitle] = useState('');
+
+  React.useEffect(() => {
+    fetchAdminSettingsFromSupabase().then(setAdminSettings);
+  }, []);
+
+  const handleUpdateSetting = (key: string, value: any) => {
+    onUpdateUser({
+      ...user,
+      settings: {
+        ...user.settings,
+        [key]: value
+      } as any
+    });
+  };
 
   // Admin Login States
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -239,6 +261,122 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
          </div>
        </div>
 
+       {/* New Features Section */}
+       <div className="space-y-3 mt-6">
+          {/* Sound & Vibration */}
+          <div className="glass-card p-4 rounded-2xl border border-white/5 space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                  <Volume2 className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-white">Ovoz effektlari</span>
+              </div>
+              <button 
+                onClick={() => handleUpdateSetting('soundEnabled', !user.settings?.soundEnabled)}
+                className={`w-10 h-5 rounded-full relative transition-colors ${user.settings?.soundEnabled ? 'bg-blue-500' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-transform ${user.settings?.soundEnabled ? 'left-6' : 'left-1'}`}></div>
+              </button>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-white">Tebranish</span>
+              </div>
+              <button 
+                onClick={() => handleUpdateSetting('vibrationEnabled', !user.settings?.vibrationEnabled)}
+                className={`w-10 h-5 rounded-full relative transition-colors ${user.settings?.vibrationEnabled ? 'bg-blue-500' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-transform ${user.settings?.vibrationEnabled ? 'left-6' : 'left-1'}`}></div>
+              </button>
+            </div>
+          </div>
+
+          {/* Language */}
+          <div className="glass-card p-4 rounded-2xl border border-white/5 flex justify-between items-center">
+             <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Languages className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-white">Til (Language)</span>
+             </div>
+             <select 
+               value={user.settings?.language || 'Uz'}
+               onChange={(e) => handleUpdateSetting('language', e.target.value as Language)}
+               className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1 text-xs font-bold text-white outline-none"
+             >
+               <option value="Uz">O'zbek</option>
+               <option value="Ru">Русский</option>
+               <option value="Eng">English</option>
+             </select>
+          </div>
+
+          {/* Help */}
+          <a href="https://t.me/yusupovdavlatbek" target="_blank" rel="noreferrer" className="glass-card p-4 rounded-2xl border border-white/5 flex justify-between items-center hover:bg-white/5 transition">
+             <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <HelpCircle className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-white">Yordam (Support)</span>
+             </div>
+             <ChevronRight className="w-4 h-4 text-slate-500" />
+          </a>
+
+          {/* Documents */}
+          <div className="glass-card p-4 rounded-2xl border border-white/5 space-y-1">
+             {[
+               { title: 'Maxfiylik Siyosati', url: adminSettings?.privacyPolicyUrl },
+               { title: 'Ommaviy Offerta', url: adminSettings?.publicOfferUrl },
+               { title: 'Foydalanish Qoidalari', url: adminSettings?.termsOfUseUrl }
+             ].map((doc, idx) => (
+               <button 
+                 key={idx}
+                 onClick={() => {
+                   if (doc.url) {
+                     setPdfUrl(doc.url);
+                     setPdfTitle(doc.title);
+                   } else {
+                     alert("Hujjat hali yuklanmagan");
+                   }
+                 }}
+                 className="w-full flex justify-between items-center p-2 hover:bg-white/5 rounded-xl transition"
+               >
+                 <div className="flex items-center gap-3">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span className="text-xs font-bold text-slate-300">{doc.title}</span>
+                 </div>
+                 <ChevronRight className="w-3 h-3 text-slate-600" />
+               </button>
+             ))}
+          </div>
+
+          {/* P2P Warning */}
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex gap-3 items-start">
+             <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
+             <p className="text-[10px] text-yellow-200/80 leading-relaxed">
+               <span className="font-bold text-yellow-400 block mb-1">Diqqat: P2P To'lovlar</span>
+               Barcha to'lovlar P2P (karta orqali) amalga oshiriladi. To'lov xavfsizligi va shaffofligi ta'minlangan. Muammolar bo'lsa, yordam bo'limiga murojaat qiling.
+             </p>
+          </div>
+
+          {/* About App */}
+          <button 
+            onClick={() => setShowAbout(true)}
+            className="w-full glass-card p-4 rounded-2xl border border-white/5 flex justify-between items-center hover:bg-white/5 transition"
+          >
+             <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <Info className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-white">Ilova Haqida</span>
+             </div>
+             <ChevronRight className="w-4 h-4 text-slate-500" />
+          </button>
+       </div>
+
        {/* Edit Interests Overlay */}
        {isEditingInterests && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
@@ -326,6 +464,56 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
                >
                  Save Changes
                </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* PDF Viewer Modal */}
+       {pdfUrl && (
+         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-fade-in">
+           <div className="glass-card w-full h-full max-w-4xl rounded-3xl border border-white/20 shadow-2xl flex flex-col overflow-hidden animate-slide-up">
+             <div className="flex justify-between items-center p-4 border-b border-white/10 bg-slate-900/50">
+               <h3 className="text-lg font-bold text-white">{pdfTitle}</h3>
+               <button onClick={() => setPdfUrl(null)} className="p-2 hover:bg-white/10 rounded-full transition">
+                 <X className="w-6 h-6 text-white" />
+               </button>
+             </div>
+             <div className="flex-1 bg-slate-800 relative">
+                <iframe src={pdfUrl} className="w-full h-full" title="PDF Viewer" />
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* About App Modal */}
+       {showAbout && (
+         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-fade-in">
+           <div className="glass-card w-full max-w-md rounded-3xl p-8 border border-white/20 shadow-2xl animate-slide-up relative overflow-hidden">
+             <button onClick={() => setShowAbout(false)} className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition">
+               <X className="w-6 h-6 text-white" />
+             </button>
+             
+             <div className="flex flex-col items-center text-center">
+               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-600/20 mb-6 rotate-3">
+                 <i className="fa-solid fa-robot text-4xl text-white"></i>
+               </div>
+               <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-2">Ravona AI</h2>
+               <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-6">Version 2.4.0 (Beta)</p>
+               
+               <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
+                 <p>
+                   Ravona AI - bu sun'iy intellekt yordamida ingliz tilini o'rganish uchun yaratilgan innovatsion platforma.
+                 </p>
+                 <p>
+                   Bizning maqsadimiz - har bir inson uchun sifatli va qiziqarli ta'lim olish imkoniyatini yaratish. Speaking Club, AI suhbatdosh, va interaktiv darslar orqali tilingizni rivojlantiring.
+                 </p>
+               </div>
+
+               <div className="mt-8 pt-6 border-t border-white/10 w-full">
+                 <p className="text-[10px] text-slate-500 font-mono">Developed by Yusupov Davlatbek</p>
+                 <p className="text-[10px] text-slate-600 font-mono mt-1">© 2024 All Rights Reserved</p>
+               </div>
              </div>
            </div>
          </div>
