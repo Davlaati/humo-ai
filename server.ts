@@ -59,6 +59,7 @@ async function startServer() {
       
       socket.join(id);
       socket.emit("room-created", id); // Send back the ID to the creator
+      socket.emit("room-joined", rooms[id]); // Immediately join the creator to the room
       io.emit("rooms-list", Object.values(rooms));
     });
 

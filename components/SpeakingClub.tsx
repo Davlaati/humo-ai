@@ -49,9 +49,15 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
   const peersRef = useRef<Record<string, RTCPeerConnection>>({});
   const remoteAudiosRef = useRef<Record<string, HTMLAudioElement>>({});
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     const newSocket = io();
     setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
+    });
 
     newSocket.on('rooms-list', (updatedRooms: Room[]) => {
       setRooms(updatedRooms);
@@ -59,11 +65,14 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
     newSocket.on('room-created', (roomId) => {
       // Creator logic handled via room-joined or list update
+      setIsSubmitting(false);
     });
 
     newSocket.on('room-joined', async (room: Room) => {
+      console.log('Joined room:', room);
       setCurrentRoom(room);
       setIsCreating(false);
+      setIsSubmitting(false);
       await initWebRTC(newSocket, room.id);
     });
 
@@ -210,9 +219,12 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
   }, [currentRoom]);
 
   const handleCreateRoom = () => {
-    if (socket && newRoom.name) {
+    if (socket && !isSubmitting) {
+      setIsSubmitting(true);
+      const roomName = newRoom.name.trim() || `English Practice #${Math.floor(Math.random() * 1000)}`;
+      
       socket.emit('create-room', { 
-        name: newRoom.name, 
+        name: roomName, 
         topic: newRoom.topic, 
         level: newRoom.level, 
         creator: user.name, 
@@ -227,7 +239,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
           if (myRoom) {
               setCurrentRoom(myRoom);
               setIsCreating(false);
-              // Re-init WebRTC if needed, but room-joined should handle it
+              setIsSubmitting(false);
           }
       }
   }, [rooms, socket, currentRoom]);
@@ -552,10 +564,14 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
                       <button 
                         onClick={handleCreateRoom}
-                        disabled={!newRoom.name}
-                        className="w-full liquid-button py-5 rounded-[25px] font-black text-lg uppercase tracking-widest shadow-xl mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isSubmitting || !socket}
+                        className="w-full liquid-button py-5 rounded-[25px] font-black text-lg uppercase tracking-widest shadow-xl mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                       >
-                          Start Speaking
+                          {isSubmitting ? (
+                              <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                              'Start Speaking'
+                          )}
                       </button>
                   </div>
               </div>
