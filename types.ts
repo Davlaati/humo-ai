@@ -150,6 +150,7 @@ export interface LeaderboardEntry {
   isCurrentUser: boolean;
   trend: 'up' | 'down' | 'same';
   badges?: Achievement[];
+  isPremium?: boolean;
 }
 
 export interface SubscriptionPackage {

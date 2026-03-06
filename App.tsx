@@ -37,10 +37,46 @@ const App: React.FC = () => {
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
 
-  const activityIntervalRef = useRef<any>(null);
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Telegram WebApp initializatsiya
+    if (user) {
+      const now = Date.now();
+      let updatedUser = { ...user };
+      let changed = false;
+
+      // Initialize Trial if not set
+      if (!user.trialExpiresAt && !user.isPremium) {
+        // 3 days trial
+        updatedUser.trialExpiresAt = new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
+        changed = true;
+      }
+
+      // Check for expiration
+      if (!user.isPremium && user.trialExpiresAt) {
+        const trialEnd = new Date(user.trialExpiresAt).getTime();
+        if (now > trialEnd) {
+          setIsTrialExpired(true);
+          setShowPaywall(true);
+        } else {
+          setIsTrialExpired(false);
+        }
+      } else if (user.isPremium) {
+        setIsTrialExpired(false);
+        setShowPaywall(false);
+      }
+
+      if (changed) {
+        updateUser(updatedUser);
+      }
+    }
+  }, [user?.id, user?.isPremium, user?.trialExpiresAt]);
+
+  // Block access if trial expired and not premium
+  const isAccessBlocked = isTrialExpired && !user?.isPremium;
+
+  useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       tg.ready();
@@ -205,7 +241,7 @@ const App: React.FC = () => {
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
           case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
           case 'game': return <Game user={user} />;
-          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onUpdateUser={handleUpdateUser} onShowPaywall={() => setShowPaywall(true)} />;
+          case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} />;
           case 'mock': return <RavonaMock user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'library': return <Library user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
@@ -257,15 +293,17 @@ const App: React.FC = () => {
        )}
 
        <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-xl pointer-events-none'}`}>
-           {showPaywall && (
+           {(showPaywall || isAccessBlocked) && (
              <React.Suspense fallback={null}>
                <Paywall 
                  user={user!} 
                  onActivate={() => {
                    setShowPaywall(false);
+                   setIsTrialExpired(false); // Optimistic update
                    setActiveTab('pricing');
                  }} 
-                 onClose={() => setShowPaywall(false)} 
+                 onClose={() => !isAccessBlocked && setShowPaywall(false)} 
+                 isBlocked={isAccessBlocked}
                />
              </React.Suspense>
            )}

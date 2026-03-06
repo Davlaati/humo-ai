@@ -9,13 +9,19 @@ interface SpeakingClubProps {
   onNavigate: (tab: string) => void;
 }
 
+interface Member {
+  id: string;
+  name: string;
+  isPremium: boolean;
+}
+
 interface Room {
   id: string;
   name: string;
   topic: string;
   level: string;
   creator: string;
-  members: string[];
+  members: Member[];
   limit: number;
   createdAt: number;
   expiresAt: number;
@@ -77,10 +83,10 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
     });
 
     // WebRTC Signaling
-    newSocket.on('user-joined', async (userId) => {
-      console.log('User joined, creating offer for:', userId);
-      const peer = createPeer(userId, newSocket);
-      peersRef.current[userId] = peer;
+    newSocket.on('user-joined', async (member: Member) => {
+      console.log('User joined, creating offer for:', member.id);
+      const peer = createPeer(member.id, newSocket);
+      peersRef.current[member.id] = peer;
       
       const stream = localStreamRef.current;
       if (stream) {
@@ -89,7 +95,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      newSocket.emit('offer', { target: userId, sdp: offer });
+      newSocket.emit('offer', { target: member.id, sdp: offer });
     });
 
     newSocket.on('offer', async ({ target, sdp, sender }) => { // sender is the one who sent offer
@@ -228,14 +234,15 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
         topic: newRoom.topic, 
         level: newRoom.level, 
         creator: user.name, 
-        limit: newRoom.limit 
+        limit: newRoom.limit,
+        isPremium: user.isPremium
       });
     }
   };
   
   useEffect(() => {
       if (socket && !currentRoom) {
-          const myRoom = rooms.find(r => r.members.includes(socket.id || ''));
+          const myRoom = rooms.find(r => r.members.some(m => m.id === socket.id));
           if (myRoom) {
               setCurrentRoom(myRoom);
               setIsCreating(false);
@@ -246,7 +253,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
   const handleJoinRoom = (roomId: string) => {
     if (socket) {
-      socket.emit('join-room', roomId);
+      socket.emit('join-room', { roomId, user: { name: user.name, isPremium: user.isPremium } });
     }
   };
 
@@ -337,24 +344,27 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
 
         {/* Participants Grid */}
         <div className="flex-1 relative z-10 p-6 grid grid-cols-2 gap-4 overflow-y-auto">
-            {currentRoom.members.map((memberId, index) => (
-                <div key={memberId} className="aspect-square rounded-[30px] bg-slate-800/50 border border-white/10 relative overflow-hidden flex flex-col items-center justify-center group">
+            {currentRoom.members.map((member, index) => (
+                <div key={member.id} className={`aspect-square rounded-[30px] bg-slate-800/50 border relative overflow-hidden flex flex-col items-center justify-center group ${member.isPremium ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-white/10'}`}>
                     <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     
                     {/* Avatar */}
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 p-1 mb-3 relative">
+                    <div className={`w-20 h-20 rounded-full p-1 mb-3 relative ${member.isPremium ? 'bg-gradient-to-br from-yellow-400 to-amber-600' : 'bg-gradient-to-br from-blue-400 to-purple-600'}`}>
                         <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
                             <span className="text-2xl font-black text-white">
-                                {index === 0 ? currentRoom.creator.charAt(0) : `U${index}`}
+                                {member.name.charAt(0)}
                             </span>
                         </div>
                         {/* Speaking Indicator */}
-                        <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-slate-900 flex items-center justify-center ${isMuted && memberId === socket?.id ? 'bg-red-500' : 'bg-green-500'}`}>
-                            {isMuted && memberId === socket?.id ? <MicOff className="w-3 h-3 text-white" /> : <Mic className="w-3 h-3 text-white" />}
+                        <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-slate-900 flex items-center justify-center ${isMuted && member.id === socket?.id ? 'bg-red-500' : 'bg-green-500'}`}>
+                            {isMuted && member.id === socket?.id ? <MicOff className="w-3 h-3 text-white" /> : <Mic className="w-3 h-3 text-white" />}
                         </div>
                     </div>
                     
-                    <p className="font-bold text-white text-sm">{index === 0 ? currentRoom.creator : `User ${index + 1}`}</p>
+                    <p className={`font-bold text-sm flex items-center gap-1 ${member.isPremium ? 'text-yellow-400' : 'text-white'}`}>
+                      {member.name}
+                      {member.isPremium && <i className="fa-solid fa-crown text-[10px]"></i>}
+                    </p>
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                         {index === 0 ? 'Host' : 'Member'}
                     </p>
@@ -483,10 +493,10 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate }) => {
                       
                       <div className="flex items-center justify-between">
                           <div className="flex -space-x-2">
-                              {/* Fake avatars for visual interest */}
-                              {[...Array(Math.min(3, room.members.length))].map((_, i) => (
-                                  <div key={i} className="w-8 h-8 rounded-full bg-slate-800 border-2 border-[#0c1222] flex items-center justify-center text-[10px] font-bold">
-                                      {String.fromCharCode(65 + i)}
+                              {/* Actual avatars */}
+                              {room.members.slice(0, 3).map((member, i) => (
+                                  <div key={member.id} className={`w-8 h-8 rounded-full border-2 border-[#0c1222] flex items-center justify-center text-[10px] font-bold ${member.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-slate-800 text-white'}`}>
+                                      {member.name.charAt(0)}
                                   </div>
                               ))}
                               {room.members.length > 3 && (

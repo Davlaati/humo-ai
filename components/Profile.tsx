@@ -68,6 +68,23 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
              </div>
          </div>
          <h2 className="text-2xl font-black">{user.name}</h2>
+         
+         {/* Premium / Trial Status Badge */}
+         {isPremium ? (
+            <div className="mt-2 px-4 py-1.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-full text-xs font-black uppercase tracking-widest border border-yellow-400 shadow-lg shadow-yellow-600/20 flex items-center gap-2 animate-pulse">
+              <i className="fa-solid fa-crown"></i> Premium
+            </div>
+         ) : user.trialExpiresAt && new Date(user.trialExpiresAt).getTime() > Date.now() ? (
+            <div className="mt-2 px-4 py-1.5 bg-slate-800 text-slate-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-700 flex items-center gap-2">
+              <i className="fa-regular fa-clock"></i> 
+              Trial: {Math.ceil((new Date(user.trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left
+            </div>
+         ) : (
+            <div className="mt-2 px-4 py-1.5 bg-red-900/50 text-red-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-800 flex items-center gap-2">
+              <i className="fa-solid fa-lock"></i> Trial Expired
+            </div>
+         )}
+
          {user.ravonaScore && (
            <div className="mt-3 flex flex-col items-center">
              <div className="px-4 py-1.5 bg-blue-600 text-white rounded-full text-xs font-black uppercase tracking-widest border border-blue-400 shadow-lg shadow-blue-600/20">

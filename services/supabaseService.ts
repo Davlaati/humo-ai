@@ -177,7 +177,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
     // For now, we'll just sort by total XP
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, xp, wins')
+      .select('id, name, xp, wins, is_premium')
       .order('xp', { ascending: false })
       .limit(50);
     
@@ -186,7 +186,7 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
       // Fallback: try without wins if it doesn't exist
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('profiles')
-        .select('id, name, xp')
+        .select('id, name, xp, is_premium')
         .order('xp', { ascending: false })
         .limit(50);
       
@@ -198,7 +198,8 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
         wins: 0,
         rank: index + 1,
         isCurrentUser: false,
-        trend: 'same'
+        trend: 'same',
+        isPremium: u.is_premium
       }));
     }
     
@@ -209,7 +210,8 @@ export const fetchLeaderboardFromSupabase = async (period: LeaderboardPeriod): P
       wins: u.wins || 0,
       rank: index + 1,
       isCurrentUser: false,
-      trend: 'same'
+      trend: 'same',
+      isPremium: u.is_premium
     }));
   } catch (e) {
     console.error('Leaderboard fetch failed:', e);

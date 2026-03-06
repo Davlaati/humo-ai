@@ -19,13 +19,19 @@ async function startServer() {
   const PORT = 3000;
 
   // Speaking Club State
+  interface Member {
+    id: string; // socket.id
+    name: string;
+    isPremium: boolean;
+  }
+
   interface Room {
     id: string;
     name: string;
     topic: string;
     level: string;
     creator: string;
-    members: string[];
+    members: Member[];
     limit: number;
     createdAt: number;
     expiresAt: number;
@@ -40,7 +46,7 @@ async function startServer() {
       socket.emit("rooms-list", Object.values(rooms));
     });
 
-    socket.on("create-room", ({ name, topic, level, creator, limit }) => {
+    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium }) => {
       const id = Math.random().toString(36).substring(2, 9);
       const createdAt = Date.now();
       const expiresAt = createdAt + 30 * 60 * 1000; // 30 minutes
@@ -51,7 +57,7 @@ async function startServer() {
         topic, 
         level, 
         creator, 
-        members: [socket.id], 
+        members: [{ id: socket.id, name: creator, isPremium: !!isPremium }], 
         limit, 
         createdAt, 
         expiresAt 
@@ -63,11 +69,12 @@ async function startServer() {
       io.emit("rooms-list", Object.values(rooms));
     });
 
-    socket.on("join-room", (roomId) => {
+    socket.on("join-room", ({ roomId, user }) => {
       if (rooms[roomId] && rooms[roomId].members.length < rooms[roomId].limit) {
-        rooms[roomId].members.push(socket.id);
+        const member = { id: socket.id, name: user.name, isPremium: !!user.isPremium };
+        rooms[roomId].members.push(member);
         socket.join(roomId);
-        io.to(roomId).emit("user-joined", socket.id);
+        io.to(roomId).emit("user-joined", member);
         socket.emit("room-joined", rooms[roomId]); // Confirm join to the user
         io.emit("rooms-list", Object.values(rooms));
       } else {
@@ -90,7 +97,7 @@ async function startServer() {
 
     socket.on("disconnect", () => {
       for (const roomId in rooms) {
-        const index = rooms[roomId].members.indexOf(socket.id);
+        const index = rooms[roomId].members.findIndex(m => m.id === socket.id);
         if (index !== -1) {
           rooms[roomId].members.splice(index, 1);
           io.to(roomId).emit("user-left", socket.id);

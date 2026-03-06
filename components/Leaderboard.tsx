@@ -133,15 +133,18 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate }) => {
             {rest.map((entry) => (
               <div 
                 key={entry.userId}
-                className="flex items-center py-4 px-5 rounded-[24px] bg-white/[0.02] border border-white/[0.03] transition-all active:scale-[0.98]"
+                className={`flex items-center py-4 px-5 rounded-[24px] border transition-all active:scale-[0.98] ${entry.isPremium ? 'bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'bg-white/[0.02] border-white/[0.03]'}`}
               >
-                <span className="w-8 text-[11px] font-bold text-slate-600 italic">#{entry.rank}</span>
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm text-slate-400 mr-4 border border-white/5">
+                <span className={`w-8 text-[11px] font-bold italic ${entry.isPremium ? 'text-yellow-500' : 'text-slate-600'}`}>#{entry.rank}</span>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm mr-4 border ${entry.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-white/5 text-slate-400 border-white/5'}`}>
                   {entry.name?.charAt(0)}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center">
-                    <p className="text-xs font-black uppercase tracking-tight">{entry.name}</p>
+                    <p className={`text-xs font-black uppercase tracking-tight ${entry.isPremium ? 'text-yellow-200' : 'text-white'}`}>
+                      {entry.name}
+                      {entry.isPremium && <i className="fa-solid fa-crown ml-2 text-yellow-500 text-[10px]"></i>}
+                    </p>
                     <span className="ml-2 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[8px] font-black rounded border border-blue-500/20">L{calculateLevel(entry.xp).level}</span>
                     <UserBadges user={{...user, badges: entry.badges || []} as any} compact={true} />
                   </div>

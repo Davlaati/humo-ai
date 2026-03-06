@@ -85,7 +85,8 @@ export const getLeaderboardData = async (period: LeaderboardPeriod, currentUser:
             wins: currentUser.wins || 0,
             rank: 0,
             isCurrentUser: true,
-            trend: 'same'
+            trend: 'same',
+            isPremium: currentUser.isPremium
         });
     }
 
