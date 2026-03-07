@@ -182,7 +182,8 @@ const Admin: React.FC = () => {
       }
     } catch (err) {
       console.error("Admin config save error:", err);
-      alert("Xatolik yuz berdi: " + (err instanceof Error ? err.message : String(err)));
+      const errorMessage = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err));
+      alert("Xatolik yuz berdi: " + errorMessage);
     }
   };
 

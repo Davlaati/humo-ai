@@ -392,7 +392,12 @@ export const uploadFileToSupabase = async (bucket: string, file: File): Promise<
       .from(bucket)
       .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      if (uploadError.message.includes('Bucket not found')) {
+        throw new Error(`'${bucket}' nomli bucket topilmadi. Supabase dashboardda yaratilganligini tekshiring.`);
+      }
+      throw uploadError;
+    }
 
     const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
     return data.publicUrl;
