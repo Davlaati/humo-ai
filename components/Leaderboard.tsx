@@ -191,7 +191,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate, onViewUser 
                   </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-black text-white leading-none">{(currentUserEntry.xp ?? 0).toLocaleString()} <span className="text-[10px] ml-0.5">0</span></p>
+                <p className="text-xl font-black text-white leading-none">{(currentUserEntry.xp ?? 0).toLocaleString()}</p>
                 <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-1">Jami XP</p>
               </div>
            </div>

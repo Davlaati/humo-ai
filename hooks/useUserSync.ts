@@ -32,8 +32,18 @@ export const useUserSync = () => {
         // Handle Streak Logic
         const { newStreak, shouldUpdate } = calculateStreak(profile.lastActiveDate, profile.streak);
         
-        if (shouldUpdate) {
-          profile = { ...profile, streak: newStreak, lastActiveDate: new Date().toISOString() };
+        // Update Activity Log for Heatmap
+        const todayStr = new Date().toISOString().split('T')[0];
+        const currentLog = profile.activityLog || [];
+        const updatedLog = currentLog.includes(todayStr) ? currentLog : [...currentLog, todayStr].slice(-100); // Keep last 100 days
+
+        if (shouldUpdate || !currentLog.includes(todayStr)) {
+          profile = { 
+            ...profile, 
+            streak: newStreak, 
+            lastActiveDate: new Date().toISOString(),
+            activityLog: updatedLog
+          };
           await syncUserToSupabase(profile);
         }
         

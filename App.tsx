@@ -21,6 +21,8 @@ import SmartDictionary from './components/SmartDictionary';
 import GrammarAnalyzer from './components/GrammarAnalyzer';
 import Library from './components/Library';
 import UserProfileView from './components/UserProfileView';
+import MarketingModal from './components/MarketingModal';
+import StoryTaskModal from './components/StoryTaskModal';
 
 const Pricing = React.lazy(() => import('./components/Pricing'));
 const Checkout = React.lazy(() => import('./components/Checkout'));
@@ -42,6 +44,8 @@ const App: React.FC = () => {
   const [isInitialSplash, setIsInitialSplash] = useState(true);
 
   const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const [showMarketingModal, setShowMarketingModal] = useState(false);
+  const [showStoryTaskModal, setShowStoryTaskModal] = useState(false);
   const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -73,6 +77,29 @@ const App: React.FC = () => {
 
       if (changed) {
         updateUser(updatedUser);
+      }
+
+      // Handle Marketing Modal for first launch
+      const marketingShown = localStorage.getItem('ravona_marketing_shown');
+      if (!marketingShown && user.xp === 0 && !user.story_reward_claimed) {
+        setShowMarketingModal(true);
+        localStorage.setItem('ravona_marketing_shown', 'true');
+      }
+
+      // Handle referral link
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.initDataUnsafe?.start_param) {
+        const startParam = tg.initDataUnsafe.start_param;
+        if (startParam.startsWith('ref_')) {
+          const referrerId = startParam.replace('ref_', '');
+          if (referrerId !== user.id && !user.referred_by) {
+            fetch('/api/referral', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, referrerId })
+            }).then(() => refreshUser());
+          }
+        }
       }
     }
   }, [user?.id, user?.isPremium, user?.trialExpiresAt]);
@@ -195,10 +222,6 @@ const App: React.FC = () => {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
-  if (user && user.isOnboarded && !user.hasSeenTutorial && !isInitialSplash && !userLoading) {
-    return <Tutorial onComplete={handleTutorialComplete} />;
-  }
-
   if (!user && !isInitialSplash && !userLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-[#0c1222]">
@@ -267,7 +290,7 @@ const App: React.FC = () => {
           case 'home': return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} streakReward={streakReward} onClearStreakReward={() => setStreakReward(null)} />;
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
           case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
-          case 'game': return <Game user={user} />;
+          case 'game': return <Game user={user} onUpdateUser={handleUpdateUser} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'mock': return <RavonaMock user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;

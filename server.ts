@@ -4,12 +4,22 @@ import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function startServer() {
   const app = express();
+  app.use(express.json());
+  
   const httpServer = createServer(app);
+  
+  // Supabase client for server
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL || '',
+    process.env.VITE_SUPABASE_ANON_KEY || ''
+  );
   const io = new Server(httpServer, {
     cors: {
       origin: "*",
@@ -163,6 +173,96 @@ async function startServer() {
         }
       }
     });
+  });
+
+  // Referral endpoint
+  app.post('/api/referral', async (req, res) => {
+    const { userId, referrerId } = req.body;
+    if (!userId || !referrerId || userId === referrerId) {
+      return res.status(400).json({ success: false });
+    }
+
+    try {
+      // Check if user already has a referrer
+      const { data: user } = await supabase
+        .from('profiles')
+        .select('referred_by')
+        .eq('id', userId)
+        .single();
+
+      if (user && !user.referred_by) {
+        // Update user's referred_by
+        await supabase
+          .from('profiles')
+          .update({ referred_by: referrerId })
+          .eq('id', userId);
+
+        // Increment referrer's referral_count
+        const { data: referrer } = await supabase
+          .from('profiles')
+          .select('referral_count')
+          .eq('id', referrerId)
+          .single();
+
+        const newCount = (referrer?.referral_count || 0) + 1;
+        await supabase
+          .from('profiles')
+          .update({ referral_count: newCount })
+          .eq('id', referrerId);
+
+        return res.json({ success: true });
+      }
+      res.json({ success: false, message: 'Already referred' });
+    } catch (error) {
+      console.error("Referral error:", error);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // Task verification endpoint
+  app.post('/api/verify-tasks', async (req, res) => {
+    const { userId } = req.body;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const channelId = '@ravona_ai'; // Replace with actual channel ID
+
+    try {
+      // 1. Check channel subscription
+      let isSubscribed = false;
+      try {
+        const response = await axios.get(`https://api.telegram.org/bot${botToken}/getChatMember`, {
+          params: { chat_id: channelId, user_id: userId }
+        });
+        const status = response.data.result.status;
+        isSubscribed = ['member', 'administrator', 'creator'].includes(status);
+      } catch (e) {
+        console.warn("Channel check failed:", e.message);
+        // Fallback for dev if bot token is missing
+        if (!botToken) isSubscribed = true; 
+      }
+
+      // 2. Check referral count
+      const { data: user } = await supabase
+        .from('profiles')
+        .select('referral_count, wallet_reward_claimed')
+        .eq('id', userId)
+        .single();
+
+      if (user?.wallet_reward_claimed) {
+        return res.json({ success: false, message: 'Mukofot allaqachon olingan' });
+      }
+
+      if (isSubscribed && (user?.referral_count || 0) >= 3) {
+        res.json({ success: true, referralCount: user?.referral_count });
+      } else {
+        let message = "";
+        if (!isSubscribed) message += "Kanalga obuna bo'ling. ";
+        if ((user?.referral_count || 0) < 3) message += `Do'stlar yetarli emas (${user?.referral_count || 0}/3).`;
+        res.json({ success: false, message });
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      res.status(500).json({ success: false });
+    }
   });
 
   // Vite middleware for development

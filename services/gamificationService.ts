@@ -55,8 +55,10 @@ export const checkAchievements = (user: UserProfile): Achievement[] => {
 };
 
 export const awardXP = (user: UserProfile, amount: number): UserProfile => {
+  console.log("Awarding XP:", amount, "Current XP:", user.xp);
   const updatedUser = { ...user };
-  updatedUser.xp += amount;
+  updatedUser.xp = (updatedUser.xp || 0) + amount;
+  console.log("New XP:", updatedUser.xp);
   
   const { progress } = calculateLevel(updatedUser.xp);
   updatedUser.level_progress = progress;

@@ -159,9 +159,29 @@ const Admin: React.FC = () => {
   };
 
   const handleSaveAdminConfig = async () => {
-    await updateAdminSettingsInSupabase({ paymentCardNumber: newCardNumber });
-    addAdminLog('Admin Config Update', `Updated card number: ${newCardNumber}`);
-    alert("Karta ma'lumotlari saqlandi!");
+    try {
+      await updateAdminSettingsInSupabase({ 
+        paymentCardNumber: newCardNumber,
+        privacyPolicyUrl: docUrls.privacy,
+        termsOfUseUrl: docUrls.terms,
+        publicOfferUrl: docUrls.offer
+      });
+      addAdminLog('Admin Config Update', `Updated card number: ${newCardNumber}`);
+      alert("Karta ma'lumotlari saqlandi!");
+      
+      // Refresh local state
+      const settings = await fetchAdminSettingsFromSupabase();
+      if (settings) {
+        setNewCardNumber(settings.paymentCardNumber);
+        setDocUrls({
+          privacy: settings.privacyPolicyUrl,
+          terms: settings.termsOfUseUrl,
+          offer: settings.publicOfferUrl
+        });
+      }
+    } catch (err) {
+      alert("Xatolik yuz berdi: " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   const handleApprovePayment = async (payment: Payment) => {

@@ -30,6 +30,8 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
   const [timeLeft, setTimeLeft] = useState(300);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 
+  const [userAnswers, setUserAnswers] = useState<number[]>([]);
+
   useEffect(() => {
     if (state === 'exam' && timeLeft > 0) {
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -41,6 +43,10 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
 
   const handleNext = () => {
     if (selectedAnswer === null) return;
+    
+    const newAnswers = [...userAnswers, selectedAnswer];
+    setUserAnswers(newAnswers);
+
     if (selectedAnswer === questions[currentQuestion].correctAnswer) {
       setScore(prev => prev + 1);
     }
@@ -66,14 +72,14 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white p-6 pb-32 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0f172a] text-white p-6 pb-32 flex flex-col font-sans overflow-y-auto no-scrollbar">
       <AnimatePresence mode="wait">
         {state === 'intro' && (
           <motion.div key="intro" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex-1 flex flex-col justify-center items-center text-center">
             <div className="w-32 h-32 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-blue-600/20">
                 <Trophy size={64} className="text-white" />
             </div>
-            <h1 className="text-4xl font-black mb-4 uppercase tracking-tighter">Ravona Mock</h1>
+            <h1 className="text-4xl font-black mb-4 uppercase tracking-tighter italic">Ravona Mock</h1>
             <p className="text-slate-400 mb-8 max-w-xs font-bold">Grammatika darajangizni aniqlang va sertifikatga ega bo'ling!</p>
             <button onClick={() => setState('exam')} className="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-2xl font-black text-lg w-full max-w-xs shadow-lg shadow-blue-600/20 active:scale-95 transition-all">Boshlash</button>
           </motion.div>
@@ -115,14 +121,38 @@ const RavonaMock: React.FC<{ user: UserProfile; onUpdateUser: (user: UserProfile
         )}
 
         {state === 'result' && (
-          <motion.div key="result" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col justify-center items-center text-center">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.2 }} className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl mb-8 shadow-2xl shadow-blue-600/30">
-              <Award size={80} className="text-white mb-4" />
+          <motion.div key="result" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center text-center">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.2 }} className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl mb-8 shadow-2xl shadow-blue-600/30 w-full max-w-xs">
+              <Award size={80} className="text-white mx-auto mb-4" />
               <div className="text-7xl font-black text-white">{user.ravonaScore}</div>
               <div className="text-blue-200 font-bold uppercase tracking-widest">Ravona Score</div>
             </motion.div>
+            
             <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter">Tabriklaymiz!</h2>
             <p className="text-slate-400 mb-8 font-bold">Sizning IELTS darajangiz: <span className="text-white font-bold">{user.ravonaScore! >= 11 ? '8.5 - 9.0' : user.ravonaScore! >= 9 ? '7.0 - 8.0' : user.ravonaScore! >= 7 ? '5.5 - 6.5' : user.ravonaScore! >= 5 ? '4.0 - 5.0' : 'Below 4.0'}</span></p>
+            
+            <div className="w-full space-y-4 mb-10 text-left">
+              <h3 className="text-lg font-black uppercase tracking-widest text-blue-400 mb-4">Xatolar ustida ishlash:</h3>
+              {questions.map((q, i) => {
+                const isCorrect = userAnswers[i] === q.correctAnswer;
+                return (
+                  <div key={i} className={`p-4 rounded-2xl border ${isCorrect ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                    <p className="text-sm font-bold mb-2">{i + 1}. {q.question}</p>
+                    <div className="flex flex-col gap-1">
+                      <p className={`text-xs ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                        Sizning javobingiz: {q.options[userAnswers[i]]}
+                      </p>
+                      {!isCorrect && (
+                        <p className="text-xs text-green-400">
+                          To'g'ri javob: {q.options[q.correctAnswer]}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             <button onClick={() => onNavigate('home')} className="bg-white text-slate-950 px-8 py-4 rounded-2xl font-black text-lg w-full max-w-xs shadow-xl active:scale-95 transition-all">Asosiy sahifa</button>
           </motion.div>
         )}

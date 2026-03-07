@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile, Word } from '../types';
 import { generateLessonContent, generateFallbackLesson, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
@@ -17,7 +18,9 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [quizPhase, setQuizPhase] = useState(false);
+  const [quizIndex, setQuizIndex] = useState(0);
   const [quizAnswered, setQuizAnswered] = useState<number | null>(null);
+  const [quizScore, setQuizScore] = useState(0);
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
   
   // Session Stats
@@ -31,20 +34,18 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-
-  // Tutorial State
-  const [showSwipeHelp, setShowSwipeHelp] = useState(true);
   
   useEffect(() => {
     const fetchLesson = async () => {
       setLoading(true);
       setError(null);
       
-      const apiPromise = generateLessonContent(user, user.interests[0] || 'General');
+      // Request 40 words for a more comprehensive lesson
+      const apiPromise = generateLessonContent(user, user.interests[0] || 'General', 40);
       const timeoutPromise = new Promise<{fallback: boolean, data: any}>((resolve) => {
           setTimeout(() => {
               resolve({ fallback: true, data: generateFallbackLesson() });
-          }, 8000); // Increased to 8s for slower connections
+          }, 12000); // Increased timeout for larger content
       });
 
       const wrappedApiPromise = apiPromise.then(data => ({ fallback: false, data }));
@@ -104,7 +105,6 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
       if (isFinished || quizPhase || isAnimating) return;
-      if (showSwipeHelp) setShowSwipeHelp(false);
       setIsDragging(true);
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
       setStartX(clientX);
@@ -131,7 +131,6 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
   };
 
   const handleSwipe = (direction: 'left' | 'right') => {
-      if (showSwipeHelp) setShowSwipeHelp(false);
       if (isAnimating) return;
       
       setIsAnimating(true);
@@ -167,18 +166,27 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
       }, 400);
   };
 
-  const handleQuizAnswer = (index: number) => {
+  const handleQuizAnswer = (idx: number) => {
       if (quizAnswered !== null) return;
-      setQuizAnswered(index);
+      setQuizAnswered(idx);
       
-      const correct = content.quiz.options[index] === content.quiz.answer;
-      if (correct) {
-          awardReward("To'g'ri javob!", 15, 20);
+      const currentQuiz = Array.isArray(content.quiz) ? content.quiz[quizIndex] : content.quiz;
+      const isCorrect = currentQuiz.options[idx] === currentQuiz.answer;
+      
+      if (isCorrect) {
+          setQuizScore(s => s + 1);
+          awardReward("To'g'ri javob!", 10, 15);
           playTapSound();
       }
       
       setTimeout(() => {
-          setCurrentIndex(content.vocab.length + 1); 
+          setQuizAnswered(null);
+          const quizLength = Array.isArray(content.quiz) ? content.quiz.length : 1;
+          if (quizIndex + 1 < quizLength) {
+              setQuizIndex(quizIndex + 1);
+          } else {
+              setCurrentIndex(content.vocab.length + 1); 
+          }
       }, 1500);
   };
 
@@ -312,33 +320,37 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
       )
   }
 
-  if (quizPhase && currentIndex === content.vocab.length) {
+  if (quizPhase) {
+      const quizLength = Array.isArray(content.quiz) ? content.quiz.length : 1;
+      const currentQuiz = Array.isArray(content.quiz) ? content.quiz[quizIndex] : content.quiz;
+      
       return (
-          <div className="p-6 h-full flex flex-col items-center pb-24 animate-slide-up relative">
-              <div className="absolute top-4 left-0 right-0 flex justify-center z-50">
-                {rewardMessage && (
-                  <div className="bg-yellow-500 text-slate-900 px-4 py-2 rounded-full font-bold shadow-lg animate-bounce text-sm">
-                    {rewardMessage}
-                  </div>
-                )}
+          <div className="p-6 h-full flex flex-col items-center pb-24 animate-slide-up relative bg-[#080d19]">
+              {/* Progress Bar */}
+              <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mb-8">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${((quizIndex + 1) / quizLength) * 100}%` }}
+                    className="h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                  />
               </div>
 
               <div className="w-full flex justify-between items-center mb-6 z-10">
-                <span className="text-gray-400 text-xs font-black uppercase tracking-widest">Final Challenge</span>
-                <span className="text-blue-400 font-black uppercase tracking-[0.2em] text-[10px]">Bilimingizni sinang</span>
+                <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Test {quizIndex + 1} / {quizLength}</span>
+                <span className="text-green-400 font-black uppercase tracking-[0.2em] text-[10px]">Bilimingizni sinang</span>
               </div>
 
               <div className="w-full glass-card rounded-3xl p-8 flex flex-col items-center border-t border-white/20 mb-8 shadow-2xl bg-slate-800/20">
-                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-6">
-                      <i className="fa-solid fa-graduation-cap text-2xl text-blue-400"></i>
+                  <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                      <i className="fa-solid fa-bolt text-2xl text-green-400"></i>
                   </div>
                   <h2 className="text-2xl font-black text-center italic tracking-tighter leading-tight mb-8 text-white uppercase">
-                      {content.quiz.question}
+                      {currentQuiz.question}
                   </h2>
                   <div className="space-y-3 w-full">
-                      {content.quiz.options.map((option: string, idx: number) => {
+                      {currentQuiz.options.map((option: string, idx: number) => {
                           const isSelected = quizAnswered === idx;
-                          const isCorrect = option === content.quiz.answer;
+                          const isCorrect = option === currentQuiz.answer;
                           let btnClass = "w-full py-5 px-6 rounded-2xl text-left font-bold transition-all active:scale-[0.98] flex items-center border ";
                           
                           if (quizAnswered !== null) {
@@ -395,30 +407,6 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
              ))}
           </div>
        </div>
-
-       {showSwipeHelp && currentIndex === 0 && !isDragging && (
-           <div 
-             className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
-             style={{ animation: 'fadeIn 0.5s ease-out' }}
-           >
-               <div className="relative w-full aspect-[3/4] max-w-sm flex items-center justify-between px-8">
-                   <div className="flex flex-col items-center opacity-80 animate-pulse">
-                       <i className="fa-solid fa-arrow-left text-3xl text-red-400 mb-2"></i>
-                       <span className="font-black text-red-400 bg-black/40 px-3 py-1.5 rounded-xl text-[10px] uppercase">Qiyin</span>
-                   </div>
-                   
-                   <div className="flex flex-col items-center animate-hand-swipe absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                       <i className="fa-regular fa-hand-pointer text-5xl text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]"></i>
-                       <span className="text-[10px] mt-4 bg-black/60 px-4 py-2 rounded-full text-white font-black uppercase tracking-widest border border-white/10 backdrop-blur-md">Baholash uchun suring</span>
-                   </div>
-
-                   <div className="flex flex-col items-center opacity-80 animate-pulse">
-                       <span className="font-black text-green-400 bg-black/40 px-3 py-1.5 rounded-xl mb-2 text-[10px] uppercase">Oson</span>
-                       <i className="fa-solid fa-arrow-right text-3xl text-green-400"></i>
-                   </div>
-               </div>
-           </div>
-       )}
 
        <div className="relative w-full aspect-[3/4] flex items-center justify-center mt-4">
            {nextWord && (
@@ -500,19 +488,28 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
            </div>
        </div>
 
-       <div className="absolute bottom-24 flex items-center justify-center space-x-12 z-20">
+       <div className="absolute bottom-10 flex flex-col items-center gap-6 z-20 w-full px-12">
+           <div className="flex items-center justify-center space-x-12 w-full">
+               <button 
+                 onClick={() => handleSwipe('left')}
+                 className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+               >
+                 <i className="fa-solid fa-xmark"></i>
+               </button>
+
+               <button 
+                 onClick={() => handleSwipe('right')}
+                 className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+               >
+                 <i className="fa-solid fa-check"></i>
+               </button>
+           </div>
+
            <button 
-             onClick={() => handleSwipe('left')}
-             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-red-700 text-red-500 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
+             onClick={() => setQuizPhase(true)}
+             className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-[0_4px_0_rgb(30,58,138)] active:shadow-none active:translate-y-1 transition-all border border-blue-400/30"
            >
-             <i className="fa-solid fa-xmark"></i>
-           </button>
-           
-           <button 
-             onClick={() => handleSwipe('right')}
-             className="w-20 h-20 rounded-full bg-slate-900/90 border-b-[6px] border-green-700 text-green-400 shadow-2xl flex items-center justify-center text-3xl active:translate-y-1 active:border-b-0 transition-all duration-150 backdrop-blur-xl border border-white/5"
-           >
-             <i className="fa-solid fa-check"></i>
+             Darsni Tugatish & Test
            </button>
        </div>
     </div>

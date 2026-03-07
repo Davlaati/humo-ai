@@ -107,6 +107,10 @@ export interface UserProfile {
   isBlocked?: boolean;
   isOnboarded?: boolean;
   hasSeenTutorial?: boolean;
+  story_reward_claimed?: boolean;
+  wallet_reward_claimed?: boolean;
+  referral_count?: number;
+  referred_by?: string;
   telegramStars: number;
   starsHistory: StarsTransaction[];
   badges?: Achievement[];

@@ -4,10 +4,11 @@ import { saveUser } from '../services/storageService';
 import { DICTIONARY } from '../data/dictionary';
 import { playTapSound } from '../services/audioService';
 import { awardXP, awardCoins } from '../services/gamificationService';
-import { ArrowLeft, Swords, Shield, Coins, Clock, Trophy, Skull } from 'lucide-react';
+import { ArrowLeft, Swords, Shield, Coins, Clock, Trophy, Skull, User as UserIcon, Bot as BotIcon } from 'lucide-react';
 
 interface WordBattleProps {
   user: UserProfile;
+  onUpdateUser?: (user: UserProfile) => void;
   onBack: () => void;
 }
 
@@ -54,16 +55,19 @@ const generateQuestion = (difficulty: Difficulty) => {
     };
 };
 
-const WordBattle: React.FC<WordBattleProps> = ({ user, onBack }) => {
+const WordBattle: React.FC<WordBattleProps> = ({ user, onUpdateUser, onBack }) => {
   const [phase, setPhase] = useState<GamePhase>('menu');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [timeLeft, setTimeLeft] = useState(60);
   const [playerScore, setPlayerScore] = useState(0);
   const [botScore, setBotScore] = useState(0);
+  const [playerShield, setPlayerShield] = useState(0);
+  const [botShield, setBotShield] = useState(0);
   const [currentQData, setCurrentQData] = useState<ReturnType<typeof generateQuestion> | null>(null);
   const [botStatus, setBotStatus] = useState<'thinking' | 'answered'>('thinking');
   const [lastResult, setLastResult] = useState<'correct' | 'wrong' | 'too_slow' | null>(null);
-  
+  const [combo, setCombo] = useState(0);
+
   // Game Loop Refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const botTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,6 +93,9 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onBack }) => {
     setTimeLeft(60);
     setPlayerScore(0);
     setBotScore(0);
+    setPlayerShield(3);
+    setBotShield(3);
+    setCombo(0);
     
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -108,15 +115,20 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onBack }) => {
     
     // Reward logic based on difficulty
     if (playerScore > botScore) {
-       const bonusCoins = difficulty === 'easy' ? 25 : difficulty === 'medium' ? 50 : 100;
-       const bonusXP = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 20 : 40;
+       const bonusCoins = difficulty === 'easy' ? 30 : difficulty === 'medium' ? 60 : 120;
+       const bonusXP = difficulty === 'easy' ? 15 : difficulty === 'medium' ? 30 : 60;
 
        const updatedUser = awardXP(user, bonusXP);
        const fullyUpdatedUser = awardCoins(updatedUser, bonusCoins);
        
        // Update wins manually as it's not in gamificationService yet
        fullyUpdatedUser.wins = (fullyUpdatedUser.wins || 0) + 1;
-       saveUser(fullyUpdatedUser);
+       
+       if (onUpdateUser) {
+         onUpdateUser(fullyUpdatedUser);
+       } else {
+         saveUser(fullyUpdatedUser);
+       }
     }
   };
 
@@ -134,18 +146,24 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onBack }) => {
     // Bot reaction time based on difficulty
     let botDelay = 0;
     if (difficulty === 'easy') {
-        botDelay = Math.random() * 2000 + 4000; // 4-6 seconds
+        botDelay = Math.random() * 2000 + 3500; // 3.5-5.5 seconds
     } else if (difficulty === 'medium') {
-        botDelay = Math.random() * 1500 + 2000; // 2-3.5 seconds
+        botDelay = Math.random() * 1200 + 1800; // 1.8-3.0 seconds
     } else {
-        botDelay = Math.random() * 800 + 1200; // 1.2-2.0 seconds
+        botDelay = Math.random() * 600 + 1000; // 1.0-1.6 seconds
     }
     
     if (botTimerRef.current) clearTimeout(botTimerRef.current);
     botTimerRef.current = setTimeout(() => {
-        setBotScore(s => s + 1);
+        // Bot answers
+        if (botShield > 0) {
+          setBotShield(s => s - 1);
+        } else {
+          setBotScore(s => s + 1);
+        }
         setBotStatus('answered');
         setLastResult('too_slow');
+        setCombo(0);
         setTimeout(nextRound, 1000);
     }, botDelay);
   };
@@ -160,9 +178,19 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onBack }) => {
     if (index === correct) {
         setPlayerScore(s => s + 1);
         setLastResult('correct');
+        setCombo(c => c + 1);
+        if (combo > 0 && combo % 3 === 0) {
+          setPlayerShield(s => Math.min(5, s + 1)); // Gain shield on 3x combo
+        }
         playTapSound();
     } else {
         setLastResult('wrong');
+        setCombo(0);
+        if (playerShield > 0) {
+          setPlayerShield(s => s - 1);
+        } else {
+          setBotScore(s => s + 1);
+        }
     }
 
     setBotStatus('answered'); 
@@ -266,31 +294,54 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onBack }) => {
   if (phase === 'playing' && currentQData) {
       return (
         <div className="h-full p-4 flex flex-col pb-24 animate-slide-up">
-           <div className="flex justify-between items-center bg-slate-800/80 p-3 rounded-2xl border border-white/10 shadow-lg relative overflow-hidden">
+           {/* Players Area */}
+           <div className="flex justify-between items-center bg-slate-800/80 p-4 rounded-2xl border border-white/10 shadow-lg relative overflow-hidden mb-6">
+              {/* User */}
               <div className="flex items-center space-x-3 z-10">
-                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-lg">
-                    {user.name.charAt(0)}
+                 <div className="relative">
+                    <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center font-bold border-2 border-white shadow-lg overflow-hidden">
+                       {(user as any).avatarUrl ? (
+                           <img src={(user as any).avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                       ) : (
+                           <UserIcon className="w-6 h-6 text-white" />
+                       )}
+                    </div>
+                    {/* Shield Indicator */}
+                    <div className="absolute -top-1 -right-1 flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className={`w-1.5 h-1.5 rounded-full border border-white/20 ${i < playerShield ? 'bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.8)]' : 'bg-slate-800'}`} />
+                        ))}
+                    </div>
                  </div>
                  <div>
-                    <p className="text-[10px] font-bold text-blue-300">SIZ</p>
+                    <p className="text-[8px] font-black text-blue-300 uppercase tracking-widest">SIZ</p>
                     <p className="text-2xl font-black leading-none">{playerScore}</p>
                  </div>
               </div>
 
+              {/* VS & Timer */}
               <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center">
                  <div className={`text-2xl font-black ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
                     {timeLeft}
                  </div>
-                 <div className="text-[8px] text-gray-400 uppercase tracking-widest">{difficulty}</div>
+                 <div className="text-[8px] text-gray-400 uppercase tracking-widest font-black">{difficulty}</div>
               </div>
 
+              {/* Bot */}
               <div className="flex items-center space-x-3 flex-row-reverse space-x-reverse z-10">
-                 <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-lg relative">
-                    🤖
-                    {botStatus === 'answered' && <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border border-slate-900"></div>}
+                 <div className="relative">
+                    <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center font-bold border-2 border-white shadow-lg">
+                       <BotIcon className={`w-6 h-6 text-white ${botStatus === 'thinking' ? 'animate-bounce' : ''}`} />
+                    </div>
+                    {/* Shield Indicator */}
+                    <div className="absolute -top-1 -left-1 flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className={`w-1.5 h-1.5 rounded-full border border-white/20 ${i < botShield ? 'bg-red-400 shadow-[0_0_5px_rgba(248,113,113,0.8)]' : 'bg-slate-800'}`} />
+                        ))}
+                    </div>
                  </div>
                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-red-300">BOT</p>
+                    <p className="text-[8px] font-black text-red-300 uppercase tracking-widest">BOT</p>
                     <p className="text-2xl font-black leading-none">{botScore}</p>
                  </div>
               </div>

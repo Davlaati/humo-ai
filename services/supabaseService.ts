@@ -37,6 +37,10 @@ export const syncUserToSupabase = async (user: UserProfile) => {
     },
     is_blocked: user.isBlocked,
     is_onboarded: user.isOnboarded,
+    story_reward_claimed: user.story_reward_claimed,
+    wallet_reward_claimed: user.wallet_reward_claimed,
+    referral_count: user.referral_count,
+    referred_by: user.referred_by,
     age: user.age,
     level: user.level,
     goal: user.goal,
@@ -128,6 +132,10 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       settings: settings,
       isBlocked: data.is_blocked,
       isOnboarded: isOnboarded,
+      story_reward_claimed: data.story_reward_claimed,
+      wallet_reward_claimed: data.wallet_reward_claimed,
+      referral_count: data.referral_count,
+      referred_by: data.referred_by,
       age: data.age || settings.age || '18',
       level: data.level || settings.level || 'Beginner',
       goal: data.goal || settings.goal || 'General',
@@ -264,6 +272,10 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       premiumUntil: d.premium_until,
       isBlocked: d.is_blocked,
       isOnboarded: d.is_onboarded,
+      story_reward_claimed: d.story_reward_claimed,
+      wallet_reward_claimed: d.wallet_reward_claimed,
+      referral_count: d.referral_count,
+      referred_by: d.referred_by,
       telegramStars: d.telegram_stars,
       starsHistory: d.stars_history || [],
       settings: d.settings,
@@ -479,12 +491,16 @@ export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | 
 
 export const updateAdminSettingsInSupabase = async (settings: AdminSettings) => {
   try {
-    await supabase.from('admin_settings').upsert({ 
+    const { error } = await supabase.from('admin_settings').upsert({ 
       id: 1, 
       payment_card_number: settings.paymentCardNumber,
       privacy_policy_url: settings.privacyPolicyUrl,
       terms_of_use_url: settings.termsOfUseUrl,
       public_offer_url: settings.publicOfferUrl
     });
-  } catch (e) {}
+    if (error) throw error;
+  } catch (e) {
+    console.error('Update admin settings failed:', e);
+    throw e;
+  }
 };

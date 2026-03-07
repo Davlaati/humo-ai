@@ -9,21 +9,24 @@ import { ArrowLeft, Rocket, Play, Flag } from 'lucide-react';
 
 interface CosmicScrambleProps {
   user: UserProfile;
+  onUpdateUser?: (user: UserProfile) => void;
   onBack: () => void;
 }
 
 type GamePhase = 'menu' | 'playing' | 'result';
 
-const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
+const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onUpdateUser, onBack }) => {
   const [phase, setPhase] = useState<GamePhase>('menu');
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [fuel, setFuel] = useState(100);
   const [currentWord, setCurrentWord] = useState('');
   const [currentTranslation, setCurrentTranslation] = useState('');
   const [scrambledLetters, setScrambledLetters] = useState<{id: number, char: string}[]>([]);
   const [selectedLetters, setSelectedLetters] = useState<{id: number, char: string}[]>([]);
   const [combo, setCombo] = useState(1);
   const [shake, setShake] = useState(false);
+  const [level, setLevel] = useState(1);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -38,7 +41,9 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
     setPhase('playing');
     setScore(0);
     setTimeLeft(60);
+    setFuel(100);
     setCombo(1);
+    setLevel(1);
     nextRound();
     
     if (timerRef.current) clearInterval(timerRef.current);
@@ -50,6 +55,7 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
         }
         return prev - 1;
       });
+      setFuel((prev) => Math.max(0, prev - 1.5)); // Fuel drains over time
     }, 1000);
   };
 
@@ -58,17 +64,27 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
     setPhase('result');
     
     // Reward logic
-    const bonusCoins = Math.floor(score / 10);
-    const bonusXP = Math.floor(score / 5);
+    const bonusCoins = Math.floor(score / 8);
+    const bonusXP = Math.floor(score / 4);
 
     const updatedUser = awardXP(user, bonusXP);
     const fullyUpdatedUser = awardCoins(updatedUser, bonusCoins);
-    saveUser(fullyUpdatedUser);
+    
+    if (onUpdateUser) {
+      onUpdateUser(fullyUpdatedUser);
+    } else {
+      saveUser(fullyUpdatedUser);
+    }
   };
 
   const nextRound = () => {
-    // Pick a random word
-    const randomItem = DICTIONARY[Math.floor(Math.random() * DICTIONARY.length)];
+    // Pick a random word based on level
+    const filtered = DICTIONARY.filter(w => {
+      if (level < 3) return w.term.length <= 5;
+      if (level < 6) return w.term.length <= 7;
+      return w.term.length > 7;
+    });
+    const randomItem = filtered[Math.floor(Math.random() * filtered.length)] || DICTIONARY[Math.floor(Math.random() * DICTIONARY.length)];
     const word = randomItem.term.toUpperCase();
     setCurrentWord(word);
     setCurrentTranslation(randomItem.translation);
@@ -99,12 +115,15 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
         const points = 10 * combo;
         setScore(s => s + points);
         setCombo(c => Math.min(c + 1, 5)); // Max combo 5x
+        setFuel(f => Math.min(100, f + 15)); // Refuel on success
+        setLevel(l => l + 1);
         setTimeout(nextRound, 500);
       } else {
         // Wrong!
         playErrorSound();
         setShake(true);
         setCombo(1);
+        setFuel(f => Math.max(0, f - 10)); // Lose fuel on error
         setTimeout(() => {
           setShake(false);
           // Return letters
@@ -120,6 +139,10 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
     setSelectedLetters(selectedLetters.filter(l => l.id !== letter.id));
     setScrambledLetters([...scrambledLetters, letter]);
   };
+
+  if (fuel <= 0 && phase === 'playing') {
+    endGame();
+  }
 
   if (phase === 'menu') {
     return (
@@ -191,10 +214,21 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onBack }) => {
                     <span className="text-[10px] uppercase text-purple-400 font-bold tracking-widest">Score</span>
                     <span className="text-2xl font-black text-white">{score}</span>
                 </div>
-                <div className="w-16 h-16 rounded-full border-4 border-purple-500/30 flex items-center justify-center bg-slate-900/50 backdrop-blur">
-                    <span className={`text-xl font-black ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-                        {timeLeft}
-                    </span>
+                <div className="flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 rounded-full border-4 border-purple-500/30 flex items-center justify-center bg-slate-900/50 backdrop-blur">
+                        <span className={`text-xl font-black ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                            {timeLeft}
+                        </span>
+                    </div>
+                    {/* Fuel Bar */}
+                    <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                        <motion.div 
+                            initial={{ width: '100%' }}
+                            animate={{ width: `${fuel}%` }}
+                            className={`h-full ${fuel < 30 ? 'bg-red-500' : 'bg-purple-500'}`}
+                        />
+                    </div>
+                    <span className="text-[8px] text-purple-400 font-black uppercase tracking-widest">Fuel</span>
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="text-[10px] uppercase text-yellow-400 font-bold tracking-widest">Combo</span>

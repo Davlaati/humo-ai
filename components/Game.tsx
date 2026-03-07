@@ -9,19 +9,20 @@ import { Gamepad2, Flame, Shield, Star, Rocket, Zap, MessageSquare } from 'lucid
 
 interface GameProps {
   user: UserProfile;
+  onUpdateUser?: (user: UserProfile) => void;
 }
 
 type ActiveGame = 'menu' | 'word-battle' | 'cosmic-scramble' | 'word-chain' | 'guessing-game';
 
-const Game: React.FC<GameProps> = ({ user }) => {
+const Game: React.FC<GameProps> = ({ user, onUpdateUser }) => {
   const [activeGame, setActiveGame] = useState<ActiveGame>('menu');
 
   if (activeGame === 'word-battle') {
-    return <WordBattle user={user} onBack={() => setActiveGame('menu')} />;
+    return <WordBattle user={user} onUpdateUser={onUpdateUser} onBack={() => setActiveGame('menu')} />;
   }
 
   if (activeGame === 'cosmic-scramble') {
-    return <CosmicScramble user={user} onBack={() => setActiveGame('menu')} />;
+    return <CosmicScramble user={user} onUpdateUser={onUpdateUser} onBack={() => setActiveGame('menu')} />;
   }
 
   if (activeGame === 'word-chain') {

@@ -58,19 +58,23 @@ async function decodeAudioData(
   return buffer;
 }
 
-export const generateLessonContent = async (user: UserProfile, topic: string) => {
+export const generateLessonContent = async (user: UserProfile, topic: string, count: number = 10) => {
   try {
     const ai = getAIClient();
     const prompt = `
-      Create a mini English lesson for a student with level ${user.level}.
+      Create a comprehensive English lesson for a student with level ${user.level}.
       Topic: ${topic}.
       User Interests: ${user.interests.join(', ')}.
       Teaching Style: ${user.personalities.join(', ')}.
+      Word Count: ${count}.
       
-      Provide 5 key vocabulary words with definitions, Uzbek translations, and 1 short quiz question in JSON format:
+      Provide ${count} key vocabulary words with definitions, Uzbek translations, and 3-5 short quiz questions in JSON format:
       {
         "vocab": [{"word": "...", "definition": "...", "example": "...", "translation": "..."}],
-        "quiz": {"question": "...", "options": ["...", "..."], "answer": "..."}
+        "quiz": [
+          {"question": "...", "options": ["...", "..."], "answer": "...", "type": "multiple_choice"},
+          {"question": "...", "options": ["...", "..."], "answer": "...", "type": "translation"}
+        ]
       }
     `;
 
@@ -90,7 +94,27 @@ export const generateLessonContent = async (user: UserProfile, topic: string) =>
 export const getDictionaryDefinition = async (word: string, lang: string = 'Uz') => {
   try {
     const ai = getAIClient();
-    const prompt = `Define the English word "${word}". Provide ${lang} translation and an example sentence. Return JSON: { "definition": "...", "translation": "...", "example": "..." }`;
+    const prompt = `Provide a detailed dictionary entry for the English word: "${word}".
+      Include:
+      1. Translation to ${lang}
+      2. Phonetic transcription (IPA)
+      3. Simple English definition
+      4. 3 Example sentences with ${lang} translations
+      5. Synonyms and Antonyms
+      
+      Return JSON format:
+      {
+        "word": "${word}",
+        "phonetic": "[...]",
+        "translation": "...",
+        "definition": "...",
+        "examples": [
+          { "en": "...", "uz": "..." }
+        ],
+        "synonyms": ["...", "..."],
+        "antonyms": ["...", "..."]
+      }
+    `;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
