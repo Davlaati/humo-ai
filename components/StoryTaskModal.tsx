@@ -24,7 +24,7 @@ const StoryTaskModal: React.FC<StoryTaskModalProps> = ({ user, onClose, onSucces
       const storyMediaUrl = "https://picsum.photos/seed/ravona/1080/1920"; // Placeholder for dynamic image
       const text = "Ravona AI bilan ingliz tilini o'rganing! 🚀";
       const widgetLink = {
-        url: `https://t.me/ravona_bot?start=ref_${user.id}`,
+        url: `https://t.me/ravonaai_bot?start=ref_${user.id}`,
         name: "Ravona AI"
       };
       
@@ -34,7 +34,7 @@ const StoryTaskModal: React.FC<StoryTaskModalProps> = ({ user, onClose, onSucces
       });
     } else {
       // Fallback: Open a link to share
-      const shareUrl = `https://t.me/share/url?url=https://t.me/ravona_bot?start=ref_${user.id}&text=Ravona AI bilan ingliz tilini o'rganing! 🚀`;
+      const shareUrl = `https://t.me/share/url?url=https://t.me/ravonaai_bot?start=ref_${user.id}&text=Ravona AI bilan ingliz tilini o'rganing! 🚀`;
       window.open(shareUrl, '_blank');
     }
   };

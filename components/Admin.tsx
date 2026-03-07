@@ -160,6 +160,7 @@ const Admin: React.FC = () => {
 
   const handleSaveAdminConfig = async () => {
     try {
+      console.log("Saving admin config:", { newCardNumber, docUrls });
       await updateAdminSettingsInSupabase({ 
         paymentCardNumber: newCardNumber,
         privacyPolicyUrl: docUrls.privacy,
@@ -180,6 +181,7 @@ const Admin: React.FC = () => {
         });
       }
     } catch (err) {
+      console.error("Admin config save error:", err);
       alert("Xatolik yuz berdi: " + (err instanceof Error ? err.message : String(err)));
     }
   };

@@ -353,10 +353,9 @@ export const isPremiumActive = (user: UserProfile): boolean => {
     if (now < expiry) return true;
   }
   
-  // 2. Check trial (3 days from joinedAt)
-  if (!user.isTrialUsed && user.joinedAt) {
-    const joined = new Date(user.joinedAt);
-    const trialEnd = new Date(joined.getTime() + 3 * 24 * 60 * 60 * 1000);
+  // 2. Check trial
+  if (user.trialExpiresAt) {
+    const trialEnd = new Date(user.trialExpiresAt);
     if (now < trialEnd) return true;
   }
   

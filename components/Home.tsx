@@ -6,6 +6,7 @@ import DailyStreakCard from './DailyStreakCard';
 import { validateAndUpdateStreak } from '../services/streakSystem';
 import { checkAchievements, calculateLevel } from '../services/gamificationService';
 import { getTranslation } from '../translations';
+import { usePremiumAccess } from '../hooks/usePremiumAccess';
 
 interface HomeProps {
   user: UserProfile;
@@ -19,6 +20,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
   const { level, progress } = calculateLevel(user.xp);
   const prevStats = useRef({ xp: user.xp, wins: user.wins || 0 });
   const lang = user.settings?.language || 'Uz';
+  const { checkAccess } = usePremiumAccess(user);
 
   // Initialize Gamification Logic
   useEffect(() => {
@@ -44,8 +46,9 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
     prevStats.current = { xp: user.xp, wins: user.wins || 0 };
   }, [user.xp, user.wins]);
 
-  const handleAction = (tab: string | (() => void)) => {
+  const handleAction = (tab: string | (() => void), isPremiumRequired: boolean = false) => {
     playTapSound();
+    if (isPremiumRequired && !checkAccess()) return;
     if (typeof tab === 'string') onNavigate(tab);
     else tab();
   };
@@ -142,7 +145,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
 
             {/* Speaking (Half) */}
             <div 
-              onClick={() => handleAction('speaking-club')}
+              onClick={() => handleAction('speaking-club', true)}
               className="col-span-1 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-5 relative h-40 overflow-visible group active:scale-[0.98] transition-all shadow-lg cursor-pointer"
             >
                 <div className="relative z-10 mt-2">
@@ -161,7 +164,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
 
             {/* Lug'at (Half) */}
             <div 
-              onClick={() => handleAction('dictionary')}
+              onClick={() => handleAction('dictionary', true)}
               className="col-span-1 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-5 relative h-40 overflow-visible group active:scale-[0.98] transition-all shadow-lg cursor-pointer"
             >
                 <div className="relative z-10 mt-2">
@@ -180,7 +183,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
 
             {/* O'yin (Half) */}
             <div 
-              onClick={() => handleAction('game')}
+              onClick={() => handleAction('game', true)}
               className="col-span-1 glass-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[35px] p-5 relative h-36 overflow-visible group active:scale-[0.98] transition-all shadow-lg cursor-pointer"
             >
                 <div className="relative z-10 mt-2">
@@ -259,7 +262,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                   icon="fa-spell-check"
                   color="text-green-400"
                   bgColor="bg-green-500/20"
-                  onClick={() => handleAction('translator')}
+                  onClick={() => handleAction('translator', true)}
                   bgEmoji="✅"
               />
           </div>

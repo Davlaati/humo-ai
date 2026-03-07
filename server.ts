@@ -223,7 +223,7 @@ async function startServer() {
   app.post('/api/verify-tasks', async (req, res) => {
     const { userId } = req.body;
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const channelId = '@ravona_ai'; // Replace with actual channel ID
+    const channelId = '@ravonaai'; // Updated to match bot username
 
     try {
       // 1. Check channel subscription

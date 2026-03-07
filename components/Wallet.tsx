@@ -3,6 +3,7 @@ import { UserProfile } from '../types';
 import { isPremiumActive } from '../services/storageService';
 import { ArrowLeft, Wallet as WalletIcon, Crown, Zap, Coins, Clock, ChevronRight } from 'lucide-react';
 import { playTapSound } from '../services/audioService';
+import GrowthTasks from './GrowthTasks';
 
 interface WalletProps {
   user: UserProfile;
@@ -106,6 +107,10 @@ const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate }) => {
               </button>
             )}
           </div>
+        </div>
+
+        <div className="p-8 bg-slate-800/20 rounded-[40px] border border-white/5 shadow-xl mb-8">
+          <GrowthTasks user={user} onUpdateUser={onUpdateUser} />
         </div>
 
         <div className="p-8 bg-slate-800/20 rounded-[40px] border border-white/5 shadow-xl">

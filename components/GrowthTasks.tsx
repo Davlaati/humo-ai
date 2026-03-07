@@ -27,7 +27,7 @@ const GrowthTasks: React.FC<GrowthTasksProps> = ({ user, onUpdateUser }) => {
 
   const handleInviteFriends = () => {
     playTapSound();
-    const shareUrl = `https://t.me/share/url?url=https://t.me/ravona_bot?start=ref_${user.id}&text=Ravona AI bilan ingliz tilini o'rganing! 🚀`;
+    const shareUrl = `https://t.me/share/url?url=https://t.me/ravonaai_bot?start=ref_${user.id}&text=Ravona AI bilan ingliz tilini o'rganing! 🚀`;
     window.open(shareUrl, '_blank');
   };
 
