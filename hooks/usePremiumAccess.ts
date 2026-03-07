@@ -1,6 +1,6 @@
 
 import { UserProfile } from '../types';
-import { isPremiumActive } from './storageService';
+import { isPremiumActive } from '../services/storageService';
 
 export const usePremiumAccess = (user: UserProfile | null) => {
   const isPremium = user ? isPremiumActive(user) : false;
