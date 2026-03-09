@@ -122,6 +122,7 @@ export interface UserProfile {
   followers?: string[];
   following?: string[];
   bio?: string;
+  unseenPremiumGift?: number;
 }
 
 export interface Transaction {

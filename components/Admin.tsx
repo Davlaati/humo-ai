@@ -50,6 +50,34 @@ const Admin: React.FC = () => {
   // Dictionary states
   const [dictItems, setDictItems] = useState<DictionaryItem[]>([]);
   const [newWord, setNewWord] = useState<Partial<DictionaryItem>>({ term: '', translation: '', definition: '', example: '', category: 'General' });
+  const [giftUserId, setGiftUserId] = useState('');
+  const [giftDuration, setGiftDuration] = useState(1);
+
+  const handleGiftPremium = async () => {
+    if (!giftUserId) {
+      alert("Foydalanuvchi ID sini kiriting!");
+      return;
+    }
+    try {
+      const premiumUntil = new Date();
+      premiumUntil.setMonth(premiumUntil.getMonth() + giftDuration);
+      
+      await updateOtherUser(giftUserId, { 
+        isPremium: true, 
+        isTemporaryPremium: false,
+        premiumUntil: premiumUntil.toISOString(),
+        unseenPremiumGift: giftDuration
+      });
+      
+      addAdminLog('Premium Gifted', `Gifted ${giftDuration} months to user ${giftUserId}`);
+      alert(`Foydalanuvchiga ${giftDuration} oylik premium muvaffaqiyatli hadiya qilindi!`);
+      setGiftUserId('');
+      setUsers(await getAllUsers());
+    } catch (err) {
+      console.error("Gift premium error:", err);
+      alert("Xatolik yuz berdi. ID to'g'riligini tekshiring.");
+    }
+  };
 
   // Discount states
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -161,18 +189,29 @@ const Admin: React.FC = () => {
   const handleSaveAdminConfig = async () => {
     try {
       console.log("Saving admin config:", { newCardNumber, docUrls });
-      await updateAdminSettingsInSupabase({ 
+      
+      const newConfig = {
         paymentCardNumber: newCardNumber,
         privacyPolicyUrl: docUrls.privacy,
         termsOfUseUrl: docUrls.terms,
         publicOfferUrl: docUrls.offer
-      });
+      };
+      
+      // Save locally first
+      saveAdminConfig({ ...adminConfig, ...newConfig });
+      
+      try {
+        await updateAdminSettingsInSupabase(newConfig);
+      } catch (dbErr) {
+        console.warn("Could not save to Supabase, saved locally instead:", dbErr);
+      }
+      
       addAdminLog('Admin Config Update', `Updated card number: ${newCardNumber}`);
       alert("Karta ma'lumotlari saqlandi!");
       
       // Refresh local state
       const settings = await fetchAdminSettingsFromSupabase();
-      if (settings) {
+      if (settings && settings.paymentCardNumber !== '8600 0000 0000 0000') {
         setNewCardNumber(settings.paymentCardNumber);
         setDocUrls({
           privacy: settings.privacyPolicyUrl,
@@ -301,7 +340,8 @@ const Admin: React.FC = () => {
       alert("Fayl muvaffaqiyatli yuklandi!");
     } catch (e) {
       console.error(e);
-      alert("Fayl yuklashda xatolik! Supabase Storage bucketlari ('thumbnails', 'library-content') yaratilganligiga ishonch hosil qiling.");
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      alert(`Fayl yuklashda xatolik! Supabase Storage bucketlari ('thumbnails', 'library-content') yaratilganligiga ishonch hosil qiling. Xato: ${errorMessage}`);
     } finally {
       setIsUploading(false);
     }
@@ -324,7 +364,7 @@ const Admin: React.FC = () => {
 
     setIsUploading(true);
     try {
-      const url = await uploadFileToSupabase('library-content', file);
+      const url = await uploadFileToSupabase('legal-docs', file);
       const newUrls = { ...docUrls, [type]: url };
       setDocUrls(newUrls);
       
@@ -337,7 +377,8 @@ const Admin: React.FC = () => {
       alert("Hujjat yuklandi va saqlandi!");
     } catch (e) {
       console.error(e);
-      alert("Fayl yuklashda xatolik! 'legal-docs' bucket mavjudligini tekshiring.");
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      alert(`Fayl yuklashda xatolik! 'legal-docs' bucket mavjudligini tekshiring. Xato: ${errorMessage}`);
     } finally {
       setIsUploading(false);
     }
@@ -463,6 +504,36 @@ const Admin: React.FC = () => {
             />
           </div>
           <button onClick={handleSaveAdminConfig} className="w-full py-4 bg-blue-600 rounded-2xl font-black text-xs uppercase tracking-widest text-white">Saqlash</button>
+        </div>
+      </div>
+
+      <div className="glass-card p-6 rounded-3xl border border-purple-500/20 bg-purple-500/5">
+        <h3 className="font-black text-sm uppercase tracking-widest mb-4 flex items-center">
+          <i className="fa-solid fa-gift text-purple-400 mr-2"></i> Premium Hadiya Qilish
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Foydalanuvchi ID</label>
+            <input 
+              type="text" 
+              value={giftUserId} 
+              onChange={(e) => setGiftUserId(e.target.value)} 
+              placeholder="Foydalanuvchi ID sini kiriting"
+              className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl font-bold" 
+            />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Muddat (Oy)</label>
+            <input 
+              type="number" 
+              min="1"
+              max="12"
+              value={giftDuration} 
+              onChange={(e) => setGiftDuration(parseInt(e.target.value) || 1)} 
+              className="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl font-bold" 
+            />
+          </div>
+          <button onClick={handleGiftPremium} className="w-full py-4 bg-purple-600 rounded-2xl font-black text-xs uppercase tracking-widest text-white">Hadiya Qilish</button>
         </div>
       </div>
 

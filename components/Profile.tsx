@@ -27,6 +27,8 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
+  const [editedName, setEditedName] = useState(user.name || '');
+  const [editedAvatarUrl, setEditedAvatarUrl] = useState(user.avatarUrl || '');
   const [editedBio, setEditedBio] = useState(user.bio || '');
   const [editedIsPrivate, setEditedIsPrivate] = useState(user.isPrivate || false);
   
@@ -76,8 +78,14 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
   };
 
   const handleSaveSettings = () => {
+    if (!editedName.trim()) {
+      alert("Ism bo'sh bo'lishi mumkin emas!");
+      return;
+    }
     onUpdateUser({
       ...user,
+      name: editedName.trim(),
+      avatarUrl: editedAvatarUrl.trim(),
       bio: editedBio,
       isPrivate: editedIsPrivate
     });
@@ -101,6 +109,8 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
       {/* Settings Button */}
       <button 
         onClick={() => {
+          setEditedName(user.name || '');
+          setEditedAvatarUrl(user.avatarUrl || '');
           setEditedBio(user.bio || '');
           setEditedIsPrivate(user.isPrivate || false);
           setShowSettings(true);
@@ -120,7 +130,13 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
                  )}
              </div>
          </div>
-         <h2 className="text-2xl font-black">{user.name}</h2>
+         <h2 className="text-2xl font-black flex items-center gap-2">
+           {user.name}
+           {user.isPrivate && <Lock className="w-4 h-4 text-gray-400" />}
+         </h2>
+         {user.bio && (
+           <p className="text-sm text-gray-400 mt-2 text-center max-w-xs">{user.bio}</p>
+         )}
          
          {/* Premium / Trial Status Badge */}
          {isPremium ? (
@@ -426,6 +442,36 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
              </div>
 
              <div className="space-y-6">
+               {/* Avatar Input */}
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Avatar URL (Rasm)</label>
+                 <input
+                   type="text"
+                   value={editedAvatarUrl}
+                   onChange={(e) => setEditedAvatarUrl(e.target.value)}
+                   placeholder="https://example.com/avatar.png"
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                 />
+                 {editedAvatarUrl && (
+                   <div className="mt-2 flex justify-center">
+                     <img src={editedAvatarUrl} alt="Avatar Preview" className="w-16 h-16 rounded-full object-cover border-2 border-white/10" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                   </div>
+                 )}
+               </div>
+
+               {/* Name Input */}
+               <div>
+                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Ism</label>
+                 <input
+                   type="text"
+                   value={editedName}
+                   onChange={(e) => setEditedName(e.target.value)}
+                   placeholder="Ismingizni kiriting"
+                   maxLength={30}
+                   className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                 />
+               </div>
+
                {/* Privacy Toggle */}
                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
                  <div className="flex items-center gap-3">

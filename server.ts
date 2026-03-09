@@ -34,6 +34,7 @@ async function startServer() {
     userId: string; // Persistent User ID
     name: string;
     isPremium: boolean;
+    avatarUrl?: string;
   }
 
   interface Room {
@@ -59,7 +60,7 @@ async function startServer() {
       socket.emit("rooms-list", Object.values(rooms));
     });
 
-    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium, userId, isFriendsOnly, allowedUserIds }, callback) => {
+    socket.on("create-room", ({ name, topic, level, creator, limit, isPremium, userId, isFriendsOnly, allowedUserIds, avatarUrl }, callback) => {
       try {
         const id = Math.random().toString(36).substring(2, 9);
         const createdAt = Date.now();
@@ -71,7 +72,7 @@ async function startServer() {
           topic, 
           level, 
           creator, 
-          members: [{ id: socket.id, userId, name: creator, isPremium: !!isPremium }], 
+          members: [{ id: socket.id, userId, name: creator, isPremium: !!isPremium, avatarUrl }], 
           limit, 
           createdAt, 
           expiresAt,
@@ -122,7 +123,7 @@ async function startServer() {
           }
         }
 
-        const member = { id: socket.id, userId: user.id, name: user.name, isPremium: !!user.isPremium };
+        const member = { id: socket.id, userId: user.id, name: user.name, isPremium: !!user.isPremium, avatarUrl: user.avatarUrl };
         room.members.push(member);
         socket.join(roomId);
         io.to(roomId).emit("user-joined", member);

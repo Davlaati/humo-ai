@@ -348,8 +348,10 @@ export const isPremiumActive = (user: UserProfile): boolean => {
   const now = new Date();
   
   // 1. Check paid premium
-  if (user.isPremium && user.premiumExpiryDate) {
-    const expiry = new Date(user.premiumExpiryDate);
+  const expiryDate = user.premiumUntil || user.premiumExpiryDate;
+  if (user.isPremium) {
+    if (!expiryDate) return true; // Lifetime or undefined expiry
+    const expiry = new Date(expiryDate);
     if (now < expiry) return true;
   }
   
@@ -367,14 +369,15 @@ export const getPremiumStatus = (user: UserProfile): 'trial' | 'paid' | 'expired
   
   if (user.pendingPremium) return 'pending';
   
-  if (user.isPremium && user.premiumExpiryDate) {
-    const expiry = new Date(user.premiumExpiryDate);
+  const expiryDate = user.premiumUntil || user.premiumExpiryDate;
+  if (user.isPremium) {
+    if (!expiryDate) return 'paid';
+    const expiry = new Date(expiryDate);
     if (now < expiry) return 'paid';
   }
   
-  if (!user.isTrialUsed && user.joinedAt) {
-    const joined = new Date(user.joinedAt);
-    const trialEnd = new Date(joined.getTime() + 3 * 24 * 60 * 60 * 1000);
+  if (user.trialExpiresAt) {
+    const trialEnd = new Date(user.trialExpiresAt);
     if (now < trialEnd) return 'trial';
   }
   

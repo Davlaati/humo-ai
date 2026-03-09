@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, EntryNotification as EntryNotifType, EnglishLevel } from './types';
-import { incrementActiveTime, getEntryNotification } from './services/storageService';
+import { incrementActiveTime, getEntryNotification, getPremiumStatus } from './services/storageService';
 import { useUserSync } from './hooks/useUserSync';
 import Onboarding from './components/Onboarding';
 import Tutorial from './components/Tutorial';
@@ -23,6 +23,7 @@ import Library from './components/Library';
 import UserProfileView from './components/UserProfileView';
 import MarketingModal from './components/MarketingModal';
 import StoryTaskModal from './components/StoryTaskModal';
+import PremiumGiftModal from './components/PremiumGiftModal';
 
 const Pricing = React.lazy(() => import('./components/Pricing'));
 const Checkout = React.lazy(() => import('./components/Checkout'));
@@ -46,6 +47,8 @@ const App: React.FC = () => {
   const [isTrialExpired, setIsTrialExpired] = useState(false);
   const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showStoryTaskModal, setShowStoryTaskModal] = useState(false);
+  const [showPremiumGiftModal, setShowPremiumGiftModal] = useState(false);
+  const [premiumGiftDuration, setPremiumGiftDuration] = useState(0);
   const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -54,6 +57,14 @@ const App: React.FC = () => {
       let updatedUser = { ...user };
       let changed = false;
 
+      // Check for unseen premium gift
+      if (user.unseenPremiumGift && user.unseenPremiumGift > 0) {
+        setPremiumGiftDuration(user.unseenPremiumGift);
+        setShowPremiumGiftModal(true);
+        updatedUser.unseenPremiumGift = 0; // Clear it so it doesn't show again
+        changed = true;
+      }
+
       // Initialize Trial if not set
       if (!user.trialExpiresAt && !user.isPremium) {
         // 3 days trial
@@ -61,16 +72,16 @@ const App: React.FC = () => {
         changed = true;
       }
 
-      // Check for expiration
-      if (!user.isPremium && user.trialExpiresAt) {
-        const trialEnd = new Date(user.trialExpiresAt).getTime();
-        if (now > trialEnd) {
-          setIsTrialExpired(true);
-          setShowPaywall(true);
-        } else {
-          setIsTrialExpired(false);
+      // Check for expiration using getPremiumStatus
+      const premiumStatus = getPremiumStatus(user);
+      if (premiumStatus === 'expired') {
+        setIsTrialExpired(true);
+        setShowPaywall(true);
+        if (user.isPremium) {
+          updatedUser.isPremium = false;
+          changed = true;
         }
-      } else if (user.isPremium) {
+      } else {
         setIsTrialExpired(false);
         setShowPaywall(false);
       }
@@ -371,6 +382,26 @@ const App: React.FC = () => {
                </Layout>
            )}
        </div>
+       {showMarketingModal && (
+         <MarketingModal 
+           user={user!} 
+           onClose={() => setShowMarketingModal(false)} 
+           onUpdateUser={handleUpdateUser}
+         />
+       )}
+       {showStoryTaskModal && (
+         <StoryTaskModal
+           user={user!}
+           onClose={() => setShowStoryTaskModal(false)}
+           onUpdateUser={handleUpdateUser}
+         />
+       )}
+       {showPremiumGiftModal && (
+         <PremiumGiftModal
+           duration={premiumGiftDuration}
+           onClose={() => setShowPremiumGiftModal(false)}
+         />
+       )}
     </>
   );
 };

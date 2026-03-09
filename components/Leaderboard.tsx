@@ -87,7 +87,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate, onViewUser 
              >
                 <div className="relative mb-3">
                    <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-500/50 flex items-center justify-center text-xl font-bold text-slate-300 overflow-hidden">
-                      {topThree[1]?.name?.charAt(0)}
+                      {topThree[1]?.avatarUrl ? (
+                        <img src={topThree[1].avatarUrl} alt={topThree[1].name} className="w-full h-full object-cover" />
+                      ) : (
+                        topThree[1]?.name?.charAt(0)
+                      )}
                    </div>
                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-slate-500 text-[#080d19] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[#080d19]">2</div>
                 </div>
@@ -107,7 +111,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate, onViewUser 
                 <div className="relative mb-4">
                    <div className="absolute -inset-2 bg-yellow-500/20 rounded-full blur-xl animate-pulse"></div>
                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 border-4 border-yellow-200/50 flex items-center justify-center text-4xl font-bold text-[#080d19] shadow-2xl overflow-hidden relative">
-                      {topThree[0]?.name?.charAt(0)}
+                      {topThree[0]?.avatarUrl ? (
+                        <img src={topThree[0].avatarUrl} alt={topThree[0].name} className="w-full h-full object-cover" />
+                      ) : (
+                        topThree[0]?.name?.charAt(0)
+                      )}
                    </div>
                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-yellow-400 text-[#080d19] text-xs font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#080d19]">1</div>
                 </div>
@@ -127,7 +135,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate, onViewUser 
              >
                 <div className="relative mb-3">
                    <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-orange-800/50 flex items-center justify-center text-xl font-bold text-orange-700 overflow-hidden">
-                      {topThree[2]?.name?.charAt(0)}
+                      {topThree[2]?.avatarUrl ? (
+                        <img src={topThree[2].avatarUrl} alt={topThree[2].name} className="w-full h-full object-cover" />
+                      ) : (
+                        topThree[2]?.name?.charAt(0)
+                      )}
                    </div>
                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-orange-700 text-[#080d19] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[#080d19]">3</div>
                 </div>
@@ -149,8 +161,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, onNavigate, onViewUser 
                 className={`flex items-center py-4 px-5 rounded-[24px] border transition-all active:scale-[0.98] cursor-pointer ${entry.isPremium ? 'bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'bg-white/[0.02] border-white/[0.03]'}`}
               >
                 <span className={`w-8 text-[11px] font-bold italic ${entry.isPremium ? 'text-yellow-500' : 'text-slate-600'}`}>#{entry.rank}</span>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm mr-4 border ${entry.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-white/5 text-slate-400 border-white/5'}`}>
-                  {entry.name?.charAt(0)}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm mr-4 border overflow-hidden ${entry.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-white/5 text-slate-400 border-white/5'}`}>
+                  {entry.avatarUrl ? (
+                    <img src={entry.avatarUrl} alt={entry.name} className="w-full h-full object-cover" />
+                  ) : (
+                    entry.name?.charAt(0)
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center">

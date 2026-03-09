@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { UserProfile } from '../types';
 import { Users, Mic, MicOff, PhoneOff, Clock, Plus, MessageSquare, Globe, Headphones, Star } from 'lucide-react';
+import { awardXP } from '../services/gamificationService';
+import { syncUserToSupabase } from '../services/supabaseService';
 
 interface SpeakingClubProps {
   user: UserProfile;
@@ -15,6 +17,7 @@ interface Member {
   userId: string;
   name: string;
   isPremium: boolean;
+  avatarUrl?: string;
 }
 
 interface Room {
@@ -52,6 +55,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
   const [isMuted, setIsMuted] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
+  const [joinedAt, setJoinedAt] = useState<number | null>(null);
 
   // WebRTC Refs
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -73,13 +77,13 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
     });
 
     newSocket.on('room-created', (roomId) => {
-      // Creator logic handled via room-joined or list update
       setIsSubmitting(false);
     });
 
     newSocket.on('room-joined', async (room: Room) => {
       console.log('Joined room:', room);
       setCurrentRoom(room);
+      setJoinedAt(Date.now());
       setIsCreating(false);
       setIsSubmitting(false);
       await initWebRTC(newSocket, room.id);
@@ -255,7 +259,8 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
         isPremium: user.isPremium,
         userId: user.id,
         isFriendsOnly: newRoom.isFriendsOnly,
-        allowedUserIds
+        allowedUserIds,
+        avatarUrl: user.avatarUrl
       }, (response: any) => {
         if (response && response.status === 'error') {
           alert(response.message || "Failed to create room");
@@ -284,12 +289,23 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
 
   const handleLeaveRoom = (showRate = false) => {
     if (socket) {
+      if (joinedAt) {
+        const durationMinutes = Math.floor((Date.now() - joinedAt) / 60000);
+        if (durationMinutes > 0) {
+          const xpEarned = durationMinutes * 10; // 10 XP per minute
+          const updatedUser = awardXP(user, xpEarned);
+          syncUserToSupabase(updatedUser);
+          alert(`Siz ${durationMinutes} daqiqa suhbatlashdingiz va ${xpEarned} XP oldingiz!`);
+        }
+      }
+
       socket.disconnect();
       cleanupWebRTC();
       
       const newSocket = io();
       setSocket(newSocket);
       setCurrentRoom(null);
+      setJoinedAt(null);
       
       if (showRate) setShowRating(true);
 
@@ -298,6 +314,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
       });
       newSocket.on('room-joined', async (room: Room) => {
           setCurrentRoom(room);
+          setJoinedAt(Date.now());
           setIsCreating(false);
           await initWebRTC(newSocket, room.id);
       });
@@ -376,9 +393,13 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
                     {/* Avatar */}
                     <div className={`w-20 h-20 rounded-full p-1 mb-3 relative ${member.isPremium ? 'bg-gradient-to-br from-yellow-400 to-amber-600' : 'bg-gradient-to-br from-blue-400 to-purple-600'}`}>
                         <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                            <span className="text-2xl font-black text-white">
-                                {member.name.charAt(0)}
-                            </span>
+                            {member.avatarUrl ? (
+                              <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-2xl font-black text-white">
+                                  {member.name.charAt(0)}
+                              </span>
+                            )}
                         </div>
                         {/* Speaking Indicator */}
                         <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-slate-900 flex items-center justify-center ${isMuted && member.id === socket?.id ? 'bg-red-500' : 'bg-green-500'}`}>
@@ -532,9 +553,13 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
                                       e.stopPropagation();
                                       onViewUser?.(member.userId);
                                     }}
-                                    className={`w-8 h-8 rounded-full border-2 border-[#0c1222] flex items-center justify-center text-[10px] font-bold cursor-pointer hover:scale-110 transition-transform ${member.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-slate-800 text-white'}`}
+                                    className={`w-8 h-8 rounded-full border-2 border-[#0c1222] flex items-center justify-center text-[10px] font-bold cursor-pointer hover:scale-110 transition-transform overflow-hidden ${member.isPremium ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-slate-800 text-white'}`}
                                   >
-                                      {member.name.charAt(0)}
+                                      {member.avatarUrl ? (
+                                        <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        member.name.charAt(0)
+                                      )}
                                   </div>
                               ))}
                               {room.members.length > 3 && (

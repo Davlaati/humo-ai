@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
 import { fetchAdminSettingsFromSupabase, createPaymentInSupabase } from '../services/supabaseService';
+import { getAdminConfig } from '../services/storageService';
 
 interface CheckoutProps {
   user: UserProfile;
@@ -14,7 +15,7 @@ interface CheckoutProps {
 
 const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) => {
   const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes
-  const [cardNumber, setCardNumber] = useState('8600 0000 0000 0000');
+  const [cardNumber, setCardNumber] = useState(getAdminConfig().cardNumber);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +27,9 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
     
     const fetchSettings = async () => {
       const settings = await fetchAdminSettingsFromSupabase();
-      if (settings) setCardNumber(settings.paymentCardNumber);
+      if (settings && settings.paymentCardNumber !== '8600 0000 0000 0000') {
+        setCardNumber(settings.paymentCardNumber);
+      }
     };
     fetchSettings();
 
