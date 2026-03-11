@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -6,6 +7,14 @@ interface LayoutProps {
   onTabChange: (tab: string) => void;
   showNav?: boolean;
 }
+
+const NAV_ITEMS = [
+  { id: 'home', icon: 'fa-house', label: 'Asosiy' },
+  { id: 'speaking-club', icon: 'fa-headset', label: 'Speaking' },
+  { id: 'game', icon: 'fa-gamepad', label: "O'yinlar" },
+  { id: 'library', icon: 'fa-book-open', label: 'Kutubxona' },
+  { id: 'profile', icon: 'fa-user', label: 'Profil' },
+];
 
 const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, showNav = true }) => {
   return (
@@ -22,40 +31,57 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, showN
       </div>
 
       {showNav && (
-        <div className="z-50 pb-[calc(var(--tg-safe-area-inset-bottom)+12px)] pt-3 px-4 glass-panel rounded-t-[30px] fixed bottom-0 w-full border-t border-white/10 backdrop-blur-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
-          <div className="flex justify-between items-center max-w-sm mx-auto">
-            <NavButton icon="fa-house" label="Asosiy" active={activeTab === 'home'} onClick={() => onTabChange('home')} />
-            <NavButton icon="fa-headset" label="Speaking" active={activeTab === 'speaking-club'} onClick={() => onTabChange('speaking-club')} />
-            
-            <div className="relative -top-10">
-               <button 
-                onClick={() => onTabChange('game')}
-                className="w-16 h-16 rounded-full liquid-button text-white flex items-center justify-center shadow-[0_0_25px_rgba(59,130,246,0.6)] transform transition active:scale-90 border-[4px] border-[#1e1b4b] group"
-               >
-                  <i className="fa-solid fa-gamepad text-2xl group-hover:rotate-12 transition-transform drop-shadow-md"></i>
-               </button>
-               <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest text-slate-400 opacity-50">O'yinlar</span>
-            </div>
-            
-            <NavButton icon="fa-book-open" label="Kutubxona" active={activeTab === 'library'} onClick={() => onTabChange('library')} />
-            <NavButton icon="fa-user" label="Profil" active={activeTab === 'profile'} onClick={() => onTabChange('profile')} />
+        <div className="z-50 pb-[calc(var(--tg-safe-area-inset-bottom)+16px)] pt-4 px-4 fixed bottom-0 w-full pointer-events-none">
+          <div className="max-w-sm mx-auto bg-[#0a0f24]/80 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex justify-between items-center p-2 relative pointer-events-auto">
+            {NAV_ITEMS.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onTabChange(item.id)}
+                  className="relative flex flex-col items-center justify-center w-14 h-14 z-10 outline-none"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeBubble"
+                      className="absolute inset-0 bg-blue-500/20 border border-blue-500/30 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    />
+                  )}
+                  
+                  <motion.div
+                    animate={{ 
+                      y: isActive ? -8 : 0,
+                      scale: isActive ? 1.1 : 1,
+                      color: isActive ? '#60A5FA' : '#94A3B8'
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="relative z-10 flex items-center justify-center"
+                  >
+                    <i className={`fa-solid ${item.icon} text-xl ${isActive ? 'drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : ''}`}></i>
+                  </motion.div>
+
+                  <motion.span
+                    initial={false}
+                    animate={{ 
+                      opacity: isActive ? 1 : 0,
+                      y: isActive ? 0 : 10,
+                      scale: isActive ? 1 : 0.5
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="absolute bottom-2 text-[8px] font-black uppercase tracking-widest text-blue-300 z-10 pointer-events-none"
+                  >
+                    {item.label}
+                  </motion.span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
     </div>
   );
 };
-
-const NavButton: React.FC<{ icon: string; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
-  <button 
-    onClick={onClick} 
-    className={`flex flex-col items-center justify-center w-14 transition-all duration-300 active:scale-90 ${active ? 'text-blue-400' : 'text-slate-400'}`}
-  >
-    <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all ${active ? 'bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : ''}`}>
-        <i className={`fa-solid ${icon} ${active ? 'text-xl drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]' : 'text-lg'}`}></i>
-    </div>
-    <span className={`text-[9px] font-bold uppercase tracking-widest mt-1.5 transition-all ${active ? 'opacity-100 text-blue-300' : 'opacity-50'}`}>{label}</span>
-  </button>
-);
 
 export default Layout;
