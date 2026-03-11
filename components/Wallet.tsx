@@ -9,9 +9,10 @@ interface WalletProps {
   user: UserProfile;
   onUpdateUser: (user: UserProfile) => void;
   onNavigate: (tab: string) => void;
+  isBlocked?: boolean;
 }
 
-const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate }) => {
+const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate, isBlocked }) => {
   const isPremium = isPremiumActive(user);
   
   const getDaysRemaining = () => {
@@ -28,12 +29,16 @@ const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate }) => {
     <div className="h-full w-full bg-[#0c1222] flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
       <div className="p-6 flex items-center justify-between bg-slate-900/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30">
-        <button 
-          onClick={() => { playTapSound(); onNavigate('home'); }}
-          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition active:scale-90"
-        >
-          <ArrowLeft className="w-5 h-5 text-white" />
-        </button>
+        {!isBlocked ? (
+          <button 
+            onClick={() => { playTapSound(); onNavigate('home'); }}
+            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition active:scale-90"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+        ) : (
+          <div className="w-10 h-10"></div>
+        )}
         <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">Hamyon</h2>
         <div className="w-10"></div> {/* Spacer */}
       </div>

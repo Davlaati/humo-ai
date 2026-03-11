@@ -61,12 +61,26 @@ async function decodeAudioData(
 export const generateLessonContent = async (user: UserProfile, topic: string, count: number = 10) => {
   try {
     const ai = getAIClient();
+    if (!ai) return null;
+    
+    const performanceData = `
+      Learned Words Count: ${user.learnedWords?.length || 0}.
+      Recent XP: ${user.xp}.
+      Ravona Exam Score: ${user.ravonaScore || 'Not taken yet'}.
+      Current Streak: ${user.streak} days.
+    `;
+
     const prompt = `
       Create a comprehensive English lesson for a student with level ${user.level}.
       Topic: ${topic}.
       User Interests: ${user.interests.join(', ')}.
       Teaching Style: ${user.personalities.join(', ')}.
       Word Count: ${count}.
+      
+      User Performance Data:
+      ${performanceData}
+      
+      Based on the user's performance, tailor the difficulty and focus of the lesson. If they have a high streak or score, introduce more challenging vocabulary and grammar. If they are struggling, focus on foundational concepts.
       
       Provide ${count} key vocabulary words with definitions, Uzbek translations, and 3-5 short quiz questions in JSON format:
       {
@@ -79,7 +93,7 @@ export const generateLessonContent = async (user: UserProfile, topic: string, co
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3.1-flash-preview',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });

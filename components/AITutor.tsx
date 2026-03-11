@@ -40,13 +40,14 @@ const AITutor: React.FC<AITutorProps> = ({ user, onNavigate, onUpdateUser }) => 
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isTyping) return;
+  const handleSendMessage = async (textToSend?: string | React.MouseEvent | React.KeyboardEvent) => {
+    const messageText = typeof textToSend === 'string' ? textToSend : input;
+    if (!messageText.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      text: input,
+      text: messageText,
       timestamp: new Date()
     };
 
@@ -79,10 +80,10 @@ const AITutor: React.FC<AITutorProps> = ({ user, onNavigate, onUpdateUser }) => 
       }));
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-preview",
         contents: [
             ...history.map(h => ({ role: h.role, parts: h.parts })),
-            { role: 'user', parts: [{ text: input }] }
+            { role: 'user', parts: [{ text: messageText }] }
         ],
         config: {
           systemInstruction: systemInstruction
@@ -201,7 +202,7 @@ const AITutor: React.FC<AITutorProps> = ({ user, onNavigate, onUpdateUser }) => 
             className="bg-transparent flex-1 px-6 py-4 text-sm text-white placeholder-slate-500 focus:outline-none font-bold"
           />
           <button 
-            onClick={handleSendMessage}
+            onClick={() => handleSendMessage()}
             disabled={!input.trim() || isTyping}
             className={`w-14 h-14 rounded-[25px] flex items-center justify-center transition-all shadow-xl ${
               input.trim() && !isTyping 
@@ -213,9 +214,9 @@ const AITutor: React.FC<AITutorProps> = ({ user, onNavigate, onUpdateUser }) => 
           </button>
         </div>
         <div className="mt-4 flex justify-center space-x-2 overflow-x-auto no-scrollbar py-1">
-           <QuickAction text="Grammatika 📚" onClick={() => setInput("Menga bugun qaysi grammatikani o'rgatasiz?")} />
-           <QuickAction text="Lug'at 📖" onClick={() => setInput("Yangi 5 ta qiziqarli so'z o'rgating")} />
-           <QuickAction text="Suhbat 💬" onClick={() => setInput("Keling, sayohat haqida gaplashamiz")} />
+           <QuickAction text="Grammatika 📚" onClick={() => handleSendMessage("Menga bugun qaysi grammatikani o'rgatasiz?")} />
+           <QuickAction text="Lug'at 📖" onClick={() => handleSendMessage("Yangi 5 ta qiziqarli so'z o'rgating")} />
+           <QuickAction text="Suhbat 💬" onClick={() => handleSendMessage("Keling, sayohat haqida gaplashamiz")} />
         </div>
       </div>
     </div>

@@ -148,15 +148,93 @@ async function startServer() {
     });
 
     // Word Chain Logic
-    socket.on('word-chain:submit', ({ word, userId }) => {
-      // Very simple logic for now
-      io.emit('word-chain:update', { lastWord: word, message: `User ${userId} submitted ${word}` });
+    let currentWordChain = { word: 'ravona', combo: 0, lastUser: 'System' };
+    const usedWords = new Set(['ravona']);
+
+    socket.on('word-chain:join', () => {
+      socket.emit('word-chain:update', { 
+        lastWord: currentWordChain.word, 
+        message: 'O\'yin boshlandi! 🔥', 
+        combo: currentWordChain.combo,
+        lastUser: currentWordChain.lastUser
+      });
+    });
+
+    socket.on('word-chain:submit', ({ word, userId, userName }) => {
+      const cleanWord = word.trim().toLowerCase();
+      if (cleanWord.length < 2) return;
+
+      const lastChar = currentWordChain.word.slice(-1).toLowerCase();
+      
+      if (cleanWord.startsWith(lastChar)) {
+        if (usedWords.has(cleanWord)) {
+          socket.emit('word-chain:error', 'Bu so\'z ishlatilgan! 🛑');
+          return;
+        }
+        
+        usedWords.add(cleanWord);
+        currentWordChain = {
+          word: cleanWord,
+          combo: currentWordChain.combo + 1,
+          lastUser: userName || userId
+        };
+        
+        io.emit('word-chain:update', { 
+          lastWord: currentWordChain.word, 
+          message: `W Rizz! ${currentWordChain.lastUser} yordi! 🥶`, 
+          combo: currentWordChain.combo,
+          lastUser: currentWordChain.lastUser
+        });
+      } else {
+        socket.emit('word-chain:error', `L bozo! So'z "${lastChar}" harfidan boshlanishi kerak 💀`);
+      }
     });
 
     // Guessing Game Logic
-    socket.on('guessing-game:submit', ({ guess, userId }) => {
-      // Very simple logic for now
-      io.emit('guessing-game:update', { clue: '...', message: `User ${userId} guessed ${guess}` });
+    const riddles = [
+      { q: "Ertalab to'rt oyoqda, tushda ikki oyoqda, kechqurun uch oyoqda. (Javob: Odam)", a: "odam" },
+      { q: "O'zi bitta, ko'zi mingta. (Javob: Anor)", a: "anor" },
+      { q: "Qo'lsiz, oyoqsiz eshik ochadi. (Javob: Shamol)", a: "shamol" },
+      { q: "Oq sandig'im ochildi, ichidan ipak sochildi. (Javob: Paxta)", a: "paxta" },
+      { q: "Kechasi chiqadi, kunduzi yo'qoladi. (Javob: Yulduz)", a: "yulduz" },
+      { q: "Qanoti yo'q uchadi, Oyog'i yo'q qochadi. (Javob: Bulut)", a: "bulut" },
+      { q: "O'zi qip-qizil, Sochlari yam-yashil. (Javob: Sabzi)", a: "sabzi" },
+      { q: "Qat-qat to'nli, Qari chol. (Javob: Piyoz)", a: "piyoz" },
+      { q: "Tishi bor, og'zi yo'q. (Javob: Arra)", a: "arra" },
+      { q: "Kichkina bo'yi, Ko'p uning o'yi. (Javob: Kitob)", a: "kitob" }
+    ];
+    
+    let currentRiddleIndex = Math.floor(Math.random() * riddles.length);
+
+    socket.on('guessing-game:join', () => {
+      socket.emit('guessing-game:update', { 
+        clue: riddles[currentRiddleIndex].q.split('(Javob')[0].trim(), 
+        message: 'Topishmoqni toping! 🤔' 
+      });
+    });
+
+    socket.on('guessing-game:submit', ({ guess, userId, userName }) => {
+      const cleanGuess = guess.trim().toLowerCase();
+      const answer = riddles[currentRiddleIndex].a;
+
+      if (cleanGuess === answer) {
+        io.emit('guessing-game:success', {
+          winner: userName || userId,
+          answer: answer,
+          message: `Sheesh! ${userName || userId} topdi! Javob: ${answer} 🎉`
+        });
+        
+        // Next riddle
+        currentRiddleIndex = (currentRiddleIndex + 1) % riddles.length;
+        setTimeout(() => {
+          io.emit('guessing-game:update', { 
+            clue: riddles[currentRiddleIndex].q.split('(Javob')[0].trim(), 
+            message: 'Yangi topishmoq! Kettik! 🚀' 
+          });
+        }, 3000);
+      } else {
+        socket.emit('guessing-game:error', `Xato! Yana urinib ko'ring 🤡`);
+      }
     });
 
     socket.on("disconnect", () => {

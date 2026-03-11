@@ -24,6 +24,7 @@ import UserProfileView from './components/UserProfileView';
 import MarketingModal from './components/MarketingModal';
 import StoryTaskModal from './components/StoryTaskModal';
 import PremiumGiftModal from './components/PremiumGiftModal';
+import AITutor from './components/AITutor';
 
 const Pricing = React.lazy(() => import('./components/Pricing'));
 const Checkout = React.lazy(() => import('./components/Checkout'));
@@ -35,7 +36,6 @@ const App: React.FC = () => {
   const [previousTab, setPreviousTab] = useState('home');
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [streakReward, setStreakReward] = useState<{days: number, coins: number} | null>(null);
 
@@ -44,12 +44,17 @@ const App: React.FC = () => {
   const [isAppRevealed, setIsAppRevealed] = useState(false);
   const [isInitialSplash, setIsInitialSplash] = useState(true);
 
-  const [isTrialExpired, setIsTrialExpired] = useState(false);
   const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showStoryTaskModal, setShowStoryTaskModal] = useState(false);
   const [showPremiumGiftModal, setShowPremiumGiftModal] = useState(false);
   const [premiumGiftDuration, setPremiumGiftDuration] = useState(0);
   const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const premiumStatus = user ? getPremiumStatus(user) : 'trial';
+  const isAccessBlocked = premiumStatus === 'expired';
+
+  // Determine if we should show the paywall overlay
+  const shouldShowPaywall = isAccessBlocked && !['pricing', 'checkout', 'wallet'].includes(activeTab);
 
   useEffect(() => {
     if (user) {
@@ -72,18 +77,9 @@ const App: React.FC = () => {
         changed = true;
       }
 
-      // Check for expiration using getPremiumStatus
-      const premiumStatus = getPremiumStatus(user);
-      if (premiumStatus === 'expired') {
-        setIsTrialExpired(true);
-        setShowPaywall(true);
-        if (user.isPremium) {
-          updatedUser.isPremium = false;
-          changed = true;
-        }
-      } else {
-        setIsTrialExpired(false);
-        setShowPaywall(false);
+      if (premiumStatus === 'expired' && user.isPremium) {
+        updatedUser.isPremium = false;
+        changed = true;
       }
 
       if (changed) {
@@ -96,6 +92,7 @@ const App: React.FC = () => {
         setShowMarketingModal(true);
         localStorage.setItem('ravona_marketing_shown', 'true');
       }
+
 
       // Handle referral link
       const tg = (window as any).Telegram?.WebApp;
@@ -114,9 +111,6 @@ const App: React.FC = () => {
       }
     }
   }, [user?.id, user?.isPremium, user?.trialExpiresAt]);
-
-  // Block access if trial expired and not premium
-  const isAccessBlocked = isTrialExpired && !user?.isPremium;
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -310,13 +304,14 @@ const App: React.FC = () => {
           case 'user-profile': return viewingUserId ? <UserProfileView userId={viewingUserId} onBack={() => { setActiveTab(previousTab); setViewingUserId(null); }} /> : <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
           case 'translator': return <GrammarAnalyzer user={user} onNavigate={setActiveTab} />;
+          case 'aitutor': return <AITutor user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'pricing': {
             return (
               <React.Suspense fallback={<div>Loading...</div>}>
                 <Pricing onSelectPlan={(plan) => {
                   setSelectedPlan(plan);
                   setActiveTab('checkout');
-                }} onBack={() => setActiveTab('home')} />
+                }} onBack={() => setActiveTab('home')} isBlocked={isAccessBlocked} />
               </React.Suspense>
             );
           }
@@ -355,48 +350,47 @@ const App: React.FC = () => {
        )}
 
        <div className={`h-full w-full transition-all duration-1000 ${isAppRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 blur-xl pointer-events-none'}`}>
-           {(showPaywall || isAccessBlocked) && (
+           {shouldShowPaywall && (
              <React.Suspense fallback={null}>
                <Paywall 
                  user={user!} 
                  onActivate={() => {
-                   setShowPaywall(false);
-                   setIsTrialExpired(false); // Optimistic update
                    setActiveTab('pricing');
                  }} 
-                 onClose={() => !isAccessBlocked && setShowPaywall(false)} 
+                 onClose={() => {}} 
                  isBlocked={isAccessBlocked}
                />
              </React.Suspense>
            )}
            {activeTab === 'wallet' ? (
                <Layout activeTab="home" onTabChange={setActiveTab} showNav={false}>
-                   <Wallet user={user!} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />
+                   <Wallet user={user!} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} isBlocked={isAccessBlocked} />
                </Layout>
            ) : (
                <Layout activeTab={activeTab} onTabChange={(tab) => {
+                   if (isAccessBlocked) return; // Prevent navigation if blocked
                    if (tab === 'home' && activeTab === 'home') setActiveTab('wallet');
                    else setActiveTab(tab);
-               }} showNav={true}> 
+               }} showNav={!isAccessBlocked}> 
                  {renderContent()}
                </Layout>
            )}
        </div>
-       {showMarketingModal && (
+       {!isAccessBlocked && showMarketingModal && (
          <MarketingModal 
            user={user!} 
            onClose={() => setShowMarketingModal(false)} 
            onUpdateUser={handleUpdateUser}
          />
        )}
-       {showStoryTaskModal && (
+       {!isAccessBlocked && showStoryTaskModal && (
          <StoryTaskModal
            user={user!}
            onClose={() => setShowStoryTaskModal(false)}
            onUpdateUser={handleUpdateUser}
          />
        )}
-       {showPremiumGiftModal && (
+       {!isAccessBlocked && showPremiumGiftModal && (
          <PremiumGiftModal
            duration={premiumGiftDuration}
            onClose={() => setShowPremiumGiftModal(false)}

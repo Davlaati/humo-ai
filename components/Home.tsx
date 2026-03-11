@@ -265,6 +265,17 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                   onClick={() => handleAction('translator', true)}
                   bgEmoji="✅"
               />
+
+              {/* AI Tutor Banner */}
+              <LargeBannerItem 
+                  title="AI Chatbot" 
+                  subtitle="Suhbatlashing va xatolarni to'g'rilang"
+                  icon="fa-robot"
+                  color="text-blue-400"
+                  bgColor="bg-blue-500/20"
+                  onClick={() => handleAction('aitutor')}
+                  bgEmoji="🤖"
+              />
           </div>
       </div>
     </div>

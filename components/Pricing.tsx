@@ -7,6 +7,7 @@ import UpsellModal from './UpsellModal';
 interface PricingProps {
   onSelectPlan: (plan: any) => void;
   onBack: () => void;
+  isBlocked?: boolean;
 }
 
 const PLANS = [
@@ -53,7 +54,7 @@ const PLANS = [
   }
 ];
 
-const Pricing: React.FC<PricingProps> = ({ onSelectPlan, onBack }) => {
+const Pricing: React.FC<PricingProps> = ({ onSelectPlan, onBack, isBlocked }) => {
   const [showUpsell, setShowUpsell] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<any>(null);
 
@@ -79,9 +80,11 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan, onBack }) => {
   return (
     <div className="min-h-full bg-[#0c1222] p-6 pb-32 overflow-y-auto no-scrollbar animate-fade-in">
       <div className="flex items-center mb-8">
-        <button onClick={onBack} className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center mr-4 border border-white/10 active:scale-90 transition">
-          <i className="fa-solid fa-arrow-left text-lg"></i>
-        </button>
+        {!isBlocked && (
+          <button onClick={onBack} className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center mr-4 border border-white/10 active:scale-90 transition">
+            <i className="fa-solid fa-arrow-left text-lg"></i>
+          </button>
+        )}
         <h1 className="text-2xl font-black italic uppercase tracking-tighter">Tarif Rejalari</h1>
       </div>
 
