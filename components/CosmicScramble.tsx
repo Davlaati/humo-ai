@@ -5,7 +5,8 @@ import { DICTIONARY } from '../data/dictionary';
 import { playTapSound, playSuccessSound, playErrorSound } from '../services/audioService';
 import { awardXP, awardCoins } from '../services/gamificationService';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Rocket, Play, Flag } from 'lucide-react';
+import { ArrowLeft, Rocket, Play, Flag, HelpCircle } from 'lucide-react';
+import { GameTutorOverlay } from './GameTutorOverlay';
 
 interface CosmicScrambleProps {
   user: UserProfile;
@@ -27,6 +28,9 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onUpdateUser, onB
   const [combo, setCombo] = useState(1);
   const [shake, setShake] = useState(false);
   const [level, setLevel] = useState(1);
+  const [showTutor, setShowTutor] = useState(() => {
+    return localStorage.getItem('tutor_cosmic_scramble') !== 'seen';
+  });
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -147,6 +151,21 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onUpdateUser, onB
   if (phase === 'menu') {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 animate-fade-in relative overflow-hidden bg-[#050b14]">
+        {showTutor && (
+          <GameTutorOverlay 
+            gameName="COSMIC SCRAMBLE"
+            instructions={[
+              "Koinot bo'ylab sayohat qiling va so'zlarni yig'ing.",
+              "Ekranda berilgan harflardan to'g'ri so'zni tuzing.",
+              "Vaqt va yoqilg'i tugamasidan oldin ko'proq so'z toping.",
+              "Ketma-ket to'g'ri javoblar kombo va qo'shimcha yoqilg'i beradi."
+            ]}
+            onClose={() => {
+              setShowTutor(false);
+              localStorage.setItem('tutor_cosmic_scramble', 'seen');
+            }}
+          />
+        )}
         {/* Starry Background */}
         <div className="absolute inset-0 overflow-hidden">
             {[...Array(20)].map((_, i) => (
@@ -169,6 +188,13 @@ const CosmicScramble: React.FC<CosmicScrambleProps> = ({ user, onUpdateUser, onB
             className="absolute top-4 left-4 text-white/50 hover:text-white z-50"
         >
             <ArrowLeft className="text-xl" />
+        </button>
+
+        <button 
+            onClick={() => setShowTutor(true)}
+            className="absolute top-4 right-4 text-white/50 hover:text-white z-50"
+        >
+            <HelpCircle className="text-xl" />
         </button>
 
         <div className="relative z-10 flex flex-col items-center">

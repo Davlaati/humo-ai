@@ -5,6 +5,7 @@ import { UserProfile, Word } from '../types';
 import { generateLessonContent, generateFallbackLesson, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
 import { awardXP, awardCoins } from '../services/gamificationService';
+import { VoiceInput } from './VoiceInput';
 
 interface LessonProps {
   user: UserProfile;
@@ -446,13 +447,34 @@ const Lesson: React.FC<LessonProps> = ({ user, onUpdateUser }) => {
 
                     <span className="text-[10px] bg-blue-500/20 text-blue-300 px-5 py-2 rounded-full mb-10 font-black tracking-widest uppercase border border-blue-500/20">Learning Mode</span>
                     <h2 className="text-6xl font-black mb-8 text-center italic tracking-tighter text-white drop-shadow-2xl uppercase break-all">{currentWord.word}</h2>
-                    <button 
-                        onTouchEnd={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
-                        onClick={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
-                        className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition active:scale-95 border border-white/10 shadow-inner group"
-                    >
-                        <i className="fa-solid fa-volume-high text-3xl text-blue-400 group-hover:scale-110 transition-transform"></i>
-                    </button>
+                    <div className="flex items-center space-x-6">
+                        <button 
+                            onTouchEnd={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
+                            onClick={(e) => { e.stopPropagation(); playTextToSpeech(currentWord.word); }}
+                            className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition active:scale-95 border border-white/10 shadow-inner group"
+                        >
+                            <i className="fa-solid fa-volume-high text-3xl text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        </button>
+                        
+                        <div onTouchEnd={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                            <VoiceInput 
+                                language="en-US"
+                                onTextRecognized={(text) => {
+                                    if (text.toLowerCase().includes(currentWord.word.toLowerCase())) {
+                                        playTapSound();
+                                        setRewardMessage("Ajoyib talaffuz! +5 XP");
+                                        awardReward("Good pronunciation", 0, 5);
+                                        setTimeout(() => setRewardMessage(null), 2000);
+                                        // Auto swipe right after a short delay
+                                        setTimeout(() => handleSwipe('right'), 1500);
+                                    } else {
+                                        setRewardMessage(`Eshitildi: "${text}". Qayta urinib ko'ring.`);
+                                        setTimeout(() => setRewardMessage(null), 3000);
+                                    }
+                                }} 
+                            />
+                        </div>
+                    </div>
                     <p className="mt-14 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Tarjimani ko'rish uchun bosing</p>
                 </div>
 

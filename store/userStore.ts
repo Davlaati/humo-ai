@@ -31,7 +31,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     const daysLeft = calculateDaysLeft(user.premiumUntil || user.premiumExpiryDate || user.trialExpiresAt);
     const daysUsed = calculateDaysUsed(user.joinedAt);
-    const isPremiumActive = Boolean(user.isPremium && daysLeft > 0);
+    const isPremiumActive = Boolean(user.isPremium === true && daysLeft > 0);
 
     set({ user, isPremiumActive, daysLeft, daysUsed });
   },
@@ -43,7 +43,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     const updatedUser = { ...user, ...updates };
     const daysLeft = calculateDaysLeft(updatedUser.premiumUntil || updatedUser.premiumExpiryDate || updatedUser.trialExpiresAt);
     const daysUsed = calculateDaysUsed(updatedUser.joinedAt);
-    const isPremiumActive = Boolean(updatedUser.isPremium && daysLeft > 0);
+    const isPremiumActive = Boolean(updatedUser.isPremium === true && daysLeft > 0);
 
     set({ user: updatedUser, isPremiumActive, daysLeft, daysUsed });
   },

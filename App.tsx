@@ -25,6 +25,7 @@ import MarketingModal from './components/MarketingModal';
 import StoryTaskModal from './components/StoryTaskModal';
 import PremiumGiftModal from './components/PremiumGiftModal';
 import AITutor from './components/AITutor';
+import DailyStreakCelebration from './components/DailyStreakCelebration';
 
 const Pricing = React.lazy(() => import('./components/Pricing'));
 const Checkout = React.lazy(() => import('./components/Checkout'));
@@ -396,6 +397,7 @@ const App: React.FC = () => {
            onClose={() => setShowPremiumGiftModal(false)}
          />
        )}
+       {user && <DailyStreakCelebration streak={user.streak || 0} />}
     </>
   );
 };

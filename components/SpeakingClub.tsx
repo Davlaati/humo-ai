@@ -64,10 +64,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const newSocket = io();
-    setSocket(newSocket);
-
+  const setupSocketListeners = (newSocket: Socket) => {
     newSocket.on('connect', () => {
       console.log('Socket connected:', newSocket.id);
     });
@@ -102,24 +99,11 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      newSocket.emit('offer', { target: member.id, sdp: offer });
+      newSocket.emit('offer', { target: member.id, sdp: offer, sender: newSocket.id });
     });
 
-    newSocket.on('offer', async ({ target, sdp, sender }) => { // sender is the one who sent offer
-        // Actually, the server should pass sender ID. Let's assume payload has sender.
-        // In server.ts we just forward payload. So payload needs sender ID.
-        // We need to update server.ts to include sender ID or client sends it.
-        // For now, let's assume the client sends { target, sdp, sender: socket.id }
-        // But wait, 'user-joined' gives us the userId of the NEW user.
-        // Existing users offer TO the new user.
-        // The new user receives offers.
-        
-        // Let's refine:
-        // 1. User A is in room.
-        // 2. User B joins. Server tells A: "B joined".
-        // 3. A creates offer -> sends to B.
-        // 4. B receives offer from A.
-        const peer = createPeer(sender || 'unknown', newSocket); // We need sender ID here
+    newSocket.on('offer', async ({ target, sdp, sender }) => {
+        const peer = createPeer(sender || 'unknown', newSocket);
         peersRef.current[sender] = peer;
         
         const stream = localStreamRef.current;
@@ -159,9 +143,15 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
     });
     
     newSocket.on('error', (message) => {
-        alert(message); // Simple alert for now, could be a toast
+        alert(message);
         setIsSubmitting(false);
     });
+  };
+
+  useEffect(() => {
+    const newSocket = io();
+    setSocket(newSocket);
+    setupSocketListeners(newSocket);
 
     return () => {
       newSocket.disconnect();
@@ -304,22 +294,12 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
       
       const newSocket = io();
       setSocket(newSocket);
+      setupSocketListeners(newSocket);
+      
       setCurrentRoom(null);
       setJoinedAt(null);
       
       if (showRate) setShowRating(true);
-
-      newSocket.on('rooms-list', (updatedRooms: Room[]) => {
-          setRooms(updatedRooms);
-      });
-      newSocket.on('room-joined', async (room: Room) => {
-          setCurrentRoom(room);
-          setJoinedAt(Date.now());
-          setIsCreating(false);
-          await initWebRTC(newSocket, room.id);
-      });
-      // Re-bind other WebRTC listeners... (omitted for brevity, but crucial for re-joining)
-      // In a real app, extract socket setup to a reusable function
     }
   };
 

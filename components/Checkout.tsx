@@ -5,6 +5,7 @@ import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
 import { fetchAdminSettingsFromSupabase, createPaymentInSupabase } from '../services/supabaseService';
 import { getAdminConfig } from '../services/storageService';
+import { supabase } from '../services/supabaseClient';
 
 interface CheckoutProps {
   user: UserProfile;
@@ -26,9 +27,18 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
     }, 1000);
     
     const fetchSettings = async () => {
-      const settings = await fetchAdminSettingsFromSupabase();
-      if (settings && settings.paymentCardNumber !== '8600 0000 0000 0000') {
-        setCardNumber(settings.paymentCardNumber);
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'p2p_card')
+          .single();
+
+        if (data && !error) {
+          setCardNumber(data.value);
+        }
+      } catch (err) {
+        console.error('Error fetching card:', err);
       }
     };
     fetchSettings();
@@ -79,6 +89,21 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
       };
 
       await createPaymentInSupabase(paymentData);
+
+      // Trigger the Supabase Edge Function to send to Telegram Bot
+      try {
+        const { error: edgeError } = await supabase.functions.invoke('submit-receipt', {
+          body: {
+            userId: user.id,
+            userName: user.name,
+            receiptUrl: receiptImage,
+            plan: plan.bonusMonth ? '13 OY (12+1)' : plan.name
+          }
+        });
+        if (edgeError) console.error("Edge function error:", edgeError);
+      } catch (err) {
+        console.error("Failed to invoke edge function:", err);
+      }
       
       // Instant activation (Temporary Premium)
       const updatedUser = {

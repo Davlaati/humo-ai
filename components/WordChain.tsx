@@ -3,7 +3,8 @@ import { io, Socket } from 'socket.io-client';
 import { UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { playTapSound } from '../services/audioService';
-import { ArrowLeft, Zap, Flame, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Zap, Flame, AlertCircle, HelpCircle } from 'lucide-react';
+import { GameTutorOverlay } from './GameTutorOverlay';
 
 interface WordChainProps {
   user: UserProfile;
@@ -20,6 +21,9 @@ const WordChain: React.FC<WordChainProps> = ({ user, onBack }) => {
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showTutor, setShowTutor] = useState(() => {
+    return localStorage.getItem('tutor_word_chain') !== 'seen';
+  });
 
   useEffect(() => {
     const s = io();
@@ -58,6 +62,21 @@ const WordChain: React.FC<WordChainProps> = ({ user, onBack }) => {
 
   return (
     <div className="h-full w-full bg-[#0c1222] flex flex-col animate-fade-in overflow-hidden relative">
+      {showTutor && (
+        <GameTutorOverlay 
+          gameName="SO'Z ZANJIRI"
+          instructions={[
+            "Do'stlaringiz bilan so'z zanjirini davom ettiring!",
+            "Oldingi so'zning oxirgi harfiga boshlanadigan so'z yozing.",
+            "Faqat ingliz tilidagi mavjud so'zlardan foydalaning.",
+            "Takrorlangan so'zlar qabul qilinmaydi."
+          ]}
+          onClose={() => {
+            setShowTutor(false);
+            localStorage.setItem('tutor_word_chain', 'seen');
+          }}
+        />
+      )}
       {/* Background Effects */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-yellow-500/10 rounded-full blur-[100px]"></div>
@@ -76,7 +95,12 @@ const WordChain: React.FC<WordChainProps> = ({ user, onBack }) => {
           <Zap className="w-5 h-5 text-yellow-500" />
           <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">So'z Zanjiri</h2>
         </div>
-        <div className="w-10"></div>
+        <button 
+          onClick={() => setShowTutor(true)}
+          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition active:scale-90"
+        >
+          <HelpCircle className="w-5 h-5 text-white/50" />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 flex flex-col relative z-10">

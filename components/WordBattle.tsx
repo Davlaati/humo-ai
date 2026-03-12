@@ -4,7 +4,8 @@ import { saveUser } from '../services/storageService';
 import { DICTIONARY } from '../data/dictionary';
 import { playTapSound } from '../services/audioService';
 import { awardXP, awardCoins } from '../services/gamificationService';
-import { ArrowLeft, Swords, Shield, Coins, Clock, Trophy, Skull, User as UserIcon, Bot as BotIcon } from 'lucide-react';
+import { ArrowLeft, Swords, Shield, Coins, Clock, Trophy, Skull, User as UserIcon, Bot as BotIcon, HelpCircle } from 'lucide-react';
+import { GameTutorOverlay } from './GameTutorOverlay';
 
 interface WordBattleProps {
   user: UserProfile;
@@ -67,6 +68,9 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onUpdateUser, onBack }) =
   const [botStatus, setBotStatus] = useState<'thinking' | 'answered'>('thinking');
   const [lastResult, setLastResult] = useState<'correct' | 'wrong' | 'too_slow' | null>(null);
   const [combo, setCombo] = useState(0);
+  const [showTutor, setShowTutor] = useState(() => {
+    return localStorage.getItem('tutor_word_battle') !== 'seen';
+  });
 
   // Game Loop Refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -200,6 +204,21 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onUpdateUser, onBack }) =
   if (phase === 'menu') {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 animate-fade-in relative overflow-hidden">
+        {showTutor && (
+          <GameTutorOverlay 
+            gameName="SO'Z JANGI"
+            instructions={[
+              "Sun'iy intellektga qarshi tezkor tarjima bellashuvi.",
+              "Ekranda chiqqan so'zning to'g'ri tarjimasini tanlang.",
+              "Qanchalik tez topsangiz, shuncha ko'p ball olasiz.",
+              "3 ta ketma-ket to'g'ri javob uchun qalqon olasiz."
+            ]}
+            onClose={() => {
+              setShowTutor(false);
+              localStorage.setItem('tutor_word_battle', 'seen');
+            }}
+          />
+        )}
         <div className="absolute top-10 left-[-20px] w-32 h-32 bg-yellow-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
         <div className="absolute bottom-20 right-[-20px] w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-20"></div>
 
@@ -208,6 +227,13 @@ const WordBattle: React.FC<WordBattleProps> = ({ user, onUpdateUser, onBack }) =
             className="absolute top-4 left-4 text-white/50 hover:text-white z-50"
         >
             <ArrowLeft className="text-xl" />
+        </button>
+
+        <button 
+            onClick={() => setShowTutor(true)}
+            className="absolute top-4 right-4 text-white/50 hover:text-white z-50"
+        >
+            <HelpCircle className="text-xl" />
         </button>
 
         <div className="glass-card w-full max-w-sm p-8 rounded-3xl flex flex-col items-center text-center border-2 border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.2)]">

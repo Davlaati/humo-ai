@@ -4,6 +4,7 @@ import { UserProfile, LibraryItem, LibraryItemType, EnglishLevel } from '../type
 import { fetchLibraryItemsFromSupabase } from '../services/supabaseService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playTapSound } from '../services/audioService';
+import { PremiumGuard } from './PremiumGuard';
 
 interface LibraryProps {
   user: UserProfile;
@@ -201,81 +202,83 @@ const Library: React.FC<LibraryProps> = ({ user, onNavigate, onUpdateUser }) => 
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in">
-      {/* Header */}
-      <div className="p-6 pb-4 border-b border-white/5 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-30">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white">Kutubxona</h1>
-            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Bilimlar xazinasi</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center border border-blue-500/30">
-            <i className="fa-solid fa-book-bookmark text-blue-400 text-xl"></i>
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
-          <CategoryTab active={activeType === 'all'} label="Barchasi" onClick={() => setActiveType('all')} />
-          <CategoryTab active={activeType === 'course'} label="Kurslar" onClick={() => setActiveType('course')} />
-          <CategoryTab active={activeType === 'podcast'} label="Podcastlar" onClick={() => setActiveType('podcast')} />
-          <CategoryTab active={activeType === 'book'} label="Kitoblar" onClick={() => setActiveType('book')} />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6 pb-32 no-scrollbar">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Yuklanmoqda...</p>
-          </div>
-        ) : filteredItems.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {filteredItems.map((item) => (
-              <motion.div 
-                key={item.id}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleItemClick(item)}
-                className="glass-card rounded-[32px] overflow-hidden group border border-white/5 hover:border-blue-500/30 transition-all"
-              >
-                <div className="relative aspect-video">
-                  <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1222] via-transparent to-transparent"></div>
-                  <div className="absolute top-4 left-4 flex space-x-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-black/50 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest border border-white/10">
-                      {item.level}
-                    </span>
-                  </div>
-                  {item.isPremium && (
-                    <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                      <i className="fa-solid fa-crown text-white text-xs"></i>
-                    </div>
-                  )}
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <i className={`fa-solid ${
-                        item.type === 'course' ? 'fa-graduation-cap' : 
-                        item.type === 'podcast' ? 'fa-microphone' : 'fa-book'
-                      } text-blue-400 text-xs`}></i>
-                      <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{item.type}</span>
-                    </div>
-                    <h3 className="text-lg font-black italic uppercase tracking-tighter text-white leading-tight">{item.title}</h3>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
-              <i className="fa-solid fa-folder-open text-slate-600 text-2xl"></i>
+    <PremiumGuard featureName="Kutubxona" onUnlockClick={() => onNavigate('pricing')}>
+      <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in">
+        {/* Header */}
+        <div className="p-6 pb-4 border-b border-white/5 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-30">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white">Kutubxona</h1>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Bilimlar xazinasi</p>
             </div>
-            <p className="text-slate-400 font-bold">Hozircha hech narsa yo'q</p>
-            <p className="text-slate-600 text-xs mt-1">Tez orada yangi materiallar qo'shiladi</p>
+            <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center border border-blue-500/30">
+              <i className="fa-solid fa-book-bookmark text-blue-400 text-xl"></i>
+            </div>
           </div>
-        )}
+
+          {/* Categories */}
+          <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
+            <CategoryTab active={activeType === 'all'} label="Barchasi" onClick={() => setActiveType('all')} />
+            <CategoryTab active={activeType === 'course'} label="Kurslar" onClick={() => setActiveType('course')} />
+            <CategoryTab active={activeType === 'podcast'} label="Podcastlar" onClick={() => setActiveType('podcast')} />
+            <CategoryTab active={activeType === 'book'} label="Kitoblar" onClick={() => setActiveType('book')} />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 pb-32 no-scrollbar">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Yuklanmoqda...</p>
+            </div>
+          ) : filteredItems.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredItems.map((item) => (
+                <motion.div 
+                  key={item.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleItemClick(item)}
+                  className="glass-card rounded-[32px] overflow-hidden group border border-white/5 hover:border-blue-500/30 transition-all"
+                >
+                  <div className="relative aspect-video">
+                    <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c1222] via-transparent to-transparent"></div>
+                    <div className="absolute top-4 left-4 flex space-x-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-black/50 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest border border-white/10">
+                        {item.level}
+                      </span>
+                    </div>
+                    {item.isPremium && (
+                      <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                        <i className="fa-solid fa-crown text-white text-xs"></i>
+                      </div>
+                    )}
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <i className={`fa-solid ${
+                          item.type === 'course' ? 'fa-graduation-cap' : 
+                          item.type === 'podcast' ? 'fa-microphone' : 'fa-book'
+                        } text-blue-400 text-xs`}></i>
+                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{item.type}</span>
+                      </div>
+                      <h3 className="text-lg font-black italic uppercase tracking-tighter text-white leading-tight">{item.title}</h3>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                <i className="fa-solid fa-folder-open text-slate-600 text-2xl"></i>
+              </div>
+              <p className="text-slate-400 font-bold">Hozircha hech narsa yo'q</p>
+              <p className="text-slate-600 text-xs mt-1">Tez orada yangi materiallar qo'shiladi</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </PremiumGuard>
   );
 };
 

@@ -1,13 +1,16 @@
-export const calculateDaysLeft = (dateString?: string): number => {
+export const calculateDaysLeft = (dateString?: string | null): number => {
+  // If null, undefined, or empty, return 0 immediately
   if (!dateString) return 0;
 
   const expiryDate = new Date(dateString);
   const now = new Date();
 
-  // Calculate the difference in milliseconds
-  const diffTime = expiryDate.getTime() - now.getTime();
+  // If the date is invalid or in the past, return 0
+  if (isNaN(expiryDate.getTime()) || expiryDate <= now) {
+    return 0;
+  }
 
-  // Convert to days and round up to the nearest whole day
+  const diffTime = expiryDate.getTime() - now.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   return diffDays > 0 ? diffDays : 0;
