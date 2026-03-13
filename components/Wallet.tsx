@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserProfile } from '../types';
-import { isPremiumActive } from '../services/storageService';
+import { useUserStore } from '../store/userStore';
 import { ArrowLeft, Wallet as WalletIcon, Crown, Zap, Coins, Clock, ChevronRight } from 'lucide-react';
 import { playTapSound } from '../services/audioService';
 import GrowthTasks from './GrowthTasks';
@@ -13,17 +13,8 @@ interface WalletProps {
 }
 
 const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate, isBlocked }) => {
-  const isPremium = isPremiumActive(user);
-  
-  const getDaysRemaining = () => {
-    if (!user.premiumUntil) return 0;
-    const expiry = new Date(user.premiumUntil).getTime();
-    const now = new Date().getTime();
-    const diff = expiry - now;
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  };
-
-  const daysRemaining = getDaysRemaining();
+  const isPremium = useUserStore((state) => state.isPremiumActive);
+  const daysRemaining = useUserStore((state) => state.daysLeft);
 
   return (
     <div className="h-full w-full bg-[#0c1222] flex flex-col animate-fade-in overflow-hidden">
@@ -101,6 +92,24 @@ const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate, isBlock
                   className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
                   Muddatini uzaytirish <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            ) : user.isPremium ? (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 bg-red-900/40 p-4 rounded-2xl border border-red-500/20">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                    <Clock className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-red-300 uppercase tracking-widest">Holat</p>
+                    <p className="text-lg font-black text-red-400 tracking-tighter">Premium tugagan</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { playTapSound(); onNavigate('pricing'); }}
+                  className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  Qayta faollashtirish <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             ) : (

@@ -7,7 +7,7 @@ import {
 } from '../types';
 
 export const syncUserToSupabase = async (user: UserProfile) => {
-  const data: any = {
+    const data: any = {
     id: user.id,
     name: user.name,
     username: user.username,
@@ -17,6 +17,9 @@ export const syncUserToSupabase = async (user: UserProfile) => {
     wins: user.wins || 0,
     streak: user.streak,
     is_premium: user.isPremium,
+    premium_until: user.premiumUntil,
+    is_temporary_premium: user.isTemporaryPremium,
+    trial_expires_at: user.trialExpiresAt,
     interests: user.interests,
     telegram_stars: user.telegramStars,
     settings: {
@@ -67,6 +70,8 @@ export const syncUserToSupabase = async (user: UserProfile) => {
         xp: user.xp,
         streak: user.streak,
         is_premium: user.isPremium,
+        premium_until: user.premiumUntil,
+        trial_expires_at: user.trialExpiresAt,
         settings: data.settings
       };
       
@@ -126,6 +131,9 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       wins: data.wins || 0,
       streak: data.streak,
       isPremium: data.is_premium,
+      premiumUntil: data.premium_until,
+      isTemporaryPremium: data.is_temporary_premium,
+      trialExpiresAt: data.trial_expires_at,
       interests: data.interests || settings.interests || [],
       lastActiveDate: data.last_active_date || settings.lastActiveDate || new Date().toISOString(),
       telegramStars: data.telegram_stars,

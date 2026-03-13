@@ -47,6 +47,89 @@ bot.command('setcard', async (ctx) => {
   }
 });
 
+// Handle Approve Callback
+bot.action(/^approve_(.+)_(.+)$/, async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!ADMIN_IDS.includes(userId)) {
+    return ctx.answerCbQuery("Sizda bu huquq yo'q.");
+  }
+
+  const targetUserId = ctx.match[1];
+  const plan = ctx.match[2];
+
+  try {
+    // Determine duration based on plan
+    let durationDays = 30;
+    if (plan.includes('13 OY') || plan.includes('Yillik')) durationDays = 395;
+    else if (plan.includes('Oylik')) durationDays = 30;
+    else if (plan.includes('Haftalik')) durationDays = 7;
+
+    const premiumUntil = new Date();
+    premiumUntil.setDate(premiumUntil.getDate() + durationDays);
+
+    // Update user in Supabase
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        is_premium: true, 
+        premium_until: premiumUntil.toISOString(),
+        is_temporary_premium: false
+      })
+      .eq('id', targetUserId);
+
+    if (error) throw error;
+
+    // Update payment status
+    await supabase
+      .from('payments')
+      .update({ status: 'approved' })
+      .eq('user_id', targetUserId)
+      .eq('status', 'pending');
+
+    await ctx.editMessageCaption(`✅ To'lov tasdiqlandi!\n\nFoydalanuvchi ID: ${targetUserId}\nTarif: ${plan}`);
+    ctx.answerCbQuery("Foydalanuvchi premiumga o'tkazildi!");
+  } catch (error) {
+    console.error('Error approving payment:', error);
+    ctx.answerCbQuery("Xatolik yuz berdi.");
+  }
+});
+
+// Handle Reject Callback
+bot.action(/^reject_(.+)$/, async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!ADMIN_IDS.includes(userId)) {
+    return ctx.answerCbQuery("Sizda bu huquq yo'q.");
+  }
+
+  const targetUserId = ctx.match[1];
+
+  try {
+    // Update user in Supabase (remove temporary premium)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        is_premium: false, 
+        is_temporary_premium: false
+      })
+      .eq('id', targetUserId);
+
+    if (error) throw error;
+
+    // Update payment status
+    await supabase
+      .from('payments')
+      .update({ status: 'rejected' })
+      .eq('user_id', targetUserId)
+      .eq('status', 'pending');
+
+    await ctx.editMessageCaption(`❌ To'lov rad etildi.\n\nFoydalanuvchi ID: ${targetUserId}`);
+    ctx.answerCbQuery("To'lov rad etildi.");
+  } catch (error) {
+    console.error('Error rejecting payment:', error);
+    ctx.answerCbQuery("Xatolik yuz berdi.");
+  }
+});
+
 // Start the bot
 bot.launch();
 

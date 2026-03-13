@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -6,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import FormData from 'form-data';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -295,6 +297,67 @@ async function startServer() {
     } catch (error) {
       console.error("Referral error:", error);
       res.status(500).json({ success: false });
+    }
+  });
+
+  // Submit receipt endpoint
+  app.post('/api/submit-receipt', async (req, res) => {
+    const { userId, userName, receiptUrl, plan } = req.body;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const adminChatId = process.env.ADMIN_CHAT_ID;
+
+    if (!botToken || !adminChatId) {
+      return res.status(500).json({ success: false, message: 'Bot token or admin chat ID not configured' });
+    }
+
+    try {
+      // Send photo to admin
+      const caption = `🆕 Yangi to'lov!\n\nFoydalanuvchi: ${userName} (ID: ${userId})\nTarif: ${plan}\n\nIltimos, to'lovni tasdiqlang.`;
+      
+      // We need to extract base64 data if it's a data URL
+      let photoData = receiptUrl;
+      let isBase64 = false;
+      
+      if (receiptUrl.startsWith('data:image')) {
+        const base64Data = receiptUrl.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        const formData = new FormData();
+        formData.append('chat_id', adminChatId);
+        formData.append('photo', buffer, { filename: 'receipt.jpg' });
+        formData.append('caption', caption);
+        formData.append('reply_markup', JSON.stringify({
+          inline_keyboard: [
+            [
+              { text: '✅ Tasdiqlash', callback_data: `approve_${userId}_${plan}` },
+              { text: '❌ Rad etish', callback_data: `reject_${userId}` }
+            ]
+          ]
+        }));
+
+        await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, formData, {
+          headers: formData.getHeaders()
+        });
+      } else {
+        await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+          chat_id: adminChatId,
+          photo: receiptUrl,
+          caption: caption,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '✅ Tasdiqlash', callback_data: `approve_${userId}_${plan}` },
+                { text: '❌ Rad etish', callback_data: `reject_${userId}` }
+              ]
+            ]
+          }
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Submit receipt error:", error);
+      res.status(500).json({ success: false, message: 'Failed to send receipt to admin' });
     }
   });
 

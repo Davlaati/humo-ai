@@ -1,9 +1,9 @@
 
 import { UserProfile } from '../types';
-import { isPremiumActive } from '../services/storageService';
+import { useUserStore } from '../store/userStore';
 
 export const usePremiumAccess = (user: UserProfile | null) => {
-  const isPremium = user ? isPremiumActive(user) : false;
+  const isPremium = useUserStore((state) => state.isPremiumActive);
   
   const checkAccess = () => {
     if (!isPremium) {

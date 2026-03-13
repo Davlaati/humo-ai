@@ -5,6 +5,7 @@ import { getAIClient, playTextToSpeech } from '../services/geminiService';
 import { playTapSound } from '../services/audioService';
 import { awardXP } from '../services/gamificationService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PremiumGuard } from './PremiumGuard';
 
 interface Message {
   id: string;
@@ -116,6 +117,7 @@ const AITutor: React.FC<AITutorProps> = ({ user, onNavigate, onUpdateUser }) => 
   };
 
   return (
+    <PremiumGuard featureName="AI Mentor" onUnlockClick={() => onNavigate('pricing')}>
     <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in">
       {/* Header */}
       <div className="p-6 pb-4 border-b border-white/5 flex items-center justify-between bg-slate-900/80 backdrop-blur-2xl sticky top-0 z-30 shadow-xl">
@@ -220,6 +222,7 @@ const AITutor: React.FC<AITutorProps> = ({ user, onNavigate, onUpdateUser }) => 
         </div>
       </div>
     </div>
+    </PremiumGuard>
   );
 };
 

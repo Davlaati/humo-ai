@@ -8,9 +8,12 @@ import { playTapSound } from '../services/audioService';
 import { Gamepad2, Shield, Star, Rocket, Zap, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { PremiumGuard } from './PremiumGuard';
+
 interface GameProps {
   user: UserProfile;
   onUpdateUser?: (user: UserProfile) => void;
+  onNavigate: (tab: string) => void;
 }
 
 type ActiveGame = 'menu' | 'word-battle' | 'cosmic-scramble' | 'word-chain' | 'guessing-game';
@@ -48,7 +51,7 @@ const GAMES_DATA = [
   }
 ];
 
-const Game: React.FC<GameProps> = ({ user, onUpdateUser }) => {
+const Game: React.FC<GameProps> = ({ user, onUpdateUser, onNavigate }) => {
   const [activeGame, setActiveGame] = useState<ActiveGame>('menu');
   const [gameList, setGameList] = useState(GAMES_DATA);
   const [playersCount, setPlayersCount] = useState<Record<string, number>>({
@@ -105,7 +108,8 @@ const Game: React.FC<GameProps> = ({ user, onUpdateUser }) => {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 animate-fade-in relative overflow-hidden bg-gradient-to-b from-[#0c1222] to-[#1a233a]">
+    <PremiumGuard featureName="O'yinlar" onUnlockClick={() => onNavigate('pricing')}>
+      <div className="h-full flex flex-col p-6 animate-fade-in relative overflow-hidden bg-gradient-to-b from-[#0c1222] to-[#1a233a]">
       {/* Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-[100px]"></div>
@@ -211,6 +215,7 @@ const Game: React.FC<GameProps> = ({ user, onUpdateUser }) => {
         </div>
       </div>
     </div>
+    </PremiumGuard>
   );
 };
 

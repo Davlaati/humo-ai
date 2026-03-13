@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { UserProfile } from '../types';
 import UserBadges from './UserBadges';
 import { calculateLevel } from '../services/gamificationService';
-import { isPremiumActive } from '../services/storageService';
+import { useUserStore } from '../store/userStore';
 import { getTranslation } from '../translations';
 import { Settings, Lock, Globe, Users, Edit3, X, Volume2, Smartphone, Languages, HelpCircle, FileText, Info, AlertTriangle, ChevronRight } from 'lucide-react';
 import { fetchAdminSettingsFromSupabase } from '../services/supabaseService';
@@ -20,7 +20,7 @@ const INTERESTS_OPTIONS = ['Technology', 'Business', 'Travel', 'Movies', 'Music'
 
 const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onShowPremium }) => {
   const { level, progress } = calculateLevel(user.xp);
-  const isPremium = isPremiumActive(user);
+  const isPremium = useUserStore((state) => state.isPremiumActive);
   const [isEditingInterests, setIsEditingInterests] = useState(false);
   const [editedInterests, setEditedInterests] = useState<string[]>(user.interests);
   const lang = user.settings?.language || 'Uz';
@@ -142,6 +142,10 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onShowAdmin, onSh
          {isPremium ? (
             <div className="mt-2 px-4 py-1.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-full text-xs font-black uppercase tracking-widest border border-yellow-400 shadow-lg shadow-yellow-600/20 flex items-center gap-2 animate-pulse">
               <i className="fa-solid fa-crown"></i> Premium
+            </div>
+         ) : user.isPremium ? (
+            <div className="mt-2 px-4 py-1.5 bg-red-900/50 text-red-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-800 flex items-center gap-2">
+              <i className="fa-solid fa-lock"></i> Premium tugagan
             </div>
          ) : user.trialExpiresAt && new Date(user.trialExpiresAt).getTime() > Date.now() ? (
             <div className="mt-2 px-4 py-1.5 bg-slate-800 text-slate-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-700 flex items-center gap-2">

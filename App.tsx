@@ -296,7 +296,7 @@ const App: React.FC = () => {
           case 'home': return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} streakReward={streakReward} onClearStreakReward={() => setStreakReward(null)} />;
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
           case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
-          case 'game': return <Game user={user} onUpdateUser={handleUpdateUser} />;
+          case 'game': return <Game user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'mock': return <RavonaMock user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;

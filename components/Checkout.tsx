@@ -90,19 +90,26 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
 
       await createPaymentInSupabase(paymentData);
 
-      // Trigger the Supabase Edge Function to send to Telegram Bot
+      // Send receipt to admin via our backend
       try {
-        const { error: edgeError } = await supabase.functions.invoke('submit-receipt', {
-          body: {
+        const response = await fetch('/api/submit-receipt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
             userId: user.id,
             userName: user.name,
             receiptUrl: receiptImage,
             plan: plan.bonusMonth ? '13 OY (12+1)' : plan.name
-          }
+          })
         });
-        if (edgeError) console.error("Edge function error:", edgeError);
+        
+        if (!response.ok) {
+          console.error("Failed to send receipt to admin");
+        }
       } catch (err) {
-        console.error("Failed to invoke edge function:", err);
+        console.error("Failed to invoke submit-receipt API:", err);
       }
       
       // Instant activation (Temporary Premium)

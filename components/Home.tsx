@@ -273,7 +273,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
                   icon="fa-robot"
                   color="text-blue-400"
                   bgColor="bg-blue-500/20"
-                  onClick={() => handleAction('aitutor')}
+                  onClick={() => handleAction('aitutor', true)}
                   bgEmoji="🤖"
               />
           </div>
