@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Users, Bell, CheckCircle, Loader2, ExternalLink, Gift, ArrowRight } from 'lucide-react';
 import { UserProfile } from '../types';
 import { playTapSound, playSuccessSound } from '../services/audioService';
+import { claimWalletTasksReward } from '../services/supabaseService';
 
 interface GrowthTasksProps {
   user: UserProfile;
@@ -15,6 +15,8 @@ const GrowthTasks: React.FC<GrowthTasksProps> = ({ user, onUpdateUser }) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [referralCount, setReferralCount] = useState(user.referral_count || 0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isChannelJoinPending, setIsChannelJoinPending] = useState(false);
+  const [isChannelJoinDone, setIsChannelJoinDone] = useState(false);
 
   useEffect(() => {
     setReferralCount(user.referral_count || 0);
@@ -22,7 +24,12 @@ const GrowthTasks: React.FC<GrowthTasksProps> = ({ user, onUpdateUser }) => {
 
   const handleJoinChannel = () => {
     playTapSound();
+    setIsChannelJoinPending(true);
     window.open('https://t.me/ravona_ai', '_blank');
+    setTimeout(() => {
+      setIsChannelJoinPending(false);
+      setIsChannelJoinDone(true);
+    }, 5000);
   };
 
   const handleInviteFriends = () => {
@@ -36,36 +43,30 @@ const GrowthTasks: React.FC<GrowthTasksProps> = ({ user, onUpdateUser }) => {
     setIsVerifying(true);
 
     try {
-      // Simulate backend verification for channel subscription and referral count
-      // In a real app, this would call an API endpoint
       const response = await fetch('/api/verify-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
+        body: JSON.stringify({ userId: user.id, clientChannelJoined: isChannelJoinDone })
       });
 
       const result = await response.json();
 
-      if (result.success) {
-        const now = new Date();
-        const currentPremiumUntil = user.premiumUntil ? new Date(user.premiumUntil) : now;
-        const baseDate = currentPremiumUntil > now ? currentPremiumUntil : now;
-        
-        const newPremiumUntil = new Date(baseDate.getTime() + 3 * 24 * 60 * 60 * 1000); // +3 days
+      if (result.success && isChannelJoinDone) {
+        const reward = await claimWalletTasksReward(user.id);
 
         const updatedUser: UserProfile = {
           ...user,
           isPremium: true,
-          premiumUntil: newPremiumUntil.toISOString(),
+          premiumUntil: reward.premiumUntil,
           wallet_reward_claimed: true,
-          referral_count: result.referralCount || referralCount
+          referral_count: reward.referralCount || result.referralCount || referralCount
         };
 
         playSuccessSound();
         onUpdateUser(updatedUser);
         setShowSuccess(true);
       } else {
-        alert(result.message || "Vazifalar hali bajarilmagan.");
+        alert(result.message || "Vazifalar hali bajarilmagan. Kanalga kirib 5 soniya kuting va 3 do'st taklif qiling.");
       }
     } catch (err) {
       console.error("Verification failed:", err);
@@ -107,7 +108,7 @@ const GrowthTasks: React.FC<GrowthTasksProps> = ({ user, onUpdateUser }) => {
           </div>
           <div className="flex-1">
             <p className="text-white text-sm font-semibold">Kanalga obuna bo'ling</p>
-            <p className="text-slate-500 text-[10px]">Yangiliklardan xabardor bo'ling</p>
+            <p className="text-slate-500 text-[10px]">{isChannelJoinPending ? 'Tekshirilmoqda...' : (isChannelJoinDone ? 'Bajarildi ✅' : 'Yangiliklardan xabardor bo\'ling')}</p>
           </div>
           <button 
             onClick={handleJoinChannel}

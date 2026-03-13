@@ -17,6 +17,9 @@ export const syncUserToSupabase = async (user: UserProfile) => {
     wins: user.wins || 0,
     streak: user.streak,
     is_premium: user.isPremium,
+    pending_premium: user.pendingPremium,
+    premium_until: (user as any).premium_until || user.premiumUntil || user.premiumExpiryDate || null,
+    last_active_date: user.lastActiveDate,
     interests: user.interests,
     telegram_stars: user.telegramStars,
     settings: {
@@ -126,6 +129,9 @@ export const fetchUserFromSupabase = async (userId: string): Promise<UserProfile
       wins: data.wins || 0,
       streak: data.streak,
       isPremium: data.is_premium,
+      premiumUntil: data.premium_until,
+      premiumExpiryDate: data.premium_until,
+      pendingPremium: data.pending_premium,
       interests: data.interests || settings.interests || [],
       lastActiveDate: data.last_active_date || settings.lastActiveDate || new Date().toISOString(),
       telegramStars: data.telegram_stars,
@@ -270,6 +276,7 @@ export const fetchAllUsersFromSupabase = async (): Promise<UserProfile[]> => {
       isTemporaryPremium: d.is_temporary_premium,
       trialExpiresAt: d.trial_expires_at,
       premiumUntil: d.premium_until,
+      pendingPremium: d.pending_premium,
       isBlocked: d.is_blocked,
       isOnboarded: d.is_onboarded,
       story_reward_claimed: d.story_reward_claimed,
@@ -409,7 +416,8 @@ export const uploadFileToSupabase = async (bucket: string, file: File): Promise<
 
 export const updatePremiumStatusInSupabase = async (userId: string, isPremium: boolean) => {
   try {
-    await supabase.from('profiles').update({ is_premium: isPremium }).eq('id', userId);
+    const premiumUntil = isPremium ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+    await supabase.from('profiles').update({ is_premium: isPremium, premium_until: premiumUntil }).eq('id', userId);
   } catch (e) {}
 };
 
@@ -481,16 +489,16 @@ export const updatePaymentStatusInSupabase = async (paymentId: string, status: '
 // Admin Settings functions
 export const fetchAdminSettingsFromSupabase = async (): Promise<AdminSettings | null> => {
   try {
-    const { data, error } = await supabase.from('admin_settings').select('*').single();
-    if (error) return { paymentCardNumber: '8600 0000 0000 0000' }; // Default fallback
+    const { data, error } = await supabase.from('admin_settings').select('*').eq('id', 1).maybeSingle();
+    if (error || !data) return { paymentCardNumber: '' };
     return { 
-      paymentCardNumber: data.payment_card_number,
+      paymentCardNumber: data.payment_card_number || '',
       privacyPolicyUrl: data.privacy_policy_url,
       termsOfUseUrl: data.terms_of_use_url,
       publicOfferUrl: data.public_offer_url
     };
   } catch (e) {
-    return { paymentCardNumber: '8600 0000 0000 0000' };
+    return { paymentCardNumber: '' };
   }
 };
 
@@ -508,4 +516,98 @@ export const updateAdminSettingsInSupabase = async (settings: AdminSettings) => 
     console.error('Update admin settings failed:', e);
     throw e;
   }
+};
+
+export const sendReceiptToAdmin = async (payload: {
+  userId: string;
+  userName: string;
+  receiptUrl: string;
+  plan: string;
+}) => {
+  const res = await fetch('/api/telegram/receipt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(body || 'Failed to send receipt to admin bot');
+  }
+
+  return res.json();
+};
+
+export const claimWalletTasksReward = async (userId: string) => {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('premium_until, wallet_reward_claimed, referral_count')
+    .eq('id', userId)
+    .single();
+
+  if (profileError) throw profileError;
+  if (profile?.wallet_reward_claimed) {
+    return { alreadyClaimed: true, premiumUntil: profile.premium_until, referralCount: profile.referral_count || 0 };
+  }
+
+  const now = new Date();
+  const currentUntil = profile?.premium_until ? new Date(profile.premium_until) : null;
+  const baseDate = currentUntil && currentUntil > now ? currentUntil : now;
+  const nextPremiumUntil = new Date(baseDate.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({
+      is_premium: true,
+      premium_until: nextPremiumUntil,
+      wallet_reward_claimed: true,
+      last_active_date: new Date().toISOString()
+    })
+    .eq('id', userId);
+
+  if (updateError) throw updateError;
+  return { alreadyClaimed: false, premiumUntil: nextPremiumUntil, referralCount: profile?.referral_count || 0 };
+};
+
+export const updateDailyStreakInSupabase = async (userId: string) => {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('streak, last_active_date')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw error;
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const last = profile?.last_active_date ? new Date(profile.last_active_date) : null;
+  const lastStart = last ? new Date(last.getFullYear(), last.getMonth(), last.getDate()) : null;
+
+  const diffDays = lastStart
+    ? Math.floor((todayStart.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24))
+    : Number.POSITIVE_INFINITY;
+
+  let nextStreak = profile?.streak || 0;
+  let shouldUpdate = false;
+
+  if (!lastStart) {
+    nextStreak = 1;
+    shouldUpdate = true;
+  } else if (diffDays === 1) {
+    nextStreak = (profile?.streak || 0) + 1;
+    shouldUpdate = true;
+  } else if (diffDays > 1) {
+    nextStreak = 0;
+    shouldUpdate = true;
+  }
+
+  if (shouldUpdate) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ streak: nextStreak, last_active_date: new Date().toISOString() })
+      .eq('id', userId);
+    if (updateError) throw updateError;
+  }
+
+  return { streak: nextStreak, shouldUpdate };
 };

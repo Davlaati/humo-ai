@@ -4,7 +4,6 @@ import { UserProfile, LibraryItem, LibraryItemType, EnglishLevel } from '../type
 import { fetchLibraryItemsFromSupabase } from '../services/supabaseService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playTapSound } from '../services/audioService';
-import { PremiumGuard } from './PremiumGuard';
 
 interface LibraryProps {
   user: UserProfile;
@@ -202,7 +201,6 @@ const Library: React.FC<LibraryProps> = ({ user, onNavigate, onUpdateUser }) => 
   }
 
   return (
-    <PremiumGuard featureName="Kutubxona" onUnlockClick={() => onNavigate('pricing')}>
       <div className="flex flex-col h-full bg-[#0c1222] animate-fade-in">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-white/5 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-30">
@@ -278,7 +276,6 @@ const Library: React.FC<LibraryProps> = ({ user, onNavigate, onUpdateUser }) => 
           )}
         </div>
       </div>
-    </PremiumGuard>
   );
 };
 

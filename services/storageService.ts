@@ -345,23 +345,8 @@ export const saveAdminConfig = (config: AdminConfig) => {
 };
 
 export const isPremiumActive = (user: UserProfile): boolean => {
-  const now = new Date();
-  
-  // 1. Check paid premium
-  const expiryDate = user.premiumUntil || user.premiumExpiryDate;
-  if (user.isPremium) {
-    if (!expiryDate) return true; // Lifetime or undefined expiry
-    const expiry = new Date(expiryDate);
-    if (now < expiry) return true;
-  }
-  
-  // 2. Check trial
-  if (user.trialExpiresAt) {
-    const trialEnd = new Date(user.trialExpiresAt);
-    if (now < trialEnd) return true;
-  }
-  
-  return false;
+  const premiumUntil = (user as any).premium_until || user.premiumUntil || user.premiumExpiryDate;
+  return user.isPremium === true && !!premiumUntil && new Date(premiumUntil) > new Date();
 };
 
 export const getPremiumStatus = (user: UserProfile): 'trial' | 'paid' | 'expired' | 'pending' => {

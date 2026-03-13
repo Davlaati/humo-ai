@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserProfile } from '../types';
 import { isPremiumActive } from '../services/storageService';
 import { ArrowLeft, Wallet as WalletIcon, Crown, Zap, Coins, Clock, ChevronRight } from 'lucide-react';
 import { playTapSound } from '../services/audioService';
 import GrowthTasks from './GrowthTasks';
+import { fetchAdminSettingsFromSupabase } from '../services/supabaseService';
+import { useUserStore } from '../store/userStore';
 
 interface WalletProps {
   user: UserProfile;
@@ -14,16 +16,14 @@ interface WalletProps {
 
 const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate, isBlocked }) => {
   const isPremium = isPremiumActive(user);
-  
-  const getDaysRemaining = () => {
-    if (!user.premiumUntil) return 0;
-    const expiry = new Date(user.premiumUntil).getTime();
-    const now = new Date().getTime();
-    const diff = expiry - now;
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  };
+  const daysRemaining = useUserStore((state) => state.daysLeft);
+  const [paymentCardNumber, setPaymentCardNumber] = useState('');
 
-  const daysRemaining = getDaysRemaining();
+  useEffect(() => {
+    fetchAdminSettingsFromSupabase()
+      .then((settings) => setPaymentCardNumber(settings?.paymentCardNumber || ''))
+      .catch((err) => console.error('Failed to load payment card number:', err));
+  }, []);
 
   return (
     <div className="h-full w-full bg-[#0c1222] flex flex-col animate-fade-in overflow-hidden">
@@ -93,7 +93,7 @@ const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate, isBlock
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Qolgan vaqt</p>
-                    <p className="text-lg font-black text-green-400 tracking-tighter">{daysRemaining} KUN</p>
+                    <p className="text-lg font-black text-green-400 tracking-tighter">{daysRemaining > 0 ? `${daysRemaining} KUN` : 'Premium tugagan'}</p>
                   </div>
                 </div>
                 <button 
@@ -116,6 +116,11 @@ const Wallet: React.FC<WalletProps> = ({ user, onUpdateUser, onNavigate, isBlock
 
         <div className="p-8 bg-slate-800/20 rounded-[40px] border border-white/5 shadow-xl mb-8">
           <GrowthTasks user={user} onUpdateUser={onUpdateUser} />
+        </div>
+
+        <div className="p-8 bg-slate-800/20 rounded-[40px] border border-white/5 shadow-xl mb-8">
+          <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">P2P Karta</h4>
+          <p className="text-lg font-black text-white font-mono tracking-wider">{paymentCardNumber || 'Karta raqami mavjud emas'}</p>
         </div>
 
         <div className="p-8 bg-slate-800/20 rounded-[40px] border border-white/5 shadow-xl">

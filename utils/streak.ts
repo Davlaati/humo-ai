@@ -2,18 +2,18 @@
 export const calculateStreak = (lastActiveDate: string | null, currentStreak: number): { newStreak: number; shouldUpdate: boolean } => {
   if (!lastActiveDate) return { newStreak: 1, shouldUpdate: true };
 
-  const lastActive = new Date(lastActiveDate).getTime();
-  const now = new Date().getTime();
-  const diffInHours = (now - lastActive) / (1000 * 60 * 60);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last = new Date(lastActiveDate);
+  const lastStart = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+  const diffDays = Math.floor((todayStart.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffInHours < 24) {
-    // Less than 24h, do nothing
+  if (diffDays <= 0) {
     return { newStreak: currentStreak, shouldUpdate: false };
-  } else if (diffInHours >= 24 && diffInHours < 48) {
-    // Between 24h and 48h, increment
+  } else if (diffDays === 1) {
     return { newStreak: currentStreak + 1, shouldUpdate: true };
   } else {
-    // More than 48h, reset to 0 (as requested)
+    // More than 1 day gap, reset to 0
     return { newStreak: 0, shouldUpdate: true };
   }
 };
