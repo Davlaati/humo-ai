@@ -1,13 +1,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
-import { fetchUserFromSupabase, syncUserToSupabase, subscribeToUserChanges } from '../services/supabaseService';
-import { calculateStreak } from '../utils/streak';
+import { fetchUserFromSupabase, syncUserToSupabase, subscribeToUserChanges, updateDailyStreakInSupabase } from '../services/supabaseService';
+import { useUserStore } from '../store/userStore';
 
 export const useUserSync = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const setUserStore = useUserStore((state) => state.setUser);
 
   const tg = (window as any).Telegram?.WebApp;
   const tgUser = tg?.initDataUnsafe?.user;
@@ -29,8 +30,7 @@ export const useUserSync = () => {
           profile.isOnboarded = true;
         }
 
-        // Handle Streak Logic
-        const { newStreak, shouldUpdate } = calculateStreak(profile.lastActiveDate, profile.streak);
+        const { streak: newStreak, shouldUpdate } = await updateDailyStreakInSupabase(userId);
         
         // Update Activity Log for Heatmap
         const todayStr = new Date().toISOString().split('T')[0];
@@ -44,10 +44,13 @@ export const useUserSync = () => {
             lastActiveDate: new Date().toISOString(),
             activityLog: updatedLog
           };
-          await syncUserToSupabase(profile);
+          if (!shouldUpdate) {
+            await syncUserToSupabase(profile);
+          }
         }
         
         setUser(profile);
+        setUserStore(profile);
       } else {
         // This ONLY runs if profile is null (confirmed not found)
         // New User Initialization
@@ -78,6 +81,7 @@ export const useUserSync = () => {
         };
         await syncUserToSupabase(newUser);
         setUser(newUser);
+        setUserStore(newUser);
       }
     } catch (err: any) {
       console.error('User sync error:', err);
@@ -96,15 +100,18 @@ export const useUserSync = () => {
         if (payload.new) {
           setUser(prev => {
             if (!prev) return null;
-            return {
+            const nextUser = {
               ...prev,
               isPremium: payload.new.is_premium,
+              premiumUntil: payload.new.premium_until,
               coins: payload.new.coins,
               xp: payload.new.xp,
               streak: payload.new.streak,
               interests: payload.new.interests,
               isBlocked: payload.new.is_blocked
             };
+            setUserStore(nextUser);
+            return nextUser;
           });
         }
       });
@@ -125,6 +132,7 @@ export const useUserSync = () => {
       
       // 2. Update Local State
       setUser(updatedUser);
+      setUserStore(updatedUser);
     } catch (err: any) {
       console.error('Update user error:', err);
       setError(err.message || 'Ma\'lumotlarni saqlashda xatolik yuz berdi.');

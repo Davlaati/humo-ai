@@ -2,6 +2,18 @@ import { create } from 'zustand';
 import { UserProfile } from '../types';
 import { calculateDaysLeft, calculateDaysUsed } from '../utils/dateUtils';
 
+const resolvePremiumUntil = (user: UserProfile): string | null => {
+  return (user as any).premium_until || user.premiumUntil || user.premiumExpiryDate || null;
+};
+
+const computePremiumState = (user: UserProfile) => {
+  const premiumUntil = resolvePremiumUntil(user);
+  const expiry = premiumUntil ? new Date(premiumUntil) : null;
+  const isPremiumActive = user.isPremium === true && !!expiry && expiry > new Date();
+  const daysLeft = isPremiumActive ? calculateDaysLeft(premiumUntil) : 0;
+  return { isPremiumActive, daysLeft };
+};
+
 interface UserState {
   user: UserProfile | null;
   isPremiumActive: boolean;
@@ -29,9 +41,8 @@ export const useUserStore = create<UserState>((set, get) => ({
       return;
     }
 
-    const daysLeft = calculateDaysLeft(user.premiumUntil || user.premiumExpiryDate || user.trialExpiresAt);
+    const { isPremiumActive, daysLeft } = computePremiumState(user);
     const daysUsed = calculateDaysUsed(user.joinedAt);
-    const isPremiumActive = Boolean(user.isPremium === true && daysLeft > 0);
 
     set({ user, isPremiumActive, daysLeft, daysUsed });
   },
@@ -41,9 +52,8 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (!user) return;
 
     const updatedUser = { ...user, ...updates };
-    const daysLeft = calculateDaysLeft(updatedUser.premiumUntil || updatedUser.premiumExpiryDate || updatedUser.trialExpiresAt);
+    const { isPremiumActive, daysLeft } = computePremiumState(updatedUser);
     const daysUsed = calculateDaysUsed(updatedUser.joinedAt);
-    const isPremiumActive = Boolean(updatedUser.isPremium === true && daysLeft > 0);
 
     set({ user: updatedUser, isPremiumActive, daysLeft, daysUsed });
   },

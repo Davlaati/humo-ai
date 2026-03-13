@@ -2,9 +2,10 @@
 import asyncio
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import LabeledPrice, PreCheckoutQuery, Message
+from aiogram.types import LabeledPrice, PreCheckoutQuery, Message, CallbackQuery
 from supabase import create_client, Client
 
 # --- SOZLAMALAR ---
@@ -72,7 +73,8 @@ async def success_payment_handler(message: Message):
     # Bazada premium statusni faollashtirish
     if supabase:
         try:
-            supabase.table("profiles").update({"is_premium": True}).eq("id", user_id).execute()
+            premium_until = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            supabase.table("profiles").update({"is_premium": True, "premium_until": premium_until}).eq("id", user_id).execute()
             print(f"User {user_id} is now Premium")
         except Exception as e:
             print(f"Error updating premium status for user {user_id}: {e}")
@@ -80,6 +82,59 @@ async def success_payment_handler(message: Message):
     await message.answer(
         f"🎉 To'lov muvaffaqiyatli amalga oshirildi!\n"
         f"Siz {amount} Stars to'ladingiz. Premium status faollashtirildi."
+    )
+
+@dp.message(Command("setcard"))
+async def set_card_handler(message: Message):
+    if not supabase:
+        await message.answer("Supabase ulanmagan")
+        return
+
+    command_text = (message.text or "").strip()
+    parts = command_text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1]:
+        await message.answer("Foydalanish: /setcard 8600 1234 5678 9000")
+        return
+
+    card_number = parts[1].strip()
+    try:
+        supabase.table("admin_settings").upsert({
+            "id": 1,
+            "payment_card_number": card_number
+        }).execute()
+        await message.answer(f"✅ P2P karta yangilandi: {card_number}")
+    except Exception as e:
+        await message.answer(f"❌ Karta saqlashda xatolik: {e}")
+
+@dp.callback_query(F.data.startswith("approve_premium:"))
+async def approve_premium_callback(callback: CallbackQuery):
+    user_id = callback.data.split(":", 1)[1]
+    if supabase:
+        premium_until = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        supabase.table("profiles").update({
+            "is_premium": True,
+            "premium_until": premium_until,
+            "pending_premium": False
+        }).eq("id", user_id).execute()
+    await callback.answer("Tasdiqlandi")
+    await callback.message.edit_caption(
+        caption=f"✅ Premium tasdiqlandi\nUser ID: {user_id}",
+        reply_markup=None
+    )
+
+@dp.callback_query(F.data.startswith("reject_premium:"))
+async def reject_premium_callback(callback: CallbackQuery):
+    user_id = callback.data.split(":", 1)[1]
+    if supabase:
+        supabase.table("profiles").update({
+            "is_premium": False,
+            "premium_until": None,
+            "pending_premium": False
+        }).eq("id", user_id).execute()
+    await callback.answer("Rad etildi")
+    await callback.message.edit_caption(
+        caption=f"❌ Premium rad etildi\nUser ID: {user_id}",
+        reply_markup=None
     )
 
 # --- NETLIFY FUNCTION HANDLER ---

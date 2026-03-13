@@ -5,6 +5,7 @@ import { UserProfile } from '../types';
 import { Users, Mic, MicOff, PhoneOff, Clock, Plus, MessageSquare, Globe, Headphones, Star } from 'lucide-react';
 import { awardXP } from '../services/gamificationService';
 import { syncUserToSupabase } from '../services/supabaseService';
+import { supabase } from '../services/supabaseClient';
 
 interface SpeakingClubProps {
   user: UserProfile;
@@ -63,6 +64,7 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
   const remoteAudiosRef = useRef<Record<string, HTMLAudioElement>>({});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const realtimeChannelRef = useRef<any>(null);
 
   const setupSocketListeners = (newSocket: Socket) => {
     newSocket.on('connect', () => {
@@ -149,12 +151,53 @@ const SpeakingClub: React.FC<SpeakingClubProps> = ({ user, onNavigate, onViewUse
   };
 
   useEffect(() => {
-    const newSocket = io();
-    setSocket(newSocket);
-    setupSocketListeners(newSocket);
+    const initializeConnections = async () => {
+      const channelName = `room_presence_${user.id}`;
+      const channel = supabase.channel(channelName, {
+        config: { presence: { key: user.id }, broadcast: { ack: true, self: true } }
+      });
+
+      channel
+        .on('broadcast', { event: 'ping' }, ({ payload }: any) => {
+          console.log('[SpeakingClub] broadcast ping:', payload);
+        })
+        .on('presence', { event: 'sync' }, () => {
+          console.log('[SpeakingClub] presence sync', channel.presenceState());
+        })
+        .on('presence', { event: 'join' }, ({ key }: any) => {
+          console.log('[SpeakingClub] presence join:', key);
+        })
+        .on('presence', { event: 'leave' }, ({ key }: any) => {
+          console.log('[SpeakingClub] presence leave:', key);
+        });
+
+      channel.subscribe(async (status: string) => {
+        console.log('[SpeakingClub] realtime status:', status);
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ userId: user.id, name: user.name, onlineAt: new Date().toISOString() });
+          channel.send({ type: 'broadcast', event: 'ping', payload: { userId: user.id, ts: Date.now() } });
+          const newSocket = io();
+          setSocket(newSocket);
+          setupSocketListeners(newSocket);
+        }
+      });
+
+      realtimeChannelRef.current = channel;
+    };
+
+    initializeConnections().catch((err) => {
+      console.error('[SpeakingClub] init failed:', err);
+      const fallbackSocket = io();
+      setSocket(fallbackSocket);
+      setupSocketListeners(fallbackSocket);
+    });
 
     return () => {
-      newSocket.disconnect();
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+      if (socket) socket.disconnect();
       cleanupWebRTC();
     };
   }, []);

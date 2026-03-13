@@ -300,7 +300,7 @@ async function startServer() {
 
   // Task verification endpoint
   app.post('/api/verify-tasks', async (req, res) => {
-    const { userId } = req.body;
+    const { userId, clientChannelJoined } = req.body;
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const channelId = '@ravonaai'; // Updated to match bot username
 
@@ -330,17 +330,55 @@ async function startServer() {
         return res.json({ success: false, message: 'Mukofot allaqachon olingan' });
       }
 
-      if (isSubscribed && (user?.referral_count || 0) >= 3) {
+      const channelVerified = Boolean(clientChannelJoined) || isSubscribed;
+
+      if (channelVerified && (user?.referral_count || 0) >= 3) {
         res.json({ success: true, referralCount: user?.referral_count });
       } else {
         let message = "";
-        if (!isSubscribed) message += "Kanalga obuna bo'ling. ";
+        if (!channelVerified) message += "Kanalga obuna bo'ling. ";
         if ((user?.referral_count || 0) < 3) message += `Do'stlar yetarli emas (${user?.referral_count || 0}/3).`;
         res.json({ success: false, message });
       }
     } catch (error) {
       console.error("Verification error:", error);
       res.status(500).json({ success: false });
+    }
+  });
+
+  app.post('/api/telegram/receipt', async (req, res) => {
+    const { userId, userName, receiptUrl, plan } = req.body;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+    if (!botToken || !adminChatId) {
+      return res.status(500).json({ success: false, message: 'Telegram bot config missing' });
+    }
+
+    try {
+      const caption = [
+        '🧾 Yangi premium to\'lov cheki',
+        `👤 Foydalanuvchi: ${userName}`,
+        `🆔 ID: ${userId}`,
+        `📦 Tarif: ${plan}`
+      ].join('\n');
+
+      await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+        chat_id: adminChatId,
+        photo: receiptUrl,
+        caption,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Tasdiqlash', callback_data: `approve_premium:${userId}` },
+            { text: '❌ Rad etish', callback_data: `reject_premium:${userId}` }
+          ]]
+        }
+      });
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error('Failed to send receipt to Telegram admin:', error?.response?.data || error);
+      return res.status(500).json({ success: false, message: 'Failed to send receipt to Telegram' });
     }
   });
 

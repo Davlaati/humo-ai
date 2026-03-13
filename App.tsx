@@ -26,6 +26,7 @@ import StoryTaskModal from './components/StoryTaskModal';
 import PremiumGiftModal from './components/PremiumGiftModal';
 import AITutor from './components/AITutor';
 import DailyStreakCelebration from './components/DailyStreakCelebration';
+import { PremiumGuard } from './components/PremiumGuard';
 
 const Pricing = React.lazy(() => import('./components/Pricing'));
 const Checkout = React.lazy(() => import('./components/Checkout'));
@@ -296,16 +297,16 @@ const App: React.FC = () => {
           case 'home': return <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} streakReward={streakReward} onClearStreakReward={() => setStreakReward(null)} />;
           case 'learn': return <Lesson user={user} onUpdateUser={handleUpdateUser} />;
           case 'wordbank': return <WordBank user={user} onUpdateUser={handleUpdateUser} />;
-          case 'game': return <Game user={user} onUpdateUser={handleUpdateUser} />;
+          case 'game': return <PremiumGuard featureName="Games" onUnlockClick={() => setActiveTab('pricing')}><Game user={user} onUpdateUser={handleUpdateUser} /></PremiumGuard>;
           case 'speaking-club': return <SpeakingClub user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'leaderboard': return <Leaderboard user={user} onNavigate={setActiveTab} onViewUser={handleViewUser} />;
           case 'mock': return <RavonaMock user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
-          case 'library': return <Library user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
+          case 'library': return <PremiumGuard featureName="Kutubxona" onUnlockClick={() => setActiveTab('pricing')}><Library user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} /></PremiumGuard>;
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setActiveTab('pricing')} />;
           case 'user-profile': return viewingUserId ? <UserProfileView userId={viewingUserId} onBack={() => { setActiveTab(previousTab); setViewingUserId(null); }} /> : <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
           case 'translator': return <GrammarAnalyzer user={user} onNavigate={setActiveTab} />;
-          case 'aitutor': return <AITutor user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
+          case 'aitutor': return <PremiumGuard featureName="AI Tutor" onUnlockClick={() => setActiveTab('pricing')}><AITutor user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} /></PremiumGuard>;
           case 'pricing': {
             return (
               <React.Suspense fallback={<div>Loading...</div>}>

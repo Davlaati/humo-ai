@@ -1,11 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
-import { fetchAdminSettingsFromSupabase, createPaymentInSupabase } from '../services/supabaseService';
-import { getAdminConfig } from '../services/storageService';
-import { supabase } from '../services/supabaseClient';
+import { fetchAdminSettingsFromSupabase, createPaymentInSupabase, sendReceiptToAdmin } from '../services/supabaseService';
 
 interface CheckoutProps {
   user: UserProfile;
@@ -16,7 +13,7 @@ interface CheckoutProps {
 
 const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) => {
   const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes
-  const [cardNumber, setCardNumber] = useState(getAdminConfig().cardNumber);
+  const [cardNumber, setCardNumber] = useState('');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,14 +25,9 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
     
     const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('settings')
-          .select('value')
-          .eq('key', 'p2p_card')
-          .single();
-
-        if (data && !error) {
-          setCardNumber(data.value);
+        const settings = await fetchAdminSettingsFromSupabase();
+        if (settings?.paymentCardNumber) {
+          setCardNumber(settings.paymentCardNumber);
         }
       } catch (err) {
         console.error('Error fetching card:', err);
@@ -90,30 +82,20 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
 
       await createPaymentInSupabase(paymentData);
 
-      // Trigger the Supabase Edge Function to send to Telegram Bot
-      try {
-        const { error: edgeError } = await supabase.functions.invoke('submit-receipt', {
-          body: {
-            userId: user.id,
-            userName: user.name,
-            receiptUrl: receiptImage,
-            plan: plan.bonusMonth ? '13 OY (12+1)' : plan.name
-          }
-        });
-        if (edgeError) console.error("Edge function error:", edgeError);
-      } catch (err) {
-        console.error("Failed to invoke edge function:", err);
-      }
+      await sendReceiptToAdmin({
+        userId: user.id,
+        userName: user.name,
+        receiptUrl: receiptImage,
+        plan: plan.bonusMonth ? '13 OY (12+1)' : plan.name
+      });
       
-      // Instant activation (Temporary Premium)
       const updatedUser = {
         ...user,
-        isPremium: true,
-        isTemporaryPremium: true
+        pendingPremium: true
       };
       
       onSuccess(updatedUser);
-      alert("To'lov qabul qilindi! Hisobingiz vaqtinchalik faollashtirildi. Admin tasdiqlashini kuting.");
+      alert("To'lov qabul qilindi! Admin tasdiqlashini kuting.");
     } catch (error) {
       console.error("Payment submission error:", error);
       alert("Xatolik yuz berdi. Qayta urinib ko'ring.");
