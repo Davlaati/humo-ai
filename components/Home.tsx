@@ -244,6 +244,17 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUpdateUser, streakRewar
           </h2>
           
           <div className="space-y-4">
+              {/* Word Box Banner */}
+              <LargeBannerItem 
+                  title="Word Box" 
+                  subtitle="Mukammal lug'at va flashcardlar"
+                  icon="fa-box-archive"
+                  color="text-yellow-400"
+                  bgColor="bg-yellow-500/20"
+                  onClick={() => handleAction('wordbox')}
+                  bgEmoji="📦"
+              />
+
               {/* Wallet Banner */}
               <LargeBannerItem 
                   title="Hamyon & Premium" 

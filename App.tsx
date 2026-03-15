@@ -13,6 +13,7 @@ import Wallet from './components/Wallet';
 import Admin from './components/Admin';
 import Game from './components/Game';
 import WordBank from './components/WordBank';
+import WordBox from './components/WordBox';
 import SpeakingClub from './components/SpeakingClub';
 import RavonaMock from './components/RavonaMock';
 import Leaderboard from './components/Leaderboard';
@@ -304,6 +305,7 @@ const App: React.FC = () => {
           case 'profile': return <Profile user={user} onUpdateUser={handleUpdateUser} onShowAdmin={() => setIsAdminMode(true)} onShowPremium={() => setActiveTab('pricing')} />;
           case 'user-profile': return viewingUserId ? <UserProfileView userId={viewingUserId} onBack={() => { setActiveTab(previousTab); setViewingUserId(null); }} /> : <Home user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'dictionary': return <SmartDictionary user={user} onUpdateUser={handleUpdateUser} />;
+          case 'wordbox': return <WordBox user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'translator': return <GrammarAnalyzer user={user} onNavigate={setActiveTab} />;
           case 'aitutor': return <AITutor user={user} onUpdateUser={handleUpdateUser} onNavigate={setActiveTab} />;
           case 'pricing': {

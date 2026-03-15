@@ -10,9 +10,9 @@ interface LayoutProps {
 
 const NAV_ITEMS = [
   { id: 'home', icon: 'fa-house', label: 'Asosiy' },
+  { id: 'wordbox', icon: 'fa-box-archive', label: 'Word Box' },
   { id: 'speaking-club', icon: 'fa-headset', label: 'Speaking' },
   { id: 'game', icon: 'fa-gamepad', label: "O'yinlar" },
-  { id: 'library', icon: 'fa-book-open', label: 'Kutubxona' },
   { id: 'profile', icon: 'fa-user', label: 'Profil' },
 ];
 
