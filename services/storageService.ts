@@ -185,13 +185,21 @@ export const updateOtherUser = async (userId: string, updates: Partial<UserProfi
   const users = await getAllUsers();
   const index = users.findIndex(u => u.id === userId);
   if (index !== -1) {
-    users[index] = { ...users[index], ...updates };
+    const updatedUser = { ...users[index], ...updates };
+    users[index] = updatedUser;
     saveAllUsers(users);
+    
+    // Sync to Supabase
+    try {
+      await syncUserToSupabase(updatedUser);
+    } catch (e) {
+      console.error("Failed to sync other user to Supabase", e);
+    }
     
     // If it's the current user, update them too
     const currentUser = getUser();
     if (currentUser && currentUser.id === userId) {
-      saveUser({ ...currentUser, ...updates });
+      saveUser(updatedUser);
     }
   }
 };
@@ -200,8 +208,8 @@ export const getSubscriptionPackages = (): SubscriptionPackage[] => {
   try {
     const data = localStorage.getItem(PACKAGES_KEY);
     return data ? JSON.parse(data) : [
-      { id: '1', name: 'Premium Monthly', price: 50, durationDays: 30, features: ['AI Chat', 'No Ads', 'Exclusive Lessons'], isActive: true },
-      { id: '2', name: 'Premium Yearly', price: 500, durationDays: 365, features: ['AI Chat', 'No Ads', 'Exclusive Lessons', 'Priority Support'], isActive: true }
+      { id: '1', name: 'Premium Monthly', price: 36000, durationDays: 30, features: ['AI Chat', 'No Ads', 'Exclusive Lessons'], isActive: true },
+      { id: '2', name: 'Premium Yearly', price: 360000, durationDays: 365, features: ['AI Chat', 'No Ads', 'Exclusive Lessons', 'Priority Support'], isActive: true }
     ];
   } catch (e) {
     return [];
@@ -321,7 +329,7 @@ export const getAdminConfig = (): AdminConfig => {
   try {
     const data = localStorage.getItem(ADMIN_CONFIG_KEY);
     return data ? JSON.parse(data) : {
-      cardNumber: '8600 0000 0000 0000',
+      paymentCardNumber: '8600 0000 0000 0000',
       cardHolder: 'ADMIN NAME',
       premiumPriceUZS: 36000,
       premiumPriceUSD: 3,
@@ -330,7 +338,7 @@ export const getAdminConfig = (): AdminConfig => {
     };
   } catch (e) {
     return {
-      cardNumber: '8600 0000 0000 0000',
+      paymentCardNumber: '8600 0000 0000 0000',
       cardHolder: 'ADMIN NAME',
       premiumPriceUZS: 36000,
       premiumPriceUSD: 3,
@@ -352,11 +360,20 @@ export const isPremiumActive = (user: UserProfile): boolean => {
 export const getPremiumStatus = (user: UserProfile): 'trial' | 'paid' | 'expired' | 'pending' => {
   const now = new Date();
   
-  if (user.pendingPremium) return 'pending';
-  
-  if (user.isPremium === true && user.premiumUntil && new Date(user.premiumUntil) > now) {
-    return 'paid';
+  if (user.isPremium === true) {
+    if (user.isTemporaryPremium) return 'paid'; // Temporary premium is active until admin reviews
+    
+    if (user.premiumUntil && new Date(user.premiumUntil) > now) {
+      return 'paid';
+    }
+    
+    // Legacy support
+    if (user.premiumExpiryDate && new Date(user.premiumExpiryDate) > now) {
+      return 'paid';
+    }
   }
+  
+  if (user.pendingPremium) return 'pending';
   
   if (user.trialExpiresAt) {
     const trialEnd = new Date(user.trialExpiresAt);

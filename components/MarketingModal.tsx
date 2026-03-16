@@ -8,10 +8,20 @@ import { playTapSound } from '../services/audioService';
 interface MarketingModalProps {
   user: UserProfile;
   onClose: () => void;
-  onExtend: () => void;
+  onExtend?: () => void;
+  onUpdateUser?: (user: UserProfile) => void;
 }
 
-const MarketingModal: React.FC<MarketingModalProps> = ({ user, onClose, onExtend }) => {
+const MarketingModal: React.FC<MarketingModalProps> = ({ user, onClose, onExtend, onUpdateUser }) => {
+  const handleExtend = () => {
+    playTapSound();
+    if (onExtend) {
+      onExtend();
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -43,10 +53,7 @@ const MarketingModal: React.FC<MarketingModalProps> = ({ user, onClose, onExtend
 
           <div className="w-full space-y-3">
             <button
-              onClick={() => {
-                playTapSound();
-                onExtend();
-              }}
+              onClick={handleExtend}
               className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
             >
               <Zap className="w-5 h-5" />

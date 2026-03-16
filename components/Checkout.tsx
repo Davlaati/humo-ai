@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { UserProfile } from '../types';
 import { playTapSound } from '../services/audioService';
-import { fetchAdminSettingsFromSupabase, createPaymentInSupabase } from '../services/supabaseService';
+import { fetchAdminSettingsFromSupabase, createPaymentInSupabase, uploadFileToSupabase } from '../services/supabaseService';
 import { getAdminConfig } from '../services/storageService';
 import { supabase } from '../services/supabaseClient';
 
@@ -16,8 +16,9 @@ interface CheckoutProps {
 
 const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) => {
   const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes
-  const [cardNumber, setCardNumber] = useState(getAdminConfig().cardNumber);
+  const [cardNumber, setCardNumber] = useState(getAdminConfig().paymentCardNumber);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,14 +29,9 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
     
     const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('settings')
-          .select('value')
-          .eq('key', 'p2p_card')
-          .single();
-
-        if (data && !error) {
-          setCardNumber(data.value);
+        const settings = await fetchAdminSettingsFromSupabase();
+        if (settings && settings.paymentCardNumber) {
+          setCardNumber(settings.paymentCardNumber);
         }
       } catch (err) {
         console.error('Error fetching card:', err);
@@ -61,57 +57,43 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsUploading(true);
+      setReceiptFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setReceiptImage(reader.result as string);
-        setIsUploading(false);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSubmit = async () => {
-    if (!receiptImage || isSubmitting) return;
+    if (!receiptFile || isSubmitting) return;
     
     playTapSound();
     setIsSubmitting(true);
     
     try {
+      // 1. Upload to Supabase Storage
+      let receiptUrl = '';
+      try {
+        receiptUrl = await uploadFileToSupabase('receipts', receiptFile);
+      } catch (uploadErr) {
+        console.error("Upload failed, using base64 as fallback", uploadErr);
+        receiptUrl = receiptImage || '';
+      }
+
       const paymentData = {
         userId: user.id,
         userName: user.name,
         userEmail: user.username,
         amount: plan.price,
         planSelected: plan.bonusMonth ? '13 OY (12+1)' : plan.name,
-        receiptImageUrl: receiptImage,
+        receiptImageUrl: receiptUrl,
         status: 'pending' as const
       };
 
       await createPaymentInSupabase(paymentData);
 
-      // Send receipt to admin via our backend
-      try {
-        const response = await fetch('/api/submit-receipt', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            userName: user.name,
-            receiptUrl: receiptImage,
-            plan: plan.bonusMonth ? '13 OY (12+1)' : plan.name
-          })
-        });
-        
-        if (!response.ok) {
-          console.error("Failed to send receipt to admin");
-        }
-      } catch (err) {
-        console.error("Failed to invoke submit-receipt API:", err);
-      }
-      
       // Instant activation (Temporary Premium)
       const updatedUser = {
         ...user,

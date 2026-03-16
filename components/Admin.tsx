@@ -180,7 +180,12 @@ const Admin: React.FC = () => {
   };
 
   const handleTogglePremium = async (userId: string, isPremium: boolean) => {
-    await updateOtherUser(userId, { isPremium: !isPremium, premiumExpiryDate: !isPremium ? new Date(Date.now() + 30 * 86400000).toISOString() : undefined });
+    const premiumUntil = !isPremium ? new Date(Date.now() + 30 * 86400000).toISOString() : undefined;
+    await updateOtherUser(userId, { 
+      isPremium: !isPremium, 
+      premiumUntil: premiumUntil,
+      premiumExpiryDate: premiumUntil // Keep for legacy
+    });
     addAdminLog('User Premium Update', `${!isPremium ? 'Granted' : 'Revoked'} premium for user ${userId}`);
     const allUsers = await getAllUsers();
     setUsers(allUsers);
@@ -198,7 +203,9 @@ const Admin: React.FC = () => {
       };
       
       // Save locally first
-      saveAdminConfig({ ...adminConfig, ...newConfig });
+      const updatedConfig = { ...adminConfig, ...newConfig };
+      saveAdminConfig(updatedConfig);
+      setAdminConfig(updatedConfig);
       
       try {
         await updateAdminSettingsInSupabase(newConfig);

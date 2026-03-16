@@ -8,12 +8,18 @@ import { playTapSound, playSuccessSound } from '../services/audioService';
 interface StoryTaskModalProps {
   user: UserProfile;
   onClose: () => void;
-  onSuccess: (updatedUser: UserProfile) => void;
+  onSuccess?: (updatedUser: UserProfile) => void;
+  onUpdateUser?: (updatedUser: UserProfile) => void;
 }
 
-const StoryTaskModal: React.FC<StoryTaskModalProps> = ({ user, onClose, onSuccess }) => {
+const StoryTaskModal: React.FC<StoryTaskModalProps> = ({ user, onClose, onSuccess, onUpdateUser }) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleFinish = (updatedUser: UserProfile) => {
+    if (onUpdateUser) onUpdateUser(updatedUser);
+    if (onSuccess) onSuccess(updatedUser);
+  };
 
   const handleShareStory = () => {
     playTapSound();
@@ -64,7 +70,7 @@ const StoryTaskModal: React.FC<StoryTaskModalProps> = ({ user, onClose, onSucces
       };
 
       playSuccessSound();
-      onSuccess(updatedUser);
+      handleFinish(updatedUser);
     } catch (err) {
       setError("Tasdiqlashda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.");
     } finally {

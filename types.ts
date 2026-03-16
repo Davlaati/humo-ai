@@ -206,7 +206,7 @@ export interface Discount {
 }
 
 export interface AdminConfig {
-  cardNumber: string;
+  paymentCardNumber: string;
   cardHolder: string;
   minWithdrawal: number;
   starRate: number;
