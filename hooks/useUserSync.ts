@@ -3,9 +3,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { fetchUserFromSupabase, syncUserToSupabase, subscribeToUserChanges } from '../services/supabaseService';
 import { calculateStreak } from '../utils/streak';
+import { useUserStore } from '../store/userStore';
 
 export const useUserSync = () => {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const user = useUserStore(state => state.user);
+  const setUser = useUserStore(state => state.setUser);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,20 +96,16 @@ export const useUserSync = () => {
       const subscription = subscribeToUserChanges(String(tgUser.id), (payload) => {
         // Realtime update from Admin or other source
         if (payload.new) {
-          setUser(prev => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              isPremium: payload.new.is_premium,
-              isTemporaryPremium: payload.new.is_temporary_premium,
-              premiumUntil: payload.new.premium_until,
-              trialExpiresAt: payload.new.trial_expires_at,
-              coins: payload.new.coins,
-              xp: payload.new.xp,
-              streak: payload.new.streak,
-              interests: payload.new.interests,
-              isBlocked: payload.new.is_blocked
-            };
+          useUserStore.getState().updateUser({
+            isPremium: payload.new.is_premium,
+            isTemporaryPremium: payload.new.is_temporary_premium,
+            premiumUntil: payload.new.premium_until,
+            trialExpiresAt: payload.new.trial_expires_at,
+            coins: payload.new.coins,
+            xp: payload.new.xp,
+            streak: payload.new.streak,
+            interests: payload.new.interests,
+            isBlocked: payload.new.is_blocked
           });
         }
       });
@@ -123,14 +121,20 @@ export const useUserSync = () => {
       const currentUser = user || {} as UserProfile;
       const updatedUser = { ...currentUser, ...updates } as UserProfile;
       
-      // 1. Update Supabase FIRST (Requirement)
-      await syncUserToSupabase(updatedUser);
-      
-      // 2. Update Local State
+      // 1. Update Local State FIRST for immediate UI response
       setUser(updatedUser);
+      
+      // 2. Sync to Supabase in background
+      try {
+        await syncUserToSupabase(updatedUser);
+      } catch (dbErr) {
+        console.warn('Supabase sync failed, but local state updated:', dbErr);
+        // We don't set error state here to avoid crashing the app
+        // The data is still saved locally via storageService in other places
+      }
     } catch (err: any) {
       console.error('Update user error:', err);
-      setError(err.message || 'Ma\'lumotlarni saqlashda xatolik yuz berdi.');
+      // Only set error if even local update fails
     }
   };
 

@@ -128,8 +128,12 @@ const Checkout: React.FC<CheckoutProps> = ({ user, plan, onSuccess, onBack }) =>
         await createPaymentInSupabase(paymentData);
       } catch (dbErr) {
         console.warn("Supabase payment failed, saving locally", dbErr);
-        const { savePayment } = await import('../services/storageService');
-        savePayment(paymentData);
+        try {
+          const { savePayment } = await import('../services/storageService');
+          savePayment(paymentData);
+        } catch (localErr) {
+          console.error("Local save failed too:", localErr);
+        }
       }
 
       // Instant activation (Temporary Premium)

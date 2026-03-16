@@ -386,6 +386,36 @@ export const getPremiumStatus = (user: UserProfile): 'trial' | 'paid' | 'expired
   return 'expired';
 };
 
+export const getPayments = (): any[] => {
+  try {
+    const data = localStorage.getItem('ravona_payments');
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const savePayment = (payment: any) => {
+  const payments = getPayments();
+  const newPayment = {
+    ...payment,
+    id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    createdAt: new Date().toISOString()
+  };
+  payments.push(newPayment);
+  localStorage.setItem('ravona_payments', JSON.stringify(payments));
+  return newPayment;
+};
+
+export const updatePaymentStatus = (paymentId: string, status: 'approved' | 'rejected') => {
+  const payments = getPayments();
+  const index = payments.findIndex(p => p.id === paymentId);
+  if (index !== -1) {
+    payments[index].status = status;
+    localStorage.setItem('ravona_payments', JSON.stringify(payments));
+  }
+};
+
 export const initializeFromSupabase = async (userId: string): Promise<UserProfile | null> => {
   const { fetchUserFromSupabase } = await import("./supabaseService");
   const remoteUser = await fetchUserFromSupabase(userId);
