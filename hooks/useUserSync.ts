@@ -99,6 +99,9 @@ export const useUserSync = () => {
             return {
               ...prev,
               isPremium: payload.new.is_premium,
+              isTemporaryPremium: payload.new.is_temporary_premium,
+              premiumUntil: payload.new.premium_until,
+              trialExpiresAt: payload.new.trial_expires_at,
               coins: payload.new.coins,
               xp: payload.new.xp,
               streak: payload.new.streak,

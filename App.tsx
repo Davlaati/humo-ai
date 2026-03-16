@@ -112,7 +112,7 @@ const App: React.FC = () => {
         }
       }
     }
-  }, [user?.id, user?.isPremium, user?.trialExpiresAt]);
+  }, [user?.id, user?.isPremium, user?.trialExpiresAt, user?.isTemporaryPremium, user?.premiumUntil]);
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;

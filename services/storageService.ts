@@ -354,7 +354,10 @@ export const saveAdminConfig = (config: AdminConfig) => {
 
 export const isPremiumActive = (user: UserProfile): boolean => {
   if (!user) return false;
-  return Boolean(user.isPremium === true && user.premiumUntil && new Date(user.premiumUntil) > new Date());
+  return Boolean(
+    user.isPremium === true && 
+    (user.isTemporaryPremium || (user.premiumUntil && new Date(user.premiumUntil) > new Date()))
+  );
 };
 
 export const getPremiumStatus = (user: UserProfile): 'trial' | 'paid' | 'expired' | 'pending' => {

@@ -444,11 +444,12 @@ export const createPaymentInSupabase = async (payment: Omit<Payment, 'id' | 'cre
     return data;
   } catch (e) {
     console.error('Error creating payment:', e);
-    return null;
+    throw e;
   }
 };
 
 export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => {
+  let remotePayments: Payment[] = [];
   try {
     const { data, error } = await supabase
       .from('payments')
@@ -458,31 +459,46 @@ export const fetchPendingPaymentsFromSupabase = async (): Promise<Payment[]> => 
     
     if (error) {
       console.error('Error fetching pending payments:', error);
-      throw error;
+    } else {
+      console.log('Fetched pending payments:', data);
+      remotePayments = (data || []).map(d => ({
+        id: d.id,
+        userId: d.user_id,
+        userName: d.user_name,
+        userEmail: d.user_email,
+        amount: d.amount,
+        planSelected: d.plan_selected,
+        receiptImageUrl: d.receipt_image_url,
+        status: d.status,
+        createdAt: d.created_at
+      }));
     }
-    
-    console.log('Fetched pending payments:', data);
-    
-    return (data || []).map(d => ({
-      id: d.id,
-      userId: d.user_id,
-      userName: d.user_name,
-      userEmail: d.user_email,
-      amount: d.amount,
-      planSelected: d.plan_selected,
-      receiptImageUrl: d.receipt_image_url,
-      status: d.status,
-      createdAt: d.created_at
-    }));
   } catch (e) {
     console.error('Fetch pending payments failed:', e);
-    return [];
+  }
+
+  // Fallback to local storage
+  try {
+    const { getPayments } = await import('./storageService');
+    const localPayments = getPayments().filter(p => p.status === 'pending');
+    
+    // Filter out duplicates (though IDs might differ, we can just append them for now)
+    // A more robust way is to check if a payment with same userId and amount exists within last 5 mins,
+    // but appending is fine for fallback.
+    return [...remotePayments, ...localPayments];
+  } catch (e) {
+    return remotePayments;
   }
 };
 
 export const updatePaymentStatusInSupabase = async (paymentId: string, status: 'approved' | 'rejected') => {
   try {
     await supabase.from('payments').update({ status }).eq('id', paymentId);
+  } catch (e) {}
+  
+  try {
+    const { updatePaymentStatus } = await import('./storageService');
+    updatePaymentStatus(paymentId, status);
   } catch (e) {}
 };
 
